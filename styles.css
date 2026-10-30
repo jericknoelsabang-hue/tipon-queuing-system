@@ -25,3 +25,41 @@ header{background:#fff;border-top:4px solid var(--gold);border-bottom:1px solid 
 @media(max-width:960px){.brand-meta{display:none}.tv-inner{grid-template-columns:1fr}.windows{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}.grid{grid-template-columns:1fr}#display:fullscreen .tv-inner{grid-template-columns:1fr}}
 @media(max-width:650px){.head{min-height:70px;padding:10px 12px}.brand-image{width:175px;height:64px}.brand-image img{width:265px;height:265px;top:-6px}.brand-image svg{width:172px;height:63px}.clock{font-size:15px}.clock small{font-size:7px}.shell{padding:13px 11px 38px}.nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.nav button,.nav a{min-height:41px;padding:9px 10px}.page-head h1{font-size:29px}.card{padding:16px}.tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.metric{padding:12px}.metric strong{font-size:26px}.tv{padding:13px;border-radius:15px}.qr-panel{padding:15px}.windows{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.window{min-height:180px}.queue-no{font-size:27px}.window-grid{grid-template-columns:1fr}.announcement{flex-direction:column;align-items:flex-start;gap:6px}#display:fullscreen{padding:8px}#display:fullscreen .tv-inner{min-height:350px}#display:fullscreen .page-head h1{font-size:24px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important}}
+
+
+/* v5: supplied TIPON Federation logo, TV-fullscreen branding, streaming announcement. */
+.head{min-height:91px}.brand{min-height:71px;gap:20px}
+.tipon-logo{display:block;width:237px;max-width:42vw;height:auto;max-height:81px;object-fit:contain;background:#fff}
+.brand-meta{border-left:1px solid #dfebf1;padding-left:17px;min-height:48px;display:flex;flex-direction:column;justify-content:center}
+.brand-meta b{font-size:16px;letter-spacing:.005em}
+.clock{display:flex;flex-direction:column;align-items:flex-end;gap:0;line-height:1.45}
+.clock small{font-size:10px;letter-spacing:.13em}
+#headerDay{font:800 11px/1.5 Manrope,"Segoe UI",sans-serif;color:#55758a}
+#clock{font:700 21px/1.25 Poppins,sans-serif;color:#0e5077}
+.tv-full-head{display:none}
+.announcement{position:relative;display:block;min-height:65px;overflow:hidden;white-space:nowrap;margin-top:13px;padding:0;border-radius:12px;background:#ffffff12}
+.announcement-track{display:flex;align-items:center;width:max-content;min-height:63px;animation:announcementMove 25s linear infinite;will-change:transform}
+.announcement-item{display:flex;align-items:center;gap:16px;padding:13px 72px 13px 20px;flex:none;white-space:nowrap;min-width:max-content}
+.announcement-item strong,.announcement-item span{font:400 clamp(15px,1.6vw,21px)/1.45 Manrope,"Segoe UI",sans-serif;color:#fff;letter-spacing:0}
+.announcement-item strong{font-weight:900}
+.announcement-item span{font-weight:400}
+@keyframes announcementMove{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+#display:fullscreen{padding:14px 23px}
+#display:fullscreen .tv-full-head{display:flex;align-items:center;justify-content:space-between;flex:none;min-height:74px;margin:0 0 12px;padding:7px 17px;border-radius:11px;background:#fff;gap:18px}
+#display:fullscreen .tv-full-head img{height:63px;width:auto;max-width:42%;object-fit:contain}
+#display:fullscreen .fullscreen-datetime{display:flex;flex-direction:column;align-items:flex-end;text-align:right;gap:0}
+#fullscreenDate{font:800 clamp(11px,1.15vw,15px) Manrope,sans-serif;letter-spacing:.08em;color:#36667e}
+#fullscreenTime{font:700 clamp(21px,2.4vw,35px) Poppins,sans-serif;line-height:1.2;color:#0e628e}
+#display:fullscreen .announcement-item strong,#display:fullscreen .announcement-item span{font-size:clamp(18px,2vw,29px)}
+#display:fullscreen .announcement{flex:none}
+@media(max-width:760px){
+ .brand{gap:8px}.tipon-logo{width:177px;max-width:43vw}.brand-meta{padding-left:10px}
+ .brand-meta b{font-size:12px}.brand-meta small{font-size:8px}
+ #headerDay{font-size:8px}#clock{font-size:16px}.clock small{font-size:7px}
+ .announcement-item{padding-right:44px;gap:11px}
+ #display:fullscreen .tv-full-head{padding:7px 11px;min-height:58px;margin-bottom:8px}
+ #display:fullscreen .tv-full-head img{height:48px;max-width:48%}
+ #fullscreenDate{font-size:9px}#fullscreenTime{font-size:18px}
+}
+@media(max-width:520px){.brand-meta{display:none}.tipon-logo{width:157px}.announcement-item strong,.announcement-item span{font-size:15px}}
+@media(prefers-reduced-motion:reduce){.announcement-track{animation:none!important;transform:none!important}.announcement-item[aria-hidden="true"]{display:none}}
