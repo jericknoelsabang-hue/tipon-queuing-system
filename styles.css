@@ -14,7 +14,7 @@ header{background:#fff;border-top:4px solid var(--gold);border-bottom:1px solid 
 #qr img,#qr canvas{height:216px!important;width:216px!important;max-width:100%;image-rendering:pixelated}
 .now{min-width:0}.now-title{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:15px}.now-title h2{font:700 clamp(22px,2.5vw,31px) Poppins,sans-serif;letter-spacing:.09em;margin:0}.now-title p{font-size:12px;color:#c2e2ef;margin:0}.live{font-size:10px;font-weight:900;letter-spacing:.13em;color:#baf6db;border:1px solid #a4e3d46b;border-radius:30px;padding:8px 12px}.live:before{content:"";width:8px;height:8px;background:#43e3a6;display:inline-block;border-radius:50%;margin-right:7px}
 .windows{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px}.window{min-height:225px;background:linear-gradient(175deg,#fff,#f8fcff);border-radius:15px;border-bottom:5px solid var(--gold);box-shadow:0 14px 28px #072f5040;color:var(--ink);padding:14px 10px;display:flex;align-items:center;flex-direction:column;justify-content:center;text-align:center}.window-label{font-size:11px;color:#708d9d;font-weight:900;letter-spacing:.15em}.queue-no{font:800 clamp(31px,3.4vw,49px) Poppins,sans-serif;letter-spacing:-.05em;color:var(--blue);margin:11px 0 3px}.queue-no.idle{color:#bed0db}.window strong{font-size:15px;overflow-wrap:anywhere}.window small{font-size:11px;color:#768fa0}
-.tv-strip{display:flex;align-items:center;flex-wrap:wrap;gap:13px;background:#fff;color:var(--ink);border-radius:12px;margin-top:15px;padding:12px 16px;min-height:55px}.tv-strip strong{font-size:10px;letter-spacing:.15em;color:#486d80}.chip{font-size:11px;font-weight:900;background:#e6f3f9;color:#0c6994;border-radius:8px;padding:7px 11px}.announcement{background:#ffffff16;border:1px solid #ffffff24;border-radius:12px;margin-top:12px;padding:15px 17px;display:flex;align-items:center;gap:15px}.announcement strong{font-size:10px;letter-spacing:.15em;color:#ffcf7a}.announcement span{font-weight:900;font-size:clamp(13px,1.6vw,18px);overflow-wrap:anywhere}.call-notice{background:#fff1d7;color:#775317;border-radius:11px;margin:0 0 13px;padding:11px 15px;font-weight:900}
+.tv-strip{display:flex;align-items:center;flex-wrap:wrap;gap:13px;background:#fff;color:var(--ink);border-radius:12px;margin-top:15px;padding:12px 16px;min-height:55px}.tv-strip strong{font-size:10px;letter-spacing:.15em;color:#486d80}.chip{font-size:11px;font-weight:900;background:#e6f3f9;color:#0c6994;border-radius:8px;padding:7px 11px}.announcement{background:#ffffff16;border:1px solid #ffffff24;border-radius:12px;margin-top:12px;padding:15px 17px;display:flex;align-items:center;gap:15px}.announcement strong{font-size:10px;letter-spacing:.15em;color:#ffcf7a}.announcement span{font-weight:900;font-size:clamp(13px,1.6vw,18px);overflow-wrap:anywhere}
 .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}.metric{border:1px solid var(--line);border-radius:15px;background:#fff;padding:18px;box-shadow:0 8px 22px #0c51620a}.metric span{font-size:10px;letter-spacing:.12em;color:#718a9a;font-weight:900;text-transform:uppercase}.metric strong{display:block;font:700 31px Poppins,sans-serif;color:#145376}.metric small{color:#869caa}
 .table-wrap{overflow:auto;margin-top:14px}table{border-collapse:collapse;width:100%;min-width:560px}th,td{border-bottom:1px solid #e6eef3;padding:12px 9px;text-align:left}th{background:#f5f9fc;color:#58788c;font-size:10px;letter-spacing:.09em;text-transform:uppercase}td{font-size:12px}td small{color:#7c94a2}.empty{background:#f4f9fc;color:#829aab;border-radius:10px;padding:17px!important;font-size:12px!important}
 .pill{font-size:10px;font-weight:900;border-radius:99px;padding:5px 9px;background:#e5f4fb;color:#137299}.pill.warm{background:#fff4e4;color:#9b671a}
@@ -401,4 +401,44 @@ header{background:#fff;border-top:4px solid var(--gold);border-bottom:1px solid 
  .table-bottom .table-count{width:100%}
  .get-queue-setup .split{flex-direction:column;align-items:stretch}
  .get-queue-setup .btn{width:100%}
+}
+
+
+/* October 30 final QA polish: accessible operations, consistent visual scale, safe editors */
+#staff .page-head h1,#setup .page-head h1{font-size:clamp(32px,3vw,46px);line-height:1.18}
+#staff .page-head .eyebrow,#setup .page-head .eyebrow{font-size:12px}
+#staff .page-head p,#setup .page-head p{font-size:clamp(14px,1.15vw,16px);line-height:1.6}
+#staff .card h2,#setup .card h2{font-size:clamp(20px,1.65vw,26px);line-height:1.35}
+#staff .card p,#setup .card p{font-size:clamp(13px,1vw,15px);line-height:1.65}
+#staff .metric span{font-size:clamp(12px,1vw,14px)}
+#staff .metric strong{font-size:clamp(38px,3vw,52px)}
+#staff .metric small{font-size:clamp(12px,.92vw,14px)}
+#staff .window-card h3{font-size:clamp(16px,1.35vw,21px);line-height:1.4}
+#staff .window-card .current strong{font-size:clamp(15px,1.1vw,18px)}
+#staff .window-card .current small,#staff .recruiter-label{font-size:clamp(12px,.95vw,14px)!important;line-height:1.5}
+#staff .window-card .btn{font-size:clamp(12px,.9vw,14px);font-weight:850}
+#staff .card th,#setup .card th{font-size:clamp(11px,.85vw,13px)!important;line-height:1.5}
+#staff .card td,#setup .card td{font-size:clamp(13px,.99vw,15px)!important;line-height:1.5}
+#staff .card td b,#setup .card td b{font-size:inherit}
+#setup .field{font-size:13px;line-height:1.5}
+#setup .field input,#setup .field select,#setup .field textarea{font-size:clamp(13px,1vw,15px);line-height:1.5}
+#setup .card .btn,#staff .card .btn{font-size:clamp(12px,.9vw,14px)}
+#setup .transaction-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:19px;flex-wrap:wrap}
+#setup .transaction-heading>div{flex:1;min-width:240px}
+#setup .transaction-heading #openAddTx{margin-left:auto;white-space:nowrap;min-height:44px;font-size:13px}
+#txAddEditor{margin:16px 0 18px}
+#txAddEditor .grid{gap:13px}
+#txAddEditor .buttons{display:flex;margin-top:15px}
+#txAddEditor .buttons .btn{min-width:125px}
+#staff .staff-alert{margin:0 0 16px;font-size:clamp(13px,1vw,15px);line-height:1.55}
+#staff .staff-alert.hide{display:none!important}
+#setup .table-bottom,#staff .table-bottom{margin-top:17px}
+@media(max-width:780px){
+  #staff .page-head h1,#setup .page-head h1{font-size:32px}
+  #staff .card h2,#setup .card h2{font-size:21px}
+  #staff .metric span{font-size:11px}
+  #staff .metric strong{font-size:35px}
+  #staff .metric small{font-size:11px}
+  #setup .transaction-heading{align-items:stretch;flex-direction:column}
+  #setup .transaction-heading #openAddTx{margin-left:0;align-self:stretch}
 }
