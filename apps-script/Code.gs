@@ -11,25 +11,21 @@ function setupTiponQueueSystem(){
   const ss=SpreadsheetApp.openById(CFG.spreadsheetId);
   ensure_(ss,CFG.queue,QH);ensure_(ss,CFG.windows,WH);ensure_(ss,CFG.tx,TH);ensure_(ss,CFG.settings,SH);ensure_(ss,CFG.precheck,PH);
   const w=ss.getSheetByName(CFG.windows);
-  for(let i=1;i<=3;i++)if(!w.getRange(i+1,1).getValue())w.getRange(i+1,1).setValue(i);
+  for(let i=1;i<=4;i++)if(!w.getRange(i+1,1).getValue())w.getRange(i+1,1).setValue(i);
   const t=ss.getSheetByName(CFG.tx);
   if(t.getLastRow()<2)t.getRange(2,1,3,4).setValues([['NH','New Hire',true,1],['RH','Rehire',true,2],['TR','Transfer',true,3]]);
   const all=txs_(ss);
   if(!all.some(t=>t.code==='MC'))ss.getSheetByName(CFG.tx).appendRow(['MC','Member Concerns',true,all.length+1]);
-  return {ok:true,federationMode:true,version:'federation-v4'};
+  return {ok:true,federationMode:true,version:'federation-v5'};
 }
 function doGet(e){
   const p=e?.parameter||{},cb=String(p.callback||'callback').replace(/[^A-Za-z0-9_.$]/g,'');
   try{
     let r;switch(String(p.action||'state')){
-      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v4'};break;
+      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v5'};break;
       case'state':r={ok:true,state:state_()};break;
       case'register':r=register_(p);break;
-      case'submitPrecheck':r=submitPrecheck_(p);break;
-      case'checkPrecheck':r=checkPrecheck_(p);break;
-      case'approvePrecheck':r=reviewPrecheck_(p,true);break;
-      case'rejectPrecheck':r=reviewPrecheck_(p,false);break;
-      case'setWindowRoute':r=setWindowRoute_(p);break;
+      case'setWindowTx':r=setWindowTx_(p);break;
       case'call':r=call_(p);break;
       case'recall':r=recall_(p);break;
       case'complete':r=complete_(p);break;
@@ -41,12 +37,14 @@ function doGet(e){
   }catch(err){return out_(cb,{ok:false,error:String(err.message||err)})}
 }
 function register_(p){
-  const first=txt_(p.firstName,50),last=txt_(p.lastName,50),pos=txt_(p.position,80),tx=code_(p.transaction,6);
-  if(!first||!last||!pos||!tx)throw Error('Complete all required fields.');
-  if(tx!=='MC')throw Error('Recruitment requires staff document pre-screening before a queue number is issued.');
+  const first=txt_(p.firstName,50),last=txt_(p.lastName,50),position=txt_(p.position,80),txCode=code_(p.transaction,6);
+  if(!first||!last||!position||!txCode)throw Error('Complete all required fields.');
   const lock=LockService.getScriptLock();lock.waitLock(30000);
-  try{const ss=ss_(),t=findTx_(ss,tx);if(!t)throw Error('Invalid transaction.');return issueTicket_(ss,t,first,last,pos)}
-  finally{lock.releaseLock()}
+  try{
+    const ss=ss_(),tx=findTx_(ss,txCode);
+    if(!tx)throw Error('Invalid or inactive transaction.');
+    return issueTicket_(ss,tx,first,last,position);
+  }finally{lock.releaseLock()}
 }
 function issueTicket_(ss,tx,first,last,pos){
   const q=ss.getSheetByName(CFG.queue),today=day_(),existing=findActive_(q,today,first,last);
@@ -110,6 +108,26 @@ function settingValue_(ss,key){
   const row=sh.getRange(2,1,sh.getLastRow()-1,2).getValues().find(r=>String(r[0])===key);
   return row?String(row[1]||''):'';
 }
+function windowTx_(ss,window){
+  const stored=code_(settingValue_(ss,'WINDOW_TX_'+window),6);
+  if(stored==='ALL')return 'ALL';
+  if(stored&&findTx_(ss,stored))return stored;
+  const defaults={1:'NH',2:'RH',3:'TR',4:'MC'};
+  const preferred=defaults[window]||'ALL';
+  return preferred==='ALL'||findTx_(ss,preferred)?preferred:'ALL';
+}
+function setWindowTx_(p){
+  const window=int_(p.window,1,windowCount_()),tx=code_(p.transaction,6);
+  if(tx!=='ALL'&&!findTx_(ss_(),tx))throw Error('Invalid transaction assignment.');
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    const ss=ss_(),sheet=ss.getSheetByName(CFG.settings)||ensure_(ss,CFG.settings,SH);
+    const key='WINDOW_TX_'+window,rows=sheet.getLastRow()>1?sheet.getRange(2,1,sheet.getLastRow()-1,1).getValues():[];
+    const idx=rows.findIndex(r=>String(r[0]).trim()===key),row=idx>=0?idx+2:sheet.getLastRow()+1;
+    sheet.getRange(row,1,1,3).setValues([[key,tx,new Date()]]);
+    return{ok:true,window,transaction:tx};
+  }finally{lock.releaseLock()}
+}
 function windowRoute_(ss,window){
   const mode=settingValue_(ss,'WINDOW_ROUTE_'+window);
   return ['ALL','MC','RECRUITMENT'].includes(mode)?mode:window===3?'MC':'RECRUITMENT';
@@ -131,15 +149,13 @@ function call_(p){
   try{
     const ss=ss_(),w=ss.getSheetByName(CFG.windows),win=int_(p.window,1,windowCount_()),row=win+1;
     if(w.getRange(row,2).getValue())throw Error('Complete current applicant first.');
-    const tf=code_(p.transaction||'ALL',6)||'ALL',route=windowRoute_(ss,win),q=ss.getSheetByName(CFG.queue),today=day_();
+    const assigned=windowTx_(ss,win),q=ss.getSheetByName(CFG.queue),today=day_();
     if(q.getLastRow()<2)throw Error('Queue is empty.');
     const v=q.getRange(2,1,q.getLastRow()-1,QH.length).getValues();let i=-1;
     for(let x=0;x<v.length;x++){
       const r=v[x];
       if(dayCell_(r[1])!==today||String(r[10])!=='WAITING')continue;
-      if(route==='MC'&&String(r[6])!=='MC')continue;
-      if(route==='RECRUITMENT'&&String(r[6])==='MC')continue;
-      if(tf!=='ALL'&&String(r[6])!==tf)continue;
+      if(assigned!=='ALL'&&String(r[6])!==assigned)continue;
       i=x;break;
     }
     if(i<0)throw Error('No matching applicant is waiting.');
@@ -182,7 +198,7 @@ function state_(){
   const ss=ss_(),n=windowCount_(),w=ss.getSheetByName(CFG.windows),windows={};
   w.getRange(2,1,n,WH.length).getValues().forEach(r=>windows[String(r[0])]=r[1]?windowTicket_(r):null);
   const q=ss.getSheetByName(CFG.queue),waiting=[],today=day_();if(q.getLastRow()>1)q.getRange(2,1,q.getLastRow()-1,QH.length).getValues().forEach(r=>{if(dayCell_(r[1])===today&&String(r[10])==='WAITING')waiting.push(ticket_(r))});
-  return{windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,transactions:txs_(ss),prechecks:pendingPrechecks_(ss),routes:Object.fromEntries(Array.from({length:n},(_,i)=>[String(i+1),windowRoute_(ss,i+1)])),announcement:announcement_(ss),federationMode:true,version:'federation-v4'}
+  return{windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,transactions:txs_(ss),assignments:Object.fromEntries(Array.from({length:n},(_,i)=>[String(i+1),windowTx_(ss,i+1)])),announcement:announcement_(ss),federationMode:true,version:'federation-v5'}
 }
 
 function announcement_(ss){
@@ -217,7 +233,7 @@ function next_(q,today,tx){let m=0;if(q.getLastRow()<2)return 1;q.getRange(2,1,q
 function findId_(s,id){if(s.getLastRow()<2)return-1;const x=s.getRange(2,1,s.getLastRow()-1,1).createTextFinder(id).matchEntireCell(true).findNext();return x?x.getRow():-1}
 function ticket_(r){return{ticketId:String(r[0]||''),createdAt:iso_(r[2]),queueNo:String(r[3]||''),mpcCode:String(r[4]||''),mpcName:String(r[5]||''),transaction:String(r[6]||''),transactionName:String(r[7]||''),name:String(r[8]||''),position:String(r[9]||''),status:String(r[10]||''),window:r[11]||'',calledAt:iso_(r[12])}}
 function windowTicket_(r){return{window:Number(r[0]),ticketId:String(r[1]||''),queueNo:String(r[2]||''),mpcCode:String(r[3]||''),mpcName:String(r[4]||''),transaction:String(r[5]||''),transactionName:String(r[6]||''),name:String(r[7]||''),position:String(r[8]||''),calledAt:iso_(r[9])}}
-function windowCount_(){const s=ss_().getSheetByName(CFG.windows);let n=0;if(s&&s.getLastRow()>1)s.getRange(2,1,s.getLastRow()-1,1).getValues().forEach(r=>{const x=Number(r[0]);if(Number.isInteger(x)&&x>n)n=x});return Math.max(3,Math.min(CFG.maxWindows,n))}
+function windowCount_(){const s=ss_().getSheetByName(CFG.windows);let n=0;if(s&&s.getLastRow()>1)s.getRange(2,1,s.getLastRow()-1,1).getValues().forEach(r=>{const x=Number(r[0]);if(Number.isInteger(x)&&x>n)n=x});return Math.max(4,Math.min(CFG.maxWindows,n))}
 function ensure_(ss,name,h){let s=ss.getSheetByName(name)||ss.insertSheet(name);s.getRange(1,1,1,h.length).setValues([h]).setFontWeight('bold').setBackground('#e5e7eb');s.setFrozenRows(1);return s}
 function ss_(){return SpreadsheetApp.openById(CFG.spreadsheetId)}
 function nameKey_(f,l){return norm_(f)+'|'+norm_(l)}function norm_(v){let s=String(v||'').trim().toUpperCase();if(s.normalize)s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');return s.replace(/[^A-Z0-9]/g,'')}
