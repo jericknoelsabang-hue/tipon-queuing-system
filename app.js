@@ -5,7 +5,7 @@ const C=window.TIPON_CONFIG||{}, $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const REQUIRED='federation-v9',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9']),DEFAULT='Please keep your queue number until called.';
 let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],transactions:[],transactionTypes:[],assignments:{},announcement:DEFAULT,completed:[],recruiters:{}};
-let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,activeWindowActions=new Set(),tableSignature={wait:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
+let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,pollTimer=null,refreshFailures=0,activeWindowActions=new Set(),tableSignature={wait:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
 let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='';
 function url(){return new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||''}
 function valid(u){try{const p=new URL(u);return p.origin==='https://script.google.com'&&p.pathname.endsWith('/exec')}catch{return false}}
@@ -39,7 +39,7 @@ function ready(){if(COMPATIBLE.has(S.version))return true;error(Error('Apps Scri
 function joinURL(){const u=new URL('join.html',C.pagesUrl||location.href);if(valid(url()))u.searchParams.set('api',url());return u.href}
 function qr(){const link=joinURL();$('getQueueSetup').href=link;if(link===qrUrl)return;
  qrUrl=link;const holder=$('qr');holder.innerHTML='';if(typeof QRCode==='undefined'){holder.textContent='QR unavailable';status('QR generator failed to load. Use Open Get Queue link.','err');return}
- try{qrObj=new QRCode(holder,{text:link,width:360,height:360,colorDark:'#102f45',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}
+ try{qrObj=new QRCode(holder,{text:link,width:640,height:640,colorDark:'#102f45',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}
  catch(e){holder.textContent='Use Get Queue link';status('QR failed: '+e.message,'err')}
 }
 function win(i){return S.windows?.[String(i)]||null}
@@ -181,23 +181,62 @@ function openTxEditor(code){
   $('txEditor').classList.remove('hide');$('txEditor').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function render(){tv();metrics();staff();queueTables();if(page==='setup')setupTables();announceEditor();qr()}
+/* 
+ * Near-real-time updates via serialized, adaptive polling.
+ * GitHub Pages + Google Apps Script cannot push updates to other devices,
+ * so we poll active TV/staff screens frequently without overlapping calls.
+ */
+function nextPollDelay(){
+  const base=page==='setup'?6500:document.fullscreenElement===$('display')?2000:2500;
+  return Math.min(24000,base*Math.pow(2,Math.min(refreshFailures,3)));
+}
+function schedulePoll(delay=nextPollDelay()){
+  if(pollTimer!==null)clearTimeout(pollTimer);
+  pollTimer=null;
+  if(document.hidden)return;
+  pollTimer=setTimeout(()=>{pollTimer=null;void refresh(true)},delay);
+}
+function pollOnResume(){
+  if(document.hidden)return;
+  if(loading||writePending>0){queuedRefresh=true;return}
+  if(pollTimer!==null){clearTimeout(pollTimer);pollTimer=null}
+  void refresh(true);
+}
 async function refresh(silent=false){
- if(writePending>0||loading){queuedRefresh=true;return}
- loading=true;const serial=writeSerial;
- try{
-  if(!valid(url())){if(!silent)status('No backend configured. Add an Apps Script /exec URL in Setup.','err');render();return}
-  const response=await jp('state',{view:page});
-  if(!response.ok)throw Error(response.error||'Failed to fetch queue.');
-  if(serial!==writeSerial)return; // Ignore an older poll that started before a successful write.
-  S={...S,...response.state,transactions:Array.isArray(response.state?.transactions)?response.state.transactions:[],transactionTypes:response.state?.transactionTypes||response.state?.transactions||[]};
-  hasLoaded=true;render();
-  if(!COMPATIBLE.has(S.version))status('Backend version is outdated. Check the Apps Script deployment.','err');
-  else status('Connected to TIPON • '+S.version+' • Synced '+new Date().toLocaleTimeString('en-PH',{timeZone:'Asia/Manila'}),'ok');
- }catch(e){if(!silent||page==='setup')error(e)}
- finally{
-  loading=false;
-  if(queuedRefresh&&writePending===0){queuedRefresh=false;void refresh(true)}
- }
+  if(writePending>0||loading){queuedRefresh=true;return}
+  if(pollTimer!==null){clearTimeout(pollTimer);pollTimer=null}
+  loading=true;
+  const serial=writeSerial,requestedView=page,requestedUrl=url();
+  try{
+    if(!valid(requestedUrl)){
+      if(!silent)status('No backend configured. Add an Apps Script /exec URL in Setup.','err');
+      render();
+      return;
+    }
+    const response=await jp('state',{view:requestedView});
+    if(!response.ok)throw Error(response.error||'Failed to fetch queue.');
+    if(serial!==writeSerial||requestedView!==page||requestedUrl!==url()){
+      queuedRefresh=true;return; // Drop an obsolete result from before an edit or navigation.
+    }
+    refreshFailures=0;
+    S={...S,...response.state,
+       transactions:Array.isArray(response.state?.transactions)?response.state.transactions:[],
+       transactionTypes:response.state?.transactionTypes||response.state?.transactions||[]};
+    hasLoaded=true;
+    render();
+    if(!COMPATIBLE.has(S.version))
+      status('Backend version is outdated. Check the Apps Script deployment.','err');
+    else status('Connected to TIPON • '+S.version+' • Synced '+new Date().toLocaleTimeString('en-PH',{timeZone:'Asia/Manila'}),'ok');
+  }catch(e){
+    refreshFailures=Math.min(refreshFailures+1,4);
+    if(!silent||page==='setup')error(e);
+  }finally{
+    loading=false;
+    if(writePending>0){queuedRefresh=true;return}
+    const urgent=queuedRefresh;
+    queuedRefresh=false;
+    schedulePoll(urgent?150:nextPollDelay());
+  }
 }
 function ding(){try{const A=window.AudioContext||window.webkitAudioContext;audio=audio||new A();audio.resume?.();
  const t=audio.currentTime;[[660,0],[880,.18]].forEach(([f,offset])=>{const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=f;g.gain.setValueAtTime(.001,t+offset);g.gain.exponentialRampToValueAtTime(.2,t+offset+.03);g.gain.exponentialRampToValueAtTime(.001,t+offset+.25);o.connect(g);g.connect(audio.destination);o.start(t+offset);o.stop(t+offset+.27)})}catch{}}
@@ -398,7 +437,11 @@ $('clear').onclick=()=>{localStorage.removeItem('tqApi');$('api').value='';S.ver
 const full=$('fullscreen');
 function reflect(){full.setAttribute('aria-pressed',document.fullscreenElement===$('display')?'true':'false')}
 full.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('display').requestFullscreen()}catch(e){error(e,true)}};
-document.addEventListener('fullscreenchange',reflect);
+document.addEventListener('fullscreenchange',()=>{
+  reflect();
+  // Switching into TV mode refreshes the screen and enters the faster polling cadence.
+  schedulePoll(250);
+});
 function clock(){
   const now=new Date();
   const time=now.toLocaleTimeString('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
@@ -407,5 +450,17 @@ function clock(){
   $('headerDay').textContent=date;$('fullscreenDate').textContent=date;
 }
 clock();setInterval(clock,1000);const requested=new URLSearchParams(location.search).get('view');view(['setup','staff'].includes(requested)?requested:'display');
-render();refresh(false);setInterval(()=>{if(!document.hidden)void refresh(true)},5500);document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refresh(true)});
+render();
+void refresh(false);
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){
+    if(pollTimer!==null)clearTimeout(pollTimer);
+    pollTimer=null;
+  }else{
+    refreshFailures=0;
+    pollOnResume();
+  }
+});
+window.addEventListener('focus',pollOnResume);
+window.addEventListener('online',()=>{refreshFailures=0;pollOnResume()});
 })();
