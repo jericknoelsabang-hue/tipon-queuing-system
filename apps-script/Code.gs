@@ -22,8 +22,9 @@ function setupTiponQueueSystem(){
 }
 function doGet(e){
   const p=e?.parameter||{},cb=String(p.callback||'callback').replace(/[^A-Za-z0-9_.$]/g,'');
+  const action=String(p.action||'state');
   try{
-    let r;switch(String(p.action||'state')){
+    let r;switch(action){
       case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v9'};break;
       case'state':r={ok:true,state:state_(p)};break;
       case'publicConfig':r=publicConfig_();break;
@@ -42,7 +43,11 @@ function doGet(e){
       case'setAnnouncement':r=setAnnouncement_(p);break;
       case'announcementChunk':r=announcementChunk_(p);break;
       default:throw Error('Unknown action');
-    }return out_(cb,r);
+    }
+    if(r&&r.ok&&!['state','health','publicConfig','announcementChunk'].includes(action)){
+      try{CacheService.getScriptCache().removeAll(['TIPON_STATE_display','TIPON_STATE_staff','TIPON_STATE_setup'])}catch(e){}
+    }
+    return out_(cb,r);
   }catch(err){return out_(cb,{ok:false,error:String(err.message||err)})}
 }
 function register_(p){
@@ -307,6 +312,14 @@ function publicConfig_(){
   return{ok:true,version:'federation-v9',transactions};
 }
 function state_(p){
+  const view=['display','staff','setup'].includes(String(p?.view||''))?String(p.view):'staff';
+  const cacheKey='TIPON_STATE_'+view;
+  let cache=null;
+  try{
+    cache=CacheService.getScriptCache();
+    const saved=cache.get(cacheKey);
+    if(saved)return JSON.parse(saved);
+  }catch(e){/* Cache misses must not block operations. */}
   const ss=ss_(),w=ss.getSheetByName(CFG.windows),count=Math.max(0,w.getLastRow()-1);
   const windowData=count?w.getRange(2,1,count,WH.length).getValues():[];
   const n=Math.max(1,Math.min(CFG.maxWindows,windowData.reduce((max,r)=>Math.max(max,Number(r[0])||0),0)||4));
@@ -330,10 +343,15 @@ function state_(p){
     if(includeCompleted&&String(row[10])==='COMPLETED')completed.push(ticket_(row));
   });
   if(includeCompleted)completed.reverse();
-  return{windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,completed,
+  const result={windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,completed,
     transactions:activeTx,transactionTypes:txList,assignments,recruiters,
     announcement:settingMap.get('ANNOUNCEMENT')?.trim()||DEFAULT_ANNOUNCEMENT,
     federationMode:true,version:'federation-v9'};
+  try{
+    const json=JSON.stringify(result);
+    if(cache&&json.length<28000)cache.put(cacheKey,json,4);
+  }catch(e){/* A large queue or a transient cache error falls back to direct Sheets reads. */}
+  return result;
 }
 function announcement_(ss){
   const sheet=ss.getSheetByName(CFG.settings);
