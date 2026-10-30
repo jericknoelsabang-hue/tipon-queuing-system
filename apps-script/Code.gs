@@ -1,27 +1,35 @@
-const CFG={spreadsheetId:'1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik',queue:'QUEUE',windows:'WINDOWS',tx:'TRANSACTION_TYPES',mpc:'MPC_CONFIG',settings:'SETTINGS',maxWindows:20};
+const CFG={spreadsheetId:'1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik',queue:'QUEUE',windows:'WINDOWS',tx:'TRANSACTION_TYPES',mpc:'MPC_CONFIG',settings:'SETTINGS',precheck:'PRECHECK',maxWindows:20};
 const QH=['Ticket ID','Queue Date','Created At','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Status','Window','Called At','Completed At','Last Recalled At','First Name','Last Name'];
 const WH=['Window','Active Ticket ID','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Called At','Updated At'];
 const TH=['Code','Transaction Name','Active','Sort Order'];
 const MH=['MPC Code','MPC Name','Queue Prefix','Logo URL','Active','Sort Order'];
 const DEFAULT_ANNOUNCEMENT='Please keep your queue number until called.';
 const SH=['Setting','Value','Updated At'];
+const PH=['Precheck ID','Date','Precheck Reference','First Name','Last Name','Transaction Code','Position / Purpose','Applicant','Self-Checklist','Status','Submitted At','Reviewed At','Staff Note','Queue No'];
 
 function setupTiponQueueSystem(){
   const ss=SpreadsheetApp.openById(CFG.spreadsheetId);
-  ensure_(ss,CFG.queue,QH);ensure_(ss,CFG.windows,WH);ensure_(ss,CFG.tx,TH);ensure_(ss,CFG.settings,SH);
+  ensure_(ss,CFG.queue,QH);ensure_(ss,CFG.windows,WH);ensure_(ss,CFG.tx,TH);ensure_(ss,CFG.settings,SH);ensure_(ss,CFG.precheck,PH);
   const w=ss.getSheetByName(CFG.windows);
   for(let i=1;i<=3;i++)if(!w.getRange(i+1,1).getValue())w.getRange(i+1,1).setValue(i);
   const t=ss.getSheetByName(CFG.tx);
   if(t.getLastRow()<2)t.getRange(2,1,3,4).setValues([['NH','New Hire',true,1],['RH','Rehire',true,2],['TR','Transfer',true,3]]);
-  return {ok:true,federationMode:true,version:'federation-v3'};
+  const all=txs_(ss);
+  if(!all.some(t=>t.code==='MC'))ss.getSheetByName(CFG.tx).appendRow(['MC','Member Concerns',true,all.length+1]);
+  return {ok:true,federationMode:true,version:'federation-v4'};
 }
 function doGet(e){
   const p=e?.parameter||{},cb=String(p.callback||'callback').replace(/[^A-Za-z0-9_.$]/g,'');
   try{
     let r;switch(String(p.action||'state')){
-      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v3'};break;
+      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v4'};break;
       case'state':r={ok:true,state:state_()};break;
       case'register':r=register_(p);break;
+      case'submitPrecheck':r=submitPrecheck_(p);break;
+      case'checkPrecheck':r=checkPrecheck_(p);break;
+      case'approvePrecheck':r=reviewPrecheck_(p,true);break;
+      case'rejectPrecheck':r=reviewPrecheck_(p,false);break;
+      case'setWindowRoute':r=setWindowRoute_(p);break;
       case'call':r=call_(p);break;
       case'recall':r=recall_(p);break;
       case'complete':r=complete_(p);break;
@@ -53,12 +61,14 @@ function call_(p){
   try{
     const ss=ss_(),w=ss.getSheetByName(CFG.windows),win=int_(p.window,1,windowCount_()),row=win+1;
     if(w.getRange(row,2).getValue())throw Error('Complete current applicant first.');
-    const tf=code_(p.transaction||'ALL',6)||'ALL',q=ss.getSheetByName(CFG.queue),today=day_();
+    const tf=code_(p.transaction||'ALL',6)||'ALL',route=windowRoute_(ss,win),q=ss.getSheetByName(CFG.queue),today=day_();
     if(q.getLastRow()<2)throw Error('Queue is empty.');
     const v=q.getRange(2,1,q.getLastRow()-1,QH.length).getValues();let i=-1;
     for(let x=0;x<v.length;x++){
       const r=v[x];
       if(dayCell_(r[1])!==today||String(r[10])!=='WAITING')continue;
+      if(route==='MC'&&String(r[6])!=='MC')continue;
+      if(route==='RECRUITMENT'&&String(r[6])==='MC')continue;
       if(tf!=='ALL'&&String(r[6])!==tf)continue;
       i=x;break;
     }
@@ -102,7 +112,7 @@ function state_(){
   const ss=ss_(),n=windowCount_(),w=ss.getSheetByName(CFG.windows),windows={};
   w.getRange(2,1,n,WH.length).getValues().forEach(r=>windows[String(r[0])]=r[1]?windowTicket_(r):null);
   const q=ss.getSheetByName(CFG.queue),waiting=[],today=day_();if(q.getLastRow()>1)q.getRange(2,1,q.getLastRow()-1,QH.length).getValues().forEach(r=>{if(dayCell_(r[1])===today&&String(r[10])==='WAITING')waiting.push(ticket_(r))});
-  return{windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,transactions:txs_(ss),announcement:announcement_(ss),federationMode:true,version:'federation-v3'}
+  return{windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,transactions:txs_(ss),prechecks:pendingPrechecks_(ss),routes:Object.fromEntries(Array.from({length:n},(_,i)=>[String(i+1),windowRoute_(ss,i+1)])),announcement:announcement_(ss),federationMode:true,version:'federation-v4'}
 }
 
 function announcement_(ss){
