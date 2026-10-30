@@ -1,16 +1,16 @@
-/* TIPON Federation Queue — TV display, staff console, setup (v4).
+/* TIPON Federation Queue — TV display, staff console, setup (v6).
    Bundled QRCode.js renders QR without third-party image services. */
 (()=>{'use strict';
 const C=window.TIPON_CONFIG||{}, $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const REQUIRED='federation-v6',DEFAULT='Please keep your queue number until called.';
-let S={windowCount:4,maxWindowCount:20,windows:{},waiting:[],transactions:[],assignments:{},announcement:DEFAULT,completed:[],recruiters:{}};
+let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],transactions:[],transactionTypes:[],assignments:{},announcement:DEFAULT,completed:[],recruiters:{}};
 let seq=0,loading=false,qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
 let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='';
 function url(){return new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||''}
 function valid(u){try{const p=new URL(u);return p.origin==='https://script.google.com'&&p.pathname.endsWith('/exec')}catch{return false}}
 function status(t,k=''){const e=$('setupAlert');e.textContent=t;e.className='status '+k}
-function view(v){page=v;['display','staff','setup'].forEach(x=>$(x).classList.toggle('hide',x!==v));document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===v));if(v==='setup'&&S.version===REQUIRED)setupTables()}
+function view(v){page=v;['display','staff','setup'].forEach(x=>$(x).classList.toggle('hide',x!==v));document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===v));$('fullscreen').classList.toggle('hide',v!=='display');if(v==='setup')setupTables()}
 function error(e,go=false){let t=String(e?.message||e||'Unknown error');if(t.includes('Unknown action'))t='Apps Script is outdated (Unknown action). Redeploy Code.gs Federation v6, then click Test Connection.';status(t,'err');if(go)view('setup')}
 document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>view(b.dataset.v));
 function jp(action,params={}){return new Promise((resolve,reject)=>{
@@ -26,7 +26,7 @@ function ready(){if(S.version===REQUIRED)return true;error(Error('Backend is out
 function joinURL(){const u=new URL('join.html',C.pagesUrl||location.href);if(valid(url()))u.searchParams.set('api',url());return u.href}
 function qr(){const link=joinURL();$('joinLink').href=link;$('getQueueNav').href=link;if(link===qrUrl)return;
  qrUrl=link;const holder=$('qr');holder.innerHTML='';if(typeof QRCode==='undefined'){holder.textContent='QR unavailable';status('QR generator failed to load. Use Open Get Queue link.','err');return}
- try{qrObj=new QRCode(holder,{text:link,width:300,height:300,colorDark:'#102f45',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}
+ try{qrObj=new QRCode(holder,{text:link,width:360,height:360,colorDark:'#102f45',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}
  catch(e){holder.textContent='Use Get Queue link';status('QR failed: '+e.message,'err')}
 }
 function win(i){return S.windows?.[String(i)]||null}
@@ -44,10 +44,7 @@ function tv(){
     $('chips').innerHTML=q.length?q.slice(0,20).map(t=>'<span class="chip">'+esc(t.queueNo)+'</span>').join(''):'<span class="muted">No applicants waiting</span>';
   }
   const announcement=String(S.announcement||DEFAULT);
-  if($('ann').textContent!==announcement){
-    $('ann').textContent=announcement;$('annCopy').textContent=announcement;
-    document.querySelector('.announcement-message')?.classList.toggle('marquee',announcement.length>80);
-  }
+  if($('ann').textContent!==announcement)$('ann').textContent=announcement;
   if(initialized){
     for(const i of indexes){const t=win(i),key=t?t.ticketId+'|'+t.calledAt:'';
       if(key&&key!==last[i])announce(t,i);last[i]=key;
@@ -63,8 +60,8 @@ function metrics(){
   $('metricServing').textContent=String(Array.from({length:Number(S.windowCount||4)},(_,i)=>win(i+1)).filter(Boolean).length);
 }
 function staff(){
-  const n=Number(S.windowCount||4);
-  $('wc').textContent=n+' WINDOWS';$('addWin').disabled=n>=Number(S.maxWindowCount||20);
+  const n=Number(S.windowCount||0);
+  $('wc').textContent=n+' WINDOWS';
   const signature=JSON.stringify({n,windows:S.windows,tx:S.transactions,assignments:S.assignments,waiting:S.waiting,recruiters:S.recruiters});
   if(signature===staffSignature)return;
   staffSignature=signature;
@@ -98,39 +95,61 @@ function queueTables(){
   completedPage=make(S.completed||[],completedPage,'completed','ct');
 }
 function setupTables(){
-  $('setupWc').textContent=S.windowCount+' WINDOWS';
-  $('addWin').disabled=S.windowCount>=Number(S.maxWindowCount||20);
-  $('setupWins').innerHTML=Array.from({length:Number(S.windowCount||0)},(_,idx)=>{
-    const i=idx+1,t=win(i),tx=S.assignments?.[String(i)]||'ALL',label=S.transactions.find(x=>x.code===tx)?.name||'Any transaction',name=S.recruiters?.[String(i)]||'—';
-    return '<tr><td><b>Window '+i+'</b></td><td>'+esc(label)+'</td><td>'+esc(name)+'</td><td>'+(t?'Serving '+esc(t.queueNo):'Available')+'</td><td class="actions-cell"><button class="btn sm" data-edit-win="'+i+'">Edit</button><button class="btn sm danger" data-delete-win="'+i+'"'+(t?' disabled':'')+'>Delete</button></td></tr>';
-  }).join('');
-  $('setupTx').innerHTML=(S.transactions||[]).map(x=>'<tr><td><b>'+esc(x.code)+'</b></td><td>'+esc(x.name)+'</td><td class="actions-cell"><button class="btn sm" data-edit-tx="'+esc(x.code)+'">Edit</button><button class="btn sm danger" data-delete-tx="'+esc(x.code)+'"'+(['NH','RH','TR','MC'].includes(x.code)?' disabled':'')+'>Delete</button></td></tr>').join('');
+  const connected=Boolean(S.version), writable=S.version===REQUIRED;
+  const n=connected?Math.max(0,Math.min(Number(S.windowCount)||0,Number(S.maxWindowCount)||20)):0;
+  const list=Array.isArray(S.transactionTypes)&&S.transactionTypes.length?S.transactionTypes:Array.isArray(S.transactions)?S.transactions:[];
+  const activeTx=Array.isArray(S.transactions)?S.transactions:[];
+  const windows=S.windows||{}, assigns=S.assignments||{}, recruiters=S.recruiters||{};
+  const serving=Object.values(windows).some(Boolean);
+  $('setupWc').textContent=connected?n+' WINDOWS':'LOADING';
+  $('addWin').disabled=!writable||n>=Number(S.maxWindowCount||20);
+  $('addTx').disabled=!writable;
+  $('setupListHint').textContent=!valid(url())?'No Apps Script connection configured. Add a valid /exec URL above.':
+    !connected?'Connecting to Apps Script… Existing windows and transactions appear when the backend responds.':
+    !writable?'Read-only records loaded from '+S.version+'. Deploy the latest Federation v6 Apps Script to enable edits.':
+    'Connected to Federation v6. Saved windows and transaction types are available for management.';
+  const trxName=code=>activeTx.find(x=>x.code===code)?.name||list.find(x=>x.code===code)?.name||(code==='ALL'?'Any transaction':code);
+  $('setupWins').innerHTML=n?Array.from({length:n},(_,idx)=>{
+    const i=idx+1,t=windows[String(i)]||null,tx=assigns[String(i)]||'ALL',name=recruiters[String(i)]||'—';
+    return '<tr><td><b>Window '+i+'</b></td><td>'+esc(trxName(tx))+'</td><td>'+esc(name)+'</td><td>'+(t?'Serving '+esc(t.queueNo):'Available')+'</td><td class="actions-cell">'+
+      '<button class="btn sm" data-edit-win="'+i+'" type="button"'+(!writable?' disabled':'')+'>Edit</button>'+
+      '<button class="btn sm danger" data-delete-win="'+i+'" type="button"'+(!writable||serving||n<=1?' disabled':'')+' title="'+(serving?'Complete all active service sessions before deleting windows':'Delete this window')+'">Delete</button></td></tr>';
+  }).join(''):'<tr><td colspan="5" class="empty">'+(connected?'No windows available. Add a window in Setup.':'Waiting for saved service windows from Apps Script.')+'</td></tr>';
+  $('setupTx').innerHTML=list.length?list.map(x=>{
+    const active=x.active!==false,protectedTx=x.code==='MC';
+    return '<tr><td><b>'+esc(x.code)+'</b></td><td>'+esc(x.name)+'</td><td>'+(active?'Active':'Inactive')+'</td><td class="actions-cell">'+
+      '<button class="btn sm" type="button" data-edit-tx="'+esc(x.code)+'"'+(!writable?' disabled':'')+'>Edit</button>'+
+      '<button class="btn sm '+(active?'danger':'success')+'" type="button" data-change-tx="'+esc(x.code)+'" data-mode="'+(active?'delete':'restore')+'"'+(!writable||protectedTx?' disabled':'')+
+      (protectedTx?' title="Member Concern is required for public registration"':'')+'>'+(active?'Delete':'Restore')+'</button></td></tr>';
+  }).join(''):'<tr><td colspan="4" class="empty">'+(connected?'No transaction types found in the backend.':'Waiting for saved transaction types from Apps Script.')+'</td></tr>';
   document.querySelectorAll('[data-edit-win]').forEach(b=>b.onclick=()=>openWindowEditor(Number(b.dataset.editWin)));
   document.querySelectorAll('[data-delete-win]').forEach(b=>b.onclick=async()=>{
     const i=Number(b.dataset.deleteWin);
-    if(confirm('Delete Window '+i+'? Window numbers will be renumbered. Complete active tickets first.'))await operate('deleteWindow',{window:i});
+    if(confirm('Delete Window '+i+'? Remaining windows will be renumbered. This cannot be undone.'))await operate('deleteWindow',{window:i});
   });
   document.querySelectorAll('[data-edit-tx]').forEach(b=>b.onclick=()=>openTxEditor(b.dataset.editTx));
-  document.querySelectorAll('[data-delete-tx]').forEach(b=>b.onclick=async()=>{
-    if(confirm('Delete transaction '+b.dataset.deleteTx+'? Only unused transaction types can be removed.'))await operate('deleteTx',{code:b.dataset.deleteTx});
+  document.querySelectorAll('[data-change-tx]').forEach(b=>b.onclick=async()=>{
+    const code=b.dataset.changeTx,remove=b.dataset.mode==='delete';
+    if(confirm((remove?'Deactivate':'Restore')+' transaction '+code+'? Existing queue history will be retained.'))
+      await operate(remove?'deleteTx':'restoreTx',{code});
   });
 }
 function openWindowEditor(i){
   editWindow=i;$('windowEditorTitle').textContent='Edit Window '+i;
   $('editWindowTx').innerHTML='<option value="ALL">Any transaction</option>'+(S.transactions||[]).map(x=>'<option value="'+esc(x.code)+'">'+esc(x.code)+' · '+esc(x.name)+'</option>').join('');
-  $('editWindowTx').value=S.assignments[String(i)]||'ALL';
-  $('editRecruiter').value=S.recruiters[String(i)]||'';
+  $('editWindowTx').value=S.assignments?.[String(i)]||'ALL';
+  $('editRecruiter').value=S.recruiters?.[String(i)]||'';
   $('windowEditor').classList.remove('hide');$('windowEditor').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function openTxEditor(code){
   editTxCode=code;$('txEditorTitle').textContent='Edit '+code;
-  $('editTxName').value=S.transactions.find(x=>x.code===code)?.name||'';
+  $('editTxName').value=(S.transactionTypes||S.transactions||[]).find(x=>x.code===code)?.name||'';
   $('txEditor').classList.remove('hide');$('txEditor').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function render(){tv();metrics();staff();queueTables();if(page==='setup')setupTables();announceEditor();qr()}
 async function refresh(silent=false){if(loading)return;loading=true;try{
  if(!valid(url())){if(!silent)status('No backend configured. Paste Apps Script /exec URL in Setup.','err');render();return}
- const response=await jp('state');if(!response.ok)throw Error(response.error||'Failed to fetch queue.');S=response.state;render();
+ const response=await jp('state');if(!response.ok)throw Error(response.error||'Failed to fetch queue.');S={...S,...response.state,transactions:Array.isArray(response.state?.transactions)?response.state.transactions:[],transactionTypes:response.state?.transactionTypes||response.state?.transactions||[]};render();
  if(S.version!==REQUIRED)status('Backend is outdated. Deploy Federation v6 Apps Script to activate new features.','err');
  else status('Connected to TIPON Federation • '+REQUIRED+' • Synced '+new Date().toLocaleTimeString('en-PH',{timeZone:'Asia/Manila'}),'ok')
  }catch(e){if(!silent||page==='setup')error(e)}finally{loading=false}}
@@ -177,7 +196,6 @@ $('saveTx').onclick=async()=>{
 for(const key of ['wait','completed'])for(const side of ['Prev','Next']){
   $(key+side).onclick=()=>{if(key==='wait')waitPage+=side==='Next'?1:-1;else completedPage+=side==='Next'?1:-1;queueTables()};
 }
-$('openTV').onclick=()=>{view('display');$('fullscreen').click()};
 $('addTx').onclick=async()=>{const r=await operate('addTx',{code:$('newCode').value,name:$('newName').value});if(r){$('newCode').value='';$('newName').value=''}};
 $('api').value=url();
 $('refresh').onclick=()=>refresh();
@@ -185,9 +203,10 @@ $('sound').onclick=()=>{armed=true;localStorage.setItem('tqSound','1');ding();st
 $('save').onclick=()=>{const v=$('api').value.trim();if(!valid(v)){error(Error('Enter a valid https://script.google.com/.../exec URL.'));return}localStorage.setItem('tqApi',v);qrUrl='';refresh()};
 $('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(r.version!==REQUIRED)throw Error('Backend is '+(r.version||'outdated')+'. Deploy Federation v6 Code.gs.');status('Backend verified • '+r.version+' • '+r.windows+' service windows.','ok');await refresh(true)}catch(e){error(e)}};
 $('clear').onclick=()=>{localStorage.removeItem('tqApi');$('api').value='';S.version='';qrUrl='';status('Connection cleared.','err');qr()};
-const full=$('fullscreen');
-function reflect(){const active=document.fullscreenElement===$('display');full.textContent=active?'Exit Full Screen':'⛶ Full Screen';full.setAttribute('aria-pressed',active?'true':'false')}
-full.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('display').requestFullscreen();reflect()}catch(e){error(e,true)}};
+const full=$('fullscreen'),exitFull=$('exitFullscreen');
+function reflect(){const active=document.fullscreenElement===$('display');full.setAttribute('aria-pressed',active?'true':'false');exitFull.setAttribute('aria-hidden',active?'false':'true')}
+full.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('display').requestFullscreen()}catch(e){error(e,true)}};
+exitFull.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen()}catch(e){error(e,true)}};
 document.addEventListener('fullscreenchange',reflect);
 function clock(){
   const now=new Date();
