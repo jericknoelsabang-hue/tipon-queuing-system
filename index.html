@@ -8,11 +8,8 @@
 <script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="app.js"></script>
 </head><body>
 <header><div class="head"><div class="brand">
-  <div class="brand-image" id="brandImage">
-    <img id="brandPhoto" alt="TIPON Federation branding from official tipon.coop artwork" src="https://tipon.coop/public/images/metas/meta-thumbnail_tipon_2.webp">
-    <svg viewBox="0 0 270 90" role="img" aria-label="tipón Federation backup wordmark"><circle cx="26" cy="29" r="19" fill="#bb2133"/><circle cx="26" cy="69" r="19" fill="#df4936"/><circle cx="55" cy="49" r="19" fill="#f18531"/><circle cx="70" cy="22" r="17" fill="#feb848"/><text x="94" y="59" font-size="43" fill="#126e99" font-weight="700" font-family="Arial,sans-serif">tipón</text></svg>
-  </div><div class="brand-meta"><b>Federation Queue Management</b><small>WIN AS A TEAM</small></div></div>
-  <div class="clock"><small>PHILIPPINE TIME</small><span id="clock">--:--</span></div></div></header>
+  <img class="tipon-logo" id="brandPhoto" src="assets/tipon-logo.webp" alt="tipón Federation logo"></div><div class="brand-meta"><b>Federation Queue Management</b><small>WIN AS A TEAM</small></div></div>
+  <div class="clock"><small>PHILIPPINE STANDARD TIME</small><span id="headerDay">FRIDAY • OCTOBER 30, 2026</span><span id="clock">--:--</span></div></div></header>
 <main class="shell">
   <nav class="nav" aria-label="Application navigation">
     <button data-v="display" class="on" type="button">TV Display</button>
@@ -21,6 +18,7 @@
     <button data-v="setup" type="button">Setup</button>
   </nav>
   <section id="display">
+    <div class="tv-full-head" aria-hidden="true"><img src="assets/tipon-logo.webp" alt=""><div class="fullscreen-datetime"><span id="fullscreenDate">FRIDAY, OCTOBER 30, 2026</span><strong id="fullscreenTime">--:--</strong></div></div>
     <div class="page-head"><div><div class="eyebrow">TIPON FEDERATION · SMART VISITOR SERVICES</div><h1>Welcome to tipón.</h1><p>One federation. One simple queue. Scan to register and wait for your number to be called.</p></div>
       <div class="row"><button id="fullscreen" class="btn primary" type="button" aria-pressed="false">⛶ Full Screen</button></div>
     </div>
@@ -33,37 +31,39 @@
       </aside>
       <div class="now"><div class="now-title"><div><h2>NOW SERVING</h2><p>Please proceed to your assigned service window.</p></div><span class="live">LIVE QUEUE</span></div><div id="wins" class="windows"></div></div>
     </div><div class="tv-strip"><strong>UP NEXT</strong><div id="chips" class="row"></div></div>
-    <div class="announcement"><strong>ANNOUNCEMENT</strong><span id="ann" aria-live="polite">Please keep your queue number until called.</span></div></div>
+    <div class="announcement" aria-label="Scrolling TV announcement"><div class="announcement-track">
+ <div class="announcement-item"><strong>ANNOUNCEMENT</strong><span id="ann">Please keep your queue number until called.</span></div>
+ <div class="announcement-item" aria-hidden="true"><strong>ANNOUNCEMENT</strong><span id="annCopy">Please keep your queue number until called.</span></div>
+ </div></div></div>
   </section>
   <section id="staff" class="hide">
-    <div class="page-head"><div><span class="eyebrow">TIPON FEDERATION · OPERATIONS</span><h1>Staff Console</h1><p>Validate recruitment documents, manage dedicated member service windows, and call waiting applicants.</p></div></div>
+    <div class="page-head"><div><span class="eyebrow">TIPON FEDERATION · OPERATIONS</span><h1>Staff Console</h1><p>Manage assigned service windows, transaction types, and live queue numbers.</p></div></div>
     <div class="tiles">
-      <div class="metric"><span>Pre-screening requests</span><strong id="metricPre">0</strong><small>Awaiting staff verification</small></div>
-      <div class="metric"><span>Waiting applicants</span><strong id="metricWait">0</strong><small>Approved queue numbers</small></div>
+      <div class="metric"><span>Service windows</span><strong id="metricWindows">4</strong><small>Assigned transactions</small></div>
+      <div class="metric"><span>Waiting applicants</span><strong id="metricWait">0</strong><small>Registered queue numbers</small></div>
       <div class="metric"><span>Now serving</span><strong id="metricServing">0</strong><small>Active service windows</small></div>
     </div>
-    <div class="card"><div class="split"><div><h2>Document Pre-screening</h2><p>Staff must check the applicant's actual ID and recruitment requirements before issuing a queue number.</p></div><span class="pill">PHASE 1 · DOCUMENT VERIFICATION</span></div><div id="precheckList" class="table-wrap"></div></div>
-    <div class="card"><div class="split"><div><h2>Service Windows</h2><p>Recruitment and Member Concerns are routed separately. Window 3 defaults to Member Concerns.</p></div><div class="row"><span class="pill" id="wc">3 WINDOWS</span><button id="addWin" class="btn success" type="button">+ Add Window</button></div></div><div id="staffWins" class="window-grid"></div></div>
+    <div class="card"><div class="split"><div><h2>Service Windows</h2><p>Window 1: NH • Window 2: RH • Window 3: TR • Window 4: Member Concern. Edit assignments anytime.</p></div><div class="row"><span class="pill" id="wc">4 WINDOWS</span><button id="addWin" class="btn success" type="button">+ Add Window</button></div></div><div id="staffWins" class="window-grid"></div></div>
     <div class="card"><h2>TV Announcement</h2><p>Editable message synchronized to the TV display through Google Sheets.</p>
       <label class="field" for="announcementInput">Announcement message<textarea id="announcementInput" maxlength="280" rows="3" placeholder="Type the announcement"></textarea></label>
       <div class="split" style="margin-top:13px"><small id="announcementCount" class="muted">0 / 280 characters</small><div class="buttons"><button class="btn ghost" id="announcementReset" type="button">Restore Default</button><button class="btn success" id="announcementSave" type="button">Save Announcement</button></div></div>
     </div>
     <div class="grid">
       <div class="card"><h2>Add Transaction Type</h2><div class="grid" style="margin-top:12px"><label class="field" for="newCode">Code<input id="newCode" maxlength="6" placeholder="INQ"></label><label class="field" for="newName">Name<input id="newName" maxlength="60" placeholder="Inquiry"></label></div><button id="addTx" class="btn success" type="button" style="margin-top:14px">+ Add Transaction</button></div>
-      <div class="card"><h2>Applicant Routing</h2><p>Recruitment: form → document self-check → staff verification → queue number → recruitment window.</p><p>Member concerns: select Member Concerns → get an MC queue number → dedicated window for COE, payout, and other inquiries.</p></div>
+      <div class="card"><h2>Queue Routing</h2><p>Each window has a saved assigned transaction. You can change the assignment without deleting existing queue numbers or active sessions.</p><p>Refresh reloads the latest queue data and preserves all records stored in Google Sheets.</p></div>
     </div>
     <div class="card"><h2>Waiting Queue</h2><p>Applicants who already have queue numbers.</p><div class="table-wrap"><table><thead><tr><th>Queue</th><th>Name</th><th>Transaction</th><th>Purpose</th></tr></thead><tbody id="wt"></tbody></table></div></div>
   </section>
   <section id="setup" class="hide">
     <div class="page-head"><div><span class="eyebrow">SYSTEM CONFIGURATION</span><h1>Setup &amp; Connections</h1><p>Connection errors and technical notices appear only on this page, not on the TV Display.</p></div></div>
     <div id="setupAlert" class="status" role="alert">Checking backend connection…</div>
-    <div class="card"><h2>Google Apps Script Connection</h2><p>Backend v4 is required for announcement editing, pre-screening, and dedicated service routing.</p>
+    <div class="card"><h2>Google Apps Script Connection</h2><p>Backend v5 is required for direct registration, persistent transaction assignments and announcements.</p>
       <label class="field" for="api">Apps Script Web App URL (/exec)<input id="api" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec"></label>
       <div class="buttons" style="margin-top:13px"><button id="save" class="btn primary" type="button">Save Connection</button><button id="test" class="btn" type="button">Test Connection</button><button id="clear" class="btn ghost" type="button">Clear</button></div>
       <div class="setup-guide"><b>How to fix “Unknown action”:</b> Open the deployed Apps Script project, replace Code.gs with the <a target="_blank" rel="noopener" href="https://github.com/jericknoelsabang-hue/tipon-queuing-system/blob/main/apps-script/Code.gs">latest GitHub Code.gs</a>, run <code>setupTiponQueueSystem</code>, then choose <b>Deploy → Manage deployments → Edit → New version → Deploy</b>. Keep the same /exec URL.</div>
     </div>
     <div class="card"><div class="split"><div><h2>Display Controls</h2><p>Refresh the TV queue or unlock sound on this specific TV computer.</p></div><div class="buttons"><button id="refresh" class="btn" type="button">Refresh Queue</button><button id="sound" class="btn primary" type="button">Enable / Test Sound</button></div></div></div>
-    <div class="card"><h2>Database &amp; Technical Notes</h2><p>Google Sheet: <a href="https://docs.google.com/spreadsheets/d/1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik/edit" target="_blank" rel="noopener">TIPON Queuing Database</a>. Tabs: QUEUE, WINDOWS, TRANSACTION_TYPES, SETTINGS, PRECHECK.</p><p><b>Security:</b> Staff actions are currently PIN-free as requested. Access to the public Apps Script deployment is not authenticated. Do not use this configuration for sensitive production operations without server-side staff authorization.</p><p><b>OCR:</b> Document recognition is a planned future phase, not yet implemented.</p></div>
+    <div class="card"><h2>Database &amp; Technical Notes</h2><p>Google Sheet: <a href="https://docs.google.com/spreadsheets/d/1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik/edit" target="_blank" rel="noopener">TIPON Queuing Database</a>. Tabs: QUEUE, WINDOWS, TRANSACTION_TYPES, SETTINGS, PRECHECK.</p><p><b>Security:</b> Staff actions are currently PIN-free as requested. Access to the public Apps Script deployment is not authenticated. Do not use this configuration for sensitive production operations without server-side staff authorization.</p><p><b>Legacy pre-screen:</b> The PRECHECK tab is retained for historic records but is not used for new registration.</p></div>
   </section>
 </main>
 <footer class="footer">tipón Federation · WIN AS A TEAM · Smart Queue Management</footer>
