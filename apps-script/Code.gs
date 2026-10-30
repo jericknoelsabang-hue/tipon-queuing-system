@@ -43,17 +43,87 @@ function doGet(e){
 function register_(p){
   const first=txt_(p.firstName,50),last=txt_(p.lastName,50),pos=txt_(p.position,80),tx=code_(p.transaction,6);
   if(!first||!last||!pos||!tx)throw Error('Complete all required fields.');
+  if(tx!=='MC')throw Error('Recruitment requires staff document pre-screening before a queue number is issued.');
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{const ss=ss_(),t=findTx_(ss,tx);if(!t)throw Error('Invalid transaction.');return issueTicket_(ss,t,first,last,pos)}
+  finally{lock.releaseLock()}
+}
+function issueTicket_(ss,tx,first,last,pos){
+  const q=ss.getSheetByName(CFG.queue),today=day_(),existing=findActive_(q,today,first,last);
+  if(existing)return {ok:true,duplicate:true,ticket:ticket_(existing),message:'Existing active queue number returned.'};
+  const n=next_(q,today,tx.code),num=tx.code+'-'+String(n).padStart(3,'0'),now=new Date(),id=Utilities.getUuid(),name=first+' '+last;
+  const row=[id,today,now,num,'TIPON','TIPON Federation',tx.code,tx.name,name,pos,'WAITING','','','','',first,last];
+  q.appendRow(row);return {ok:true,duplicate:false,ticket:ticket_(row)};
+}
+function submitPrecheck_(p){
+  const first=txt_(p.firstName,50),last=txt_(p.lastName,50),position=txt_(p.position,80),tx=code_(p.transaction,6);
+  if(!first||!last||!position||!tx||tx==='MC')throw Error('Complete recruitment applicant details.');
+  if(String(p.hasId)!=='true'||String(p.hasDocuments)!=='true')throw Error('Complete the document checklist before requesting pre-screening.');
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
-    const ss=ss_(),t=findTx_(ss,tx);
-    if(!t)throw Error('Invalid transaction.');
-    const q=ss.getSheetByName(CFG.queue),today=day_(),existing=findActive_(q,today,first,last);
-    if(existing)return {ok:true,duplicate:true,ticket:ticket_(existing),message:'Existing active queue number returned.'};
-    const n=next_(q,today,tx),num=tx+'-'+String(n).padStart(3,'0'),now=new Date(),id=Utilities.getUuid(),name=first+' '+last;
-    // Preserve historical sheet columns. All new tickets are TIPON Federation-wide.
-    const row=[id,today,now,num,'TIPON','TIPON Federation',t.code,t.name,name,pos,'WAITING','','','','',first,last];
-    q.appendRow(row);
-    return {ok:true,duplicate:false,ticket:ticket_(row)};
+    const ss=ss_(),t=findTx_(ss,tx);if(!t)throw Error('Invalid recruitment transaction.');
+    const today=day_(),q=ss.getSheetByName(CFG.queue),active=findActive_(q,today,first,last);
+    if(active)return{ok:true,status:'APPROVED',duplicate:true,ticket:ticket_(active)};
+    const sheet=ss.getSheetByName(CFG.precheck),rows=sheet.getLastRow()>1?sheet.getRange(2,1,sheet.getLastRow()-1,PH.length).getValues():[];
+    const pending=rows.find(r=>dayCell_(r[1])===today&&String(r[9])==='PENDING'&&nameKey_(r[3],r[4])===nameKey_(first,last));
+    if(pending)return{ok:true,status:'PENDING',duplicate:true,precheckId:String(pending[0]),reference:String(pending[2])};
+    const n=rows.filter(r=>dayCell_(r[1])===today).length+1,precheckId=Utilities.getUuid(),reference='PC-'+String(n).padStart(3,'0'),now=new Date();
+    sheet.appendRow([precheckId,today,reference,first,last,tx,position,first+' '+last,'ID and required documents self-confirmed','PENDING',now,'','','']);
+    return{ok:true,status:'PENDING',precheckId,reference,duplicate:false};
+  }finally{lock.releaseLock()}
+}
+function checkPrecheck_(p){
+  const id=txt_(p.precheckId,100);if(!id)throw Error('Missing pre-screening reference.');
+  const sheet=ss_().getSheetByName(CFG.precheck);
+  if(!sheet)throw Error('Pre-screening is not initialized.');
+  const row=findId_(sheet,id);if(row<2)throw Error('Pre-screening reference not found.');
+  const r=sheet.getRange(row,1,1,PH.length).getValues()[0];
+  return{ok:true,status:String(r[9]),reference:String(r[2]),queueNo:String(r[13]||''),note:String(r[12]||'')};
+}
+function reviewPrecheck_(p,approved){
+  const id=txt_(p.precheckId,100),note=txt_(p.note,160);
+  if(!id)throw Error('Select a pre-screening request.');
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    const ss=ss_(),sheet=ss.getSheetByName(CFG.precheck),row=findId_(sheet,id);
+    if(row<2)throw Error('Pre-screening request not found.');
+    const r=sheet.getRange(row,1,1,PH.length).getValues()[0];
+    if(String(r[9])!=='PENDING')throw Error('This pre-screening request was already reviewed.');
+    if(approved){
+      const tx=findTx_(ss,String(r[5]));if(!tx)throw Error('Transaction is no longer available.');
+      const res=issueTicket_(ss,tx,String(r[3]),String(r[4]),String(r[6]));
+      sheet.getRange(row,10,1,5).setValues([['APPROVED',r[10],new Date(),note,res.ticket.queueNo]]);
+      return{ok:true,status:'APPROVED',ticket:res.ticket};
+    }
+    sheet.getRange(row,10,1,5).setValues([['INCOMPLETE',r[10],new Date(),note||'Please complete your requirements.','']]);
+    return{ok:true,status:'INCOMPLETE'};
+  }finally{lock.releaseLock()}
+}
+function pendingPrechecks_(ss){
+  const sh=ss.getSheetByName(CFG.precheck);if(!sh||sh.getLastRow()<2)return[];
+  const today=day_();return sh.getRange(2,1,sh.getLastRow()-1,PH.length).getValues()
+    .filter(r=>dayCell_(r[1])===today&&String(r[9])==='PENDING')
+    .map(r=>({precheckId:String(r[0]),reference:String(r[2]),name:String(r[7]),transaction:String(r[5]),position:String(r[6]),submittedAt:iso_(r[10])})).slice(0,100);
+}
+function settingValue_(ss,key){
+  const sh=ss.getSheetByName(CFG.settings);if(!sh||sh.getLastRow()<2)return '';
+  const row=sh.getRange(2,1,sh.getLastRow()-1,2).getValues().find(r=>String(r[0])===key);
+  return row?String(row[1]||''):'';
+}
+function windowRoute_(ss,window){
+  const mode=settingValue_(ss,'WINDOW_ROUTE_'+window);
+  return ['ALL','MC','RECRUITMENT'].includes(mode)?mode:window===3?'MC':'RECRUITMENT';
+}
+function setWindowRoute_(p){
+  const window=int_(p.window,1,windowCount_()),route=String(p.route||'').toUpperCase();
+  if(!['ALL','MC','RECRUITMENT'].includes(route))throw Error('Invalid service route.');
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    const ss=ss_(),sh=ss.getSheetByName(CFG.settings)||ensure_(ss,CFG.settings,SH),key='WINDOW_ROUTE_'+window;
+    const rows=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,1).getValues():[];
+    const ix=rows.findIndex(r=>String(r[0])===key),row=ix>=0?ix+2:sh.getLastRow()+1;
+    sh.getRange(row,1,1,3).setValues([[key,route,new Date()]]);
+    return{ok:true,window,route};
   }finally{lock.releaseLock()}
 }
 function call_(p){
