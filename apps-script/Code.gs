@@ -15,16 +15,16 @@ function setupTiponQueueSystem(){
   const t=ss.getSheetByName(CFG.tx);
   if(t.getLastRow()<2)t.getRange(2,1,3,4).setValues([['NH','New Hire',true,1],['RH','Rehire',true,2],['TR','Transfer',true,3]]);
   const q=ss.getSheetByName(CFG.queue);if(q.getLastColumn()<QH.length)q.getRange(1,QH.length).setValue('Recruiter');
-  const all=allTxs_(ss),mc=all.find(t=>t.code==='MC');
-  if(!mc)ss.getSheetByName(CFG.tx).appendRow(['MC','Member Concerns',true,all.length+1]);
-  else if(!mc.active){const txSheet=ss.getSheetByName(CFG.tx),rows=txSheet.getRange(2,1,txSheet.getLastRow()-1,1).getValues();const index=rows.findIndex(r=>String(r[0])==='MC');if(index>=0)txSheet.getRange(index+2,3).setValue(true);}
-  return {ok:true,federationMode:true,version:'federation-v6'};
+  const all=allTxs_(ss);
+  if(!all.some(t=>t.code==='MC'))ss.getSheetByName(CFG.tx).appendRow(['MC','Member Concerns',true,all.length+1]);
+  // A disabled transaction remains disabled after setup.
+  return {ok:true,federationMode:true,version:'federation-v7'};
 }
 function doGet(e){
   const p=e?.parameter||{},cb=String(p.callback||'callback').replace(/[^A-Za-z0-9_.$]/g,'');
   try{
     let r;switch(String(p.action||'state')){
-      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v6'};break;
+      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v7'};break;
       case'state':r={ok:true,state:state_()};break;
       case'register':r=register_(p);break;
       case'setWindowTx':r=setWindowTx_(p);break;
@@ -202,37 +202,48 @@ function addTx_(p){
   try{const ss=ss_(),list=allTxs_(ss);if(list.some(x=>x.code===c))throw Error('Code already exists, including inactive records. Restore it in Setup if needed.');ss.getSheetByName(CFG.tx).appendRow([c,n,true,list.length+1]);return{ok:true,transaction:{code:c,name:n}}}finally{lock.releaseLock()}
 }
 function saveWindow_(p){
-  const n=windowCount_(),win=int_(p.window,1,n),tx=code_(p.transaction,6),recruiter=txt_(p.recruiter,80);
-  if(tx!=='ALL'&&!findTx_(ss_(),tx))throw Error('Invalid transaction.');
-  if(!recruiter)throw Error('Recruiter name is required.');
+  const n=windowCount_(),win=int_(p.window,1,n),tx=code_(p.transaction||'ALL',6),recruiter=txt_(p.recruiter,80);
+  if(tx!=='ALL'&&!findTx_(ss_(),tx))throw Error('Invalid or inactive transaction.');
   const lock=LockService.getScriptLock();lock.waitLock(30000);
-  try{const ss=ss_();saveSetting_(ss,'WINDOW_TX_'+win,tx);saveSetting_(ss,'WINDOW_RECRUITER_'+win,recruiter);return{ok:true,window:win,transaction:tx,recruiter}}
-  finally{lock.releaseLock()}
+  try{
+    const ss=ss_();
+    writeSettings_(ss,{['WINDOW_TX_'+win]:tx,['WINDOW_RECRUITER_'+win]:recruiter});
+    return{ok:true,window:win,transaction:tx,recruiter};
+  }finally{lock.releaseLock()}
 }
-function saveSetting_(ss,key,val){
+function writeSettings_(ss,changes){
   const sh=ss.getSheetByName(CFG.settings)||ensure_(ss,CFG.settings,SH);
-  const rows=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,1).getValues():[];
-  const i=rows.findIndex(r=>String(r[0])===key),row=i<0?sh.getLastRow()+1:i+2;
-  sh.getRange(row,1,1,3).setValues([[key,val,new Date()]]);
+  const count=Math.max(0,sh.getLastRow()-1);
+  const rows=count?sh.getRange(2,1,count,3).getValues():[];
+  const index=new Map(rows.map((r,i)=>[String(r[0]),i]));
+  const now=new Date();
+  for(const key of Object.keys(changes)){
+    const value=String(changes[key]??''),at=index.get(key);
+    if(at===undefined){index.set(key,rows.length);rows.push([key,value,now])}
+    else rows[at]=[key,value,now];
+  }
+  if(rows.length)sh.getRange(2,1,rows.length,3).setValues(rows);
 }
+function saveSetting_(ss,key,value){writeSettings_(ss,{[key]:value})}
 function deleteWindow_(p){
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
     const ss=ss_(),sh=ss.getSheetByName(CFG.windows),n=windowCount_(),win=int_(p.window,1,n);
-    if(n<=1)throw Error('At least one window is required.');
-    // Keep window numbers contiguous. Do not renumber active tickets in any window.
-    const active=sh.getRange(2,2,n,1).getValues().some(r=>Boolean(r[0]));
-    if(active)throw Error('Complete all active window tickets before removing a window.');
-    const settings=ss.getSheetByName(CFG.settings);
-    const previous=Array.from({length:n},(_,i)=>({tx:windowTx_(ss,i+1),name:settingValue_(ss,'WINDOW_RECRUITER_'+(i+1))}));
+    if(n<=1)throw Error('At least one service window must remain.');
+    const occupied=sh.getRange(2,2,n,1).getValues();
+    if(occupied.some((r,i)=>i+1>=win&&r[0]))
+      throw Error('Complete active tickets in this or later windows before deleting.');
+    const oldAssignments=Array.from({length:n},(_,i)=>({tx:windowTx_(ss,i+1),name:settingValue_(ss,'WINDOW_RECRUITER_'+(i+1))}));
     sh.deleteRow(win+1);
-    for(let i=1;i<n;i++)sh.getRange(i+1,1).setValue(i);
+    sh.getRange(2,1,n-1,1).setValues(Array.from({length:n-1},(_,i)=>[i+1]));
+    const changes={};
     for(let i=1;i<=n;i++){
-      const v=i<win?previous[i-1]:i<n?previous[i]:null;
-      saveSetting_(ss,'WINDOW_TX_'+i,v?v.tx:'ALL');
-      saveSetting_(ss,'WINDOW_RECRUITER_'+i,v?v.name:'');
+      const previous=i<win?oldAssignments[i-1]:i<n?oldAssignments[i]:null;
+      changes['WINDOW_TX_'+i]=previous?previous.tx:'ALL';
+      changes['WINDOW_RECRUITER_'+i]=previous?previous.name:'';
     }
-    return{ok:true,windowCount:n-1};
+    writeSettings_(ss,changes);
+    return{ok:true,windowCount:n-1,removed:win};
   }finally{lock.releaseLock()}
 }
 function editTx_(p){
@@ -246,20 +257,18 @@ function editTx_(p){
 }
 function deleteTx_(p){
   const code=code_(p.code,6);
-  if(code==='MC')throw Error('Member Concern is required for public registration and cannot be deleted.');
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
     const ss=ss_(),sh=ss.getSheetByName(CFG.tx),rows=sh.getDataRange().getValues();
-    const idx=rows.findIndex((r,i)=>i>0&&String(r[0])===code);if(idx<1)throw Error('Transaction not found.');
+    const idx=rows.findIndex((r,i)=>i>0&&String(r[0])===code);
+    if(idx<1)throw Error('Transaction not found.');
     if(!bool_(rows[idx][2]))return{ok:true,code,active:false};
-    const q=ss.getSheetByName(CFG.queue);
-    if(q.getLastRow()>1&&q.getRange(2,1,q.getLastRow()-1,QH.length).getValues().some(r=>String(r[6])===code&&['WAITING','SERVING'].includes(String(r[10]))))
-      throw Error('Active tickets use this transaction. Complete them before deleting it.');
-    for(let i=1;i<=windowCount_();i++)if(windowTx_(ss,i)===code)
-      throw Error('Transaction is assigned to Window '+i+'. Change its assigned transaction in Setup first.');
-    // Soft-delete preserves completed ticket history and supports later restoration.
+    // Soft-delete preserves existing waiting, serving, completed and historical records.
+    const changes={};
+    for(let i=1;i<=windowCount_();i++)if(windowTx_(ss,i)===code)changes['WINDOW_TX_'+i]='ALL';
+    if(Object.keys(changes).length)writeSettings_(ss,changes);
     sh.getRange(idx+1,3).setValue(false);
-    return{ok:true,code,active:false};
+    return{ok:true,code,active:false,reassignedWindows:Object.keys(changes).length};
   }finally{lock.releaseLock()}
 }
 function restoreTx_(p){
@@ -274,10 +283,32 @@ function restoreTx_(p){
   }finally{lock.releaseLock()}
 }
 function state_(){
-  const ss=ss_(),n=windowCount_(),w=ss.getSheetByName(CFG.windows),windows={};
-  w.getRange(2,1,n,WH.length).getValues().forEach(r=>windows[String(r[0])]=r[1]?windowTicket_(r):null);
-  const q=ss.getSheetByName(CFG.queue),waiting=[],completed=[],today=day_();if(q.getLastRow()>1)q.getRange(2,1,q.getLastRow()-1,QH.length).getValues().forEach(r=>{const t=ticket_(r);if(dayCell_(r[1])===today&&String(r[10])==='WAITING')waiting.push(t);if(String(r[10])==='COMPLETED')completed.push(t)});completed.reverse();
-  return{windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,completed,transactions:txs_(ss),transactionTypes:allTxs_(ss),assignments:Object.fromEntries(Array.from({length:n},(_,i)=>[String(i+1),windowTx_(ss,i+1)])),recruiters:Object.fromEntries(Array.from({length:n},(_,i)=>[String(i+1),settingValue_(ss,'WINDOW_RECRUITER_'+(i+1))])),announcement:announcement_(ss),federationMode:true,version:'federation-v6'}
+  const ss=ss_(),w=ss.getSheetByName(CFG.windows),count=Math.max(0,w.getLastRow()-1);
+  const windowData=count?w.getRange(2,1,count,WH.length).getValues():[];
+  const n=Math.max(1,Math.min(CFG.maxWindows,windowData.reduce((max,r)=>Math.max(max,Number(r[0])||0),0)||4));
+  const windows={};
+  for(let i=1;i<=n;i++){const row=windowData.find(r=>Number(r[0])===i);windows[String(i)]=row&&row[1]?windowTicket_(row):null}
+  const txList=allTxs_(ss),activeTx=txList.filter(x=>x.active),availableCodes=new Set(activeTx.map(x=>x.code));
+  const settings=ss.getSheetByName(CFG.settings);
+  const settingsData=settings&&settings.getLastRow()>1?settings.getRange(2,1,settings.getLastRow()-1,2).getValues():[];
+  const settingMap=new Map(settingsData.map(r=>[String(r[0]).trim(),String(r[1]??'')]));
+  const defaultTx={1:'NH',2:'RH',3:'TR',4:'MC'},assignments={},recruiters={};
+  for(let i=1;i<=n;i++){
+    const stored=code_(settingMap.get('WINDOW_TX_'+i)||'',6);
+    assignments[String(i)]=stored==='ALL'?'ALL':availableCodes.has(stored)?stored:
+      availableCodes.has(defaultTx[i])?defaultTx[i]:'ALL';
+    recruiters[String(i)]=settingMap.get('WINDOW_RECRUITER_'+i)||'';
+  }
+  const q=ss.getSheetByName(CFG.queue),waiting=[],completed=[],today=day_();
+  if(q.getLastRow()>1)q.getRange(2,1,q.getLastRow()-1,QH.length).getValues().forEach(row=>{
+    if(dayCell_(row[1])===today&&String(row[10])==='WAITING')waiting.push(ticket_(row));
+    if(String(row[10])==='COMPLETED')completed.push(ticket_(row));
+  });
+  completed.reverse();
+  return{windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,completed,
+    transactions:activeTx,transactionTypes:txList,assignments,recruiters,
+    announcement:settingMap.get('ANNOUNCEMENT')?.trim()||DEFAULT_ANNOUNCEMENT,
+    federationMode:true,version:'federation-v7'};
 }
 
 function announcement_(ss){
