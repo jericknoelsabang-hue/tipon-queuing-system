@@ -35,7 +35,7 @@ function tv(){const count=Number(S.windowCount||3),indexes=Array.from({length:co
  const q=S.waiting||[];$('chips').innerHTML=q.length?q.slice(0,20).map(t=>'<span class="chip">'+esc(t.queueNo)+'</span>').join(''):'<span class="muted">No applicants waiting</span>';
  $('ann').textContent=S.announcement||DEFAULT;
  if(initialized){for(const i of indexes){const t=win(i),key=t?t.ticketId+'|'+t.calledAt:'';if(key&&key!==last[i])announce(t,i);last[i]=key}}
- else{indexes.forEach(i=>{const t=win(i);last[i]=t?t.ticketId+'|'+t.calledAt:''});initialized=true}
+ else if(S.version===REQUIRED){indexes.forEach(i=>{const t=win(i);last[i]=t?t.ticketId+'|'+t.calledAt:''});initialized=true}
 }
 function announceEditor(){const e=$('announcementInput');if(!dirty&&document.activeElement!==e)e.value=S.announcement||DEFAULT;$('announcementCount').textContent=e.value.length+' / 280 characters'}
 function pending(){const list=S.prechecks||[];$('metricPre').textContent=list.length;$('metricWait').textContent=(S.waiting||[]).length;
@@ -77,7 +77,7 @@ async function review(approve,id){let note='';if(approve){if(!confirm('Have you 
  await operate(approve?'approvePrecheck':'rejectPrecheck',{precheckId:id,note})}
 async function queueAction(action,i){const filter=document.querySelector('[data-filter="'+i+'"]');const transaction=filter?.value||'ALL';
  await operate(action,{window:i,transaction},r=>{if((action==='call'||action==='recall')&&r.ticket){announce(r.ticket,i);last[i]=r.ticket.ticketId+'|'+r.ticket.calledAt}})}
-async function route(i,mode){const r=await operate('setWindowRoute',{window:i,route:mode});if(r)filters[i]='ALL'}
+async function route(i,mode){filters[i]='ALL';await operate('setWindowRoute',{window:i,route:mode})}
 $('announcementInput').oninput=()=>{dirty=true;$('announcementCount').textContent=$('announcementInput').value.length+' / 280 characters'};
 async function saveAnnouncement(message){message=String(message||'').trim();if(!message||message.length>280){error(Error('Announcement must contain 1–280 characters.'),true);return}
  await operate('setAnnouncement',{message},r=>{S.announcement=r.announcement;dirty=false;$('announcementInput').value=r.announcement})}
