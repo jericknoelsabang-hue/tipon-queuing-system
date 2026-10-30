@@ -480,7 +480,7 @@ header{background:#fff;border-top:4px solid var(--gold);border-bottom:1px solid 
 #display:fullscreen .qr-panel .qr-frame{
   box-sizing:border-box;
   width:100%;
-  max-width:455px;
+  max-width:720px;
   height:auto;
   aspect-ratio:1 / 1;
   border:7px solid #f1f7fb;
@@ -512,7 +512,7 @@ header{background:#fff;border-top:4px solid var(--gold);border-bottom:1px solid 
 }
 #display:fullscreen .qr-panel p{
   width:100%;
-  max-width:455px;
+  max-width:720px;
   margin:14px auto 0;
   font-size:clamp(16px,1.22vw,20px);
   font-weight:800;
