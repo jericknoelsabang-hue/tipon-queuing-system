@@ -78,3 +78,25 @@ async function review(approve,id){let note='';if(approve){if(!confirm('Have you 
 async function queueAction(action,i){const filter=document.querySelector('[data-filter="'+i+'"]');const transaction=filter?.value||'ALL';
  await operate(action,{window:i,transaction},r=>{if((action==='call'||action==='recall')&&r.ticket){announce(r.ticket,i);last[i]=r.ticket.ticketId+'|'+r.ticket.calledAt}})}
 async function route(i,mode){const r=await operate('setWindowRoute',{window:i,route:mode});if(r)filters[i]='ALL'}
+$('announcementInput').oninput=()=>{dirty=true;$('announcementCount').textContent=$('announcementInput').value.length+' / 280 characters'};
+async function saveAnnouncement(message){message=String(message||'').trim();if(!message||message.length>280){error(Error('Announcement must contain 1–280 characters.'),true);return}
+ await operate('setAnnouncement',{message},r=>{S.announcement=r.announcement;dirty=false;$('announcementInput').value=r.announcement})}
+$('announcementSave').onclick=()=>saveAnnouncement($('announcementInput').value);
+$('announcementReset').onclick=()=>saveAnnouncement(DEFAULT);
+$('addWin').onclick=()=>operate('addWindow');
+$('addTx').onclick=async()=>{const r=await operate('addTx',{code:$('newCode').value,name:$('newName').value});if(r){$('newCode').value='';$('newName').value=''}};
+$('api').value=url();
+$('refresh').onclick=()=>refresh();
+$('sound').onclick=()=>{armed=true;localStorage.setItem('tqSound','1');ding();status('Sound enabled on this device. Return to TV Display.','ok')};
+$('save').onclick=()=>{const v=$('api').value.trim();if(!valid(v)){error(Error('Enter a valid https://script.google.com/.../exec URL.'));return}localStorage.setItem('tqApi',v);qrUrl='';refresh()};
+$('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(r.version!==REQUIRED)throw Error('Backend is '+(r.version||'outdated')+'. Deploy Federation v4 Code.gs.');status('Backend verified • '+r.version+' • '+r.windows+' service windows.','ok');await refresh(true)}catch(e){error(e)}};
+$('clear').onclick=()=>{localStorage.removeItem('tqApi');$('api').value='';S.version='';qrUrl='';status('Connection cleared.','err');qr()};
+const full=$('fullscreen');
+function reflect(){const active=document.fullscreenElement===$('display');full.textContent=active?'Exit Full Screen':'⛶ Full Screen';full.setAttribute('aria-pressed',active?'true':'false')}
+full.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('display').requestFullscreen();reflect()}catch(e){error(e,true)}};
+document.addEventListener('fullscreenchange',reflect);
+const img=$('brandPhoto');img.onerror=()=>{$('brandImage').classList.add('failed')};if(img.complete&&!img.naturalWidth)$('brandImage').classList.add('failed');
+function clock(){$('clock').textContent=new Date().toLocaleTimeString('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit'})}
+clock();setInterval(clock,1000);const requested=new URLSearchParams(location.search).get('view');view(['setup','staff'].includes(requested)?requested:'display');
+render();refresh(false);setInterval(()=>refresh(true),3500);
+})();
