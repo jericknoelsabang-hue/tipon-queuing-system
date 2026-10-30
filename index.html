@@ -1,189 +1,70 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TIPON Federation | Queue Management</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet"><script src="config.js"></script><style>
-:root{--n:#075786;--r:#e25c4a;--bg:#f1f7fb;--line:#d6e6ef;--mut:#657f91}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(155deg,#e1f2fb,#f7fbfe 45%,#edf5fa);color:#143c55}button,input,select{font:inherit}.hide{display:none!important}header{background:white;border-bottom:4px solid #f5b53f;box-shadow:0 5px 18px #134e6920}.head{max-width:1450px;margin:auto;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}.brand{display:flex;gap:10px;align-items:center}.logo{width:52px;height:52px;background:linear-gradient(135deg,#0789c1 0%,#05638f 65%,#e24e42 65%);color:white;border-radius:16px;display:grid;place-items:center;font-size:30px;font-weight:900;box-shadow:0 7px 19px #086b9b3b}.shell{max-width:1450px;margin:auto;padding:24px}.nav,.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.nav{margin-bottom:18px}.btn,.nav button{min-height:44px;padding:9px 14px;border:1px solid var(--line);border-radius:28px;background:white;font-weight:800;color:#17384f;cursor:pointer}.btn.p,.nav button.on{background:var(--n);color:white;border-color:var(--n)}.btn.g{background:#19724f;color:white}.btn.r{background:var(--r);color:white}.status{padding:10px 12px;border-radius:10px;background:#fff3d5;border:1px solid #e4cd95;margin-bottom:12px;font-weight:700}.status.ok{background:#e8f6ee;border-color:#b8ddc8;color:#155f42}.status.err{background:#fdebed;border-color:#efc1c8;color:#8b2735}.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:13px;box-shadow:0 10px 30px #0a4d6e0e}.display{background:radial-gradient(circle at top right,#168cbe 0%,transparent 33%),linear-gradient(130deg,#063c60,#09628b);color:white;border-radius:22px;padding:24px;box-shadow:0 18px 45px #063c6032}.dg{display:grid;grid-template-columns:260px 1fr;gap:16px}.qr{background:white;color:#17384f;border-radius:15px;padding:15px;text-align:center}.qr img{width:190px;height:190px}.qr p{font-size:12px;color:var(--mut)}.now h2{text-align:center;letter-spacing:.15em}.wins{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.win{background:white;color:#17384f;border-radius:14px;border-bottom:6px solid #f3b93b;padding:13px;min-height:225px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.qno{font-size:36px;color:#0b82ba;font-weight:900}.name{font-size:18px;font-weight:900;margin-top:6px}.mut{color:var(--mut)}.badge{padding:8px 12px;background:#edf2f6;color:var(--n);border-radius:9px;font-weight:900;margin:8px 0}.wstrip{margin-top:12px;background:white;color:#17384f;border-radius:12px;padding:10px;display:flex;gap:8px;overflow:auto}.chip{background:#e8eef3;border-radius:8px;padding:6px 9px;font-weight:900}.announce{margin-top:9px;background:#ffffff18;border-radius:9px;padding:10px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field label{display:block;font-size:13px;font-weight:800;margin-bottom:5px}.field input,.field select{width:100%;min-height:46px;border:1px solid #bfced8;border-radius:9px;padding:9px;background:white}.full{grid-column:1/-1}.mpcs{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.mpc{background:white;border:2px solid var(--line);border-radius:12px;padding:11px;min-height:105px;font-weight:800;cursor:pointer}.mpc.sel{border-color:var(--r)}.ticket{text-align:center;border:2px dashed #9eb1bf;border-radius:14px;padding:18px;margin-top:14px}.ticket .big{font-size:48px;color:var(--r);font-weight:900}.staff{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}.sw{border:1px solid var(--line);border-radius:12px;padding:12px}.cur{min-height:70px;background:#f3f7fa;padding:9px;border-radius:8px;margin-bottom:8px}.filters,.acts{display:grid;grid-template-columns:1fr 1fr;gap:7px}.filters{margin-bottom:8px}.filters select{min-height:40px;border:1px solid var(--line);border-radius:8px}.acts .wide{grid-column:1/-1}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left}.scroll{overflow:auto}@media(max-width:900px){.dg{grid-template-columns:1fr}.mpcs{grid-template-columns:1fr 1fr}}@media(max-width:650px){.grid,.mpcs{grid-template-columns:1fr}.full{grid-column:auto}.wins,.staff{grid-template-columns:1fr}.shell{padding:8px}}
-
-
-/* Tipon.coop-inspired interface: responsive typography, Federation colors, official-site logo artwork. */
-:root{--navy:#07557c;--navy-deep:#073f60;--sky:#1280ae;--coral:#d83832;--sun:#ffb840;--mint:#128167;--mut:#637f8e;--bg:#f6fafc;--line:#dce8ee;--ink:#173d54}
-html{min-height:100%;scroll-behavior:smooth}
-body{font-family:"Manrope","Poppins",Arial,sans-serif;font-size:14px;line-height:1.55;color:var(--ink);background:linear-gradient(155deg,#edf7fc,#fbfdff 45%,#f0f7fa)}
-button,input,select,textarea{font:inherit}
-button{transition:background .16s ease,box-shadow .16s ease,transform .16s ease}
-button:hover:not(:disabled){transform:translateY(-1px)}
-button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #72b8d9;outline-offset:2px}
-header{background:#fff;border-bottom:1px solid #dceaf1;border-top:4px solid var(--sun);box-shadow:0 4px 20px #0b557312}
-.head{max-width:1450px;margin:auto;padding:13px 22px;min-height:97px}
-.brand{gap:15px}
-.brand-img-window{height:78px;width:233px;position:relative;display:block;overflow:hidden;background:#fff;border-radius:4px;flex:0 0 auto}
-.brand-img-window img{position:absolute;left:0;top:-7px;width:340px;height:340px;max-width:none;object-fit:fill}
-.brand-img-window .brand-fallback{display:none;align-items:center;font-family:"Poppins",sans-serif;font-size:34px;letter-spacing:-1.8px;color:#0874a8;font-weight:600;height:100%}
-.brand-img-window.failed .brand-fallback{display:flex}
-.brand-img-window.failed img{display:none}
-.brand-caption{border-left:1px solid #dce8ef;padding-left:15px;display:grid;gap:3px}
-.brand-caption b{font-family:"Poppins",sans-serif;font-weight:700;font-size:15px;letter-spacing:.015em;color:#123d55}
-.brand-caption span{font-size:10px;letter-spacing:.15em;font-weight:800;color:#8294a0}
-#clock{font-family:"Poppins",sans-serif;font-variant-numeric:tabular-nums;font-size:18px;font-weight:600}
-.shell{padding:24px 20px 55px}
-.nav{margin-bottom:19px;gap:10px}
-.nav button,.btn{border-radius:10px;font-weight:800;font-size:13px;min-height:45px;padding:10px 17px}
-.nav button{background:white;border:1px solid var(--line);color:#537084}
-.nav button.on,.btn.p{background:#096f9f;color:#fff;border-color:#096f9f;box-shadow:0 6px 13px #09749e28}
-.btn.g{background:var(--mint);border-color:var(--mint);color:#fff}
-.btn.r{background:#d94a44;border-color:#d94a44;color:#fff}
-.btn:disabled{opacity:.45;cursor:not-allowed}
-.panel{background:#fff;border:1px solid #ddeaf0;box-shadow:0 8px 30px #1b597109;border-radius:17px;padding:25px;margin-bottom:17px}
-.panel h2,.panel h3,.page-title,.now h2{font-family:"Poppins",sans-serif}
-.panel h2{font-size:24px;color:#0b405d;letter-spacing:-.02em;margin:2px 0 7px}
-.panel h3{font-size:18px;color:#10445f;margin:0 0 6px}
-.panel p{line-height:1.7}
-.section-head{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin:0 0 18px}
-.section-kicker{color:#0e87b7;font-weight:800;font-size:11px;letter-spacing:.17em;text-transform:uppercase;display:block}
-.page-title{font-weight:700;letter-spacing:-.04em;font-size:clamp(28px,3.7vw,44px);line-height:1.15;color:#104461;margin:7px 0}
-.section-sub{color:#5e7b8f;max-width:690px;margin:6px 0;font-size:14px}
-.display{background:radial-gradient(circle at 100% -20%,#1688bc88 0,transparent 43%),linear-gradient(145deg,#053b5f,#086388);border-radius:21px;padding:21px;box-shadow:0 15px 35px #07466b2c}
-.dg{grid-template-columns:minmax(225px,275px) minmax(0,1fr);gap:20px}
-.qr{display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;border-radius:15px;padding:19px}
-.qr h3{font-family:"Poppins",sans-serif;font-size:21px;line-height:1.3;letter-spacing:-.035em;margin:5px 0 13px}
-.qr img{max-width:100%;height:auto;width:195px;aspect-ratio:1;border:8px solid #eff6fa;border-radius:11px}
-.qr p{font-size:12px;line-height:1.65;margin-top:13px}
-.now{min-width:0}
-.now h2{text-align:left;letter-spacing:.10em;font-weight:700;font-size:clamp(20px,2.5vw,30px);margin:0 0 13px}
-.now .sub{font-size:12px;color:#b6d5e6;margin:0 0 17px}
-.wins{grid-template-columns:repeat(auto-fit,minmax(168px,1fr))}
-.win{min-height:231px;border-radius:14px;border-bottom:5px solid var(--sun);box-shadow:0 9px 19px #073f5c1b}
-.win b{font-family:"Poppins",sans-serif;font-size:14px;color:#395a71}
-.qno{font-family:"Poppins",sans-serif;color:#0c79a6;letter-spacing:-.035em;font-size:clamp(29px,3.5vw,42px)}
-.name{font-size:16px}
-.wstrip{min-height:54px;align-items:center;padding:13px 15px;gap:12px;margin-top:17px;border-radius:12px}
-.wstrip b{font-family:"Poppins",sans-serif;font-size:11px;letter-spacing:.1em;color:#385d71}
-.chip{background:#e6f3f9;border:1px solid #d1e8f4;color:#0a658f;font-size:12px}
-.announce{display:flex;align-items:center;gap:13px;background:#ffffff14;border:1px solid #ffffff24;margin-top:12px;padding:14px 16px;border-radius:10px;min-height:55px;white-space:normal}
-.announce b{font-size:11px;letter-spacing:.13em;color:#ffd57c;white-space:nowrap}
-#ann{font-size:clamp(14px,1.6vw,19px);font-weight:700;line-height:1.5;color:#fff;overflow-wrap:anywhere}
-.call-notice{background:#fff2cf;border:1px solid #f9cc70;border-radius:11px;padding:11px 16px;margin:0 0 13px;color:#715017;font-weight:800}
-.field input,.field select,.field textarea{width:100%;min-height:47px;background:#fbfdff;border:1px solid #c8dce6;border-radius:9px;color:#183f58}
-.field label{font-weight:800;font-size:12px;color:#1b455f;margin-bottom:6px}
-.field textarea{line-height:1.6;padding:12px 13px;min-height:115px;resize:vertical}
-.staff-tools{background:linear-gradient(105deg,#f5fafd,#fff);display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
-.staff-tools .row{gap:9px}
-.staff-tools .mut{max-width:650px}
-.staff-tools .btn{white-space:nowrap}
-.announcement-editor .field{margin-top:16px}
-.announcement-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:11px;flex-wrap:wrap}
-.announcement-actions .row{gap:10px}
-#announcementCount{color:#688495;font-size:11px;font-weight:700}
-.notice-note{background:#ebf5fa;border-left:3px solid #1597c9;color:#416a80;padding:10px 12px;font-size:12px;border-radius:0 7px 7px 0;margin-top:14px}
-.staff-headline{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.staff-headline b{font-family:"Poppins",sans-serif;font-weight:700;font-size:13px;color:#2f5970}
-.staff{margin-top:17px}
-.sw{border:1px solid #dce8ef;border-radius:13px;padding:16px}
-.sw h3{font-size:17px;font-family:"Poppins",sans-serif}
-.cur{min-height:85px;background:#f2f8fb}
-.filters{grid-template-columns:1fr!important}
-.filters select{color:#1a536f;background:#fbfdff}
-#join .panel h2{font-size:28px}
-#join .field{margin-top:9px}
-#join .btn.p{min-height:53px}
-#ticket .big{font-family:"Poppins",sans-serif;color:#0b7aaa}
-table{background:#fff}
-th{background:#f3f8fb;color:#547287;font-size:11px;font-family:"Poppins",sans-serif;letter-spacing:.05em}
-td,th{padding:11px 10px}
-#fullscreen{min-width:143px;display:inline-flex;align-items:center;justify-content:center;gap:7px}
-.fullscreen-label{font-size:12px;color:#718c9a}
-#display:fullscreen{width:100vw;height:100vh;min-height:100vh;background:#073c5e;display:flex;flex-direction:column;padding:15px 18px 17px;overflow:auto;box-sizing:border-box}
-#display:fullscreen .section-head{margin-bottom:10px}
-#display:fullscreen .page-title{color:#fff;font-size:clamp(27px,2.5vw,43px);margin:3px 0}
-#display:fullscreen .section-kicker{color:#80dbff}
-#display:fullscreen .section-sub{color:#d5eff9}
-#display:fullscreen .fullscreen-label{color:#c2e5f3}
-#display:fullscreen .display{flex:1;display:flex;flex-direction:column;min-height:0;padding:18px;box-shadow:none;border:1px solid #ffffff30}
-#display:fullscreen .dg{flex:1;min-height:0}
-#display:fullscreen .qr{justify-content:center}
-#display:fullscreen .qr img{width:clamp(160px,16vw,300px)}
-#display:fullscreen .now{display:flex;flex-direction:column}
-#display:fullscreen .wins{flex:1;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));align-content:stretch}
-#display:fullscreen .win{min-height:145px}
-#display:fullscreen .qno{font-size:clamp(37px,4.4vw,78px)}
-#display:fullscreen #ann{font-size:clamp(17px,2vw,31px)}
-#display:fullscreen .section-head{flex:0 0 auto}
-@media(max-width:900px){.dg{grid-template-columns:1fr}.brand-caption{display:none}.wins{grid-template-columns:repeat(auto-fit,minmax(165px,1fr))}#display:fullscreen .dg{grid-template-columns:1fr}}
-@media(max-width:650px){.shell{padding:13px 11px 40px}.head{padding:9px 13px;min-height:70px}.brand-img-window{width:169px;height:62px}.brand-img-window img{width:260px;height:260px;top:-5px}.nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.nav button{width:100%;font-size:12px}.section-head{align-items:flex-start}.panel{padding:16px}.grid{grid-template-columns:1fr}.full{grid-column:1}.wins{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.win{min-height:190px}.qno{font-size:28px}.display{padding:13px}.announce{align-items:flex-start;flex-direction:column;gap:4px}.staff-tools{align-items:flex-start}.staff-tools .row{width:100%}.staff-tools .btn{flex:1}.qr{padding:15px}.qr h3{font-size:17px}#display:fullscreen{padding:9px}#display:fullscreen .dg{min-height:350px}#display:fullscreen .win{min-height:132px}#display:fullscreen .page-title{font-size:24px}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
-</style></head><body>
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#075477"><title>tipón Federation | Smart Queue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="app.js"></script>
+</head><body>
 <header><div class="head"><div class="brand">
-  <div id="brandLogo" class="brand-img-window" role="img" aria-label="tipón Federation logo from tipon.coop">
-    <img id="brandImg" src="https://tipon.coop/public/images/metas/meta-thumbnail_tipon_2.webp" alt="" width="340" height="340">
-    <span class="brand-fallback">tipón</span>
-  </div>
-  <div class="brand-caption"><b>Federation Queuing System</b><span>WIN AS A TEAM</span></div>
-</div><b id="clock" aria-label="Current time">--:--</b></div></header>
-<main class="shell"><nav class="nav" aria-label="Navigation"><button class="on" data-v="display" type="button">TV Display</button><button data-v="join" type="button">Get Queue</button><button data-v="staff" type="button">Staff Console</button><button data-v="setup" type="button">Setup</button></nav><div id="status" class="status" role="status">Connect Google Apps Script to start queuing.</div>
-<section id="display">
-  <div class="section-head">
-    <div><span class="section-kicker">TIPON FEDERATION · VISITOR SERVICES</span><h1 class="page-title">Welcome to tipón.</h1><p class="section-sub">One federation. One simple queue. Scan the code, claim your number, and wait to be called.</p></div>
-    <div class="row"><button id="fullscreen" type="button" class="btn p" aria-pressed="false">⛶ Full Screen</button></div>
-  </div>
-  <div id="callNotice" class="call-notice hide" aria-live="polite"></div>
-  <div class="display"><div class="dg">
-    <aside class="qr"><span class="section-kicker">YOUR QUEUE STARTS HERE</span><h3>SCAN TO GET IN QUEUE</h3><img id="qr" alt="Scan this QR code to register for the TIPON Federation queue"><p>Scan QR → Enter your name → Select a transaction → Get your queue number</p></aside>
-    <div class="now"><h2>NOW SERVING</h2><p class="sub">Please proceed to your assigned window once your number appears.</p><div id="wins" class="wins"></div></div>
-  </div><div class="wstrip"><b>WAITING QUEUE</b><div id="chips" class="row"></div></div>
-  <div class="announce"><b>ANNOUNCEMENT</b><span id="ann" aria-live="polite">Please keep your queue number until called.</span></div></div>
-</section>
-<section id="join" class="hide"><div class="panel"><span class="section-kicker">TIPON FEDERATION</span><h2>Get your queue number</h2><p class="mut">Same First Name + Last Name = same active queue number for the day.</p><form id="form" class="grid" style="margin-top:18px"><div class="field"><label for="firstName">First Name</label><input id="firstName" name="firstName" maxlength="50" autocomplete="given-name" required></div><div class="field"><label for="lastName">Last Name</label><input id="lastName" name="lastName" maxlength="50" autocomplete="family-name" required></div><div class="field"><label for="purpose">Position / Purpose</label><input id="purpose" name="position" maxlength="80" required></div><div class="field"><label for="tx">Transaction</label><select id="tx" name="transaction" required></select></div><div class="full"><button type="submit" class="btn p" style="width:100%">GET QUEUE NUMBER</button></div></form><div id="ticket" class="ticket hide"><div class="mut">YOUR QUEUE NUMBER</div><div id="ticketNo" class="big">---</div><div id="ticketInfo"></div></div></div></section>
-<section id="staff" class="hide">
-  <div class="section-head"><div><span class="section-kicker">TIPON FEDERATION · OPERATIONS</span><h1 class="page-title">Staff Console</h1><p class="section-sub">Manage service windows, queue announcements, and transaction categories.</p></div></div>
-  <div class="panel staff-tools"><div><h3>Display controls</h3><p class="mut">Refresh TV queue data or enable sound on this device.</p></div><div class="row"><button id="refresh" type="button" class="btn">Refresh Queue</button><button id="sound" type="button" class="btn p">Enable / Test Sound</button></div></div>
-  <div class="panel announcement-editor"><h3>Edit TV Announcement</h3><p class="mut">Changes are saved to Google Sheets and automatically appear on connected TV displays.</p><div class="field"><label for="announcementInput">Announcement Message</label><textarea id="announcementInput" maxlength="280" rows="3" placeholder="Enter the announcement to display on TV."></textarea></div><div class="announcement-actions"><span id="announcementCount">0 / 280 characters</span><div class="row"><button id="announcementReset" type="button" class="btn">Restore Default</button><button id="announcementSave" type="button" class="btn g">Save Announcement</button></div></div></div>
-  <div class="panel"><div class="staff-headline"><div><h2>Service Windows</h2><p class="mut">Call Next · Recall · Complete</p></div></div><div class="row" style="margin:12px 0"><b>Windows:</b><span id="wc"></span><button id="addWin" type="button" class="btn g">+ Add Window</button></div><div id="staffWins" class="staff"></div></div>
-  <div class="panel"><h3>Add Transaction Type</h3><div class="grid"><div class="field"><label for="newCode">Code</label><input id="newCode" maxlength="6" placeholder="INQ"></div><div class="field"><label for="newName">Name</label><input id="newName" maxlength="60" placeholder="Inquiry"></div><div class="full"><button id="addTx" class="btn g" type="button">+ Add Type</button></div></div></div>
-  <div class="panel"><h3>Waiting Queue</h3><div class="scroll"><table><thead><tr><th>Queue</th><th>Name</th><th>Transaction</th><th>Purpose</th></tr></thead><tbody id="wt"></tbody></table></div></div>
-</section>
-<section id="setup" class="hide"><div class="panel"><h2>Google Sheets Connection</h2><div class="field"><label for="api">Apps Script Web App URL (/exec)</label><input id="api" placeholder="https://script.google.com/macros/s/.../exec"></div><div class="row" style="margin-top:10px"><button id="save" class="btn p" type="button">Save Connection</button><button id="test" class="btn" type="button">Test Connection</button><button id="clear" class="btn" type="button">Clear</button></div><p class="mut">Google Sheet: <a href="https://docs.google.com/spreadsheets/d/1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik/edit" target="_blank" rel="noopener noreferrer">TIPON Queuing System Database</a>. After this GitHub update, redeploy the latest Apps Script <code>Code.gs</code> (Federation v3) to enable no-PIN staff actions and saved announcements.</p></div></section>
+  <div class="brand-image" id="brandImage">
+    <img id="brandPhoto" alt="TIPON Federation branding from official tipon.coop artwork" src="https://tipon.coop/public/images/metas/meta-thumbnail_tipon_2.webp">
+    <svg viewBox="0 0 270 90" role="img" aria-label="tipón Federation backup wordmark"><circle cx="26" cy="29" r="19" fill="#bb2133"/><circle cx="26" cy="69" r="19" fill="#df4936"/><circle cx="55" cy="49" r="19" fill="#f18531"/><circle cx="70" cy="22" r="17" fill="#feb848"/><text x="94" y="59" font-size="43" fill="#126e99" font-weight="700" font-family="Arial,sans-serif">tipón</text></svg>
+  </div><div class="brand-meta"><b>Federation Queue Management</b><small>WIN AS A TEAM</small></div></div>
+  <div class="clock"><small>PHILIPPINE TIME</small><span id="clock">--:--</span></div></div></header>
+<main class="shell">
+  <nav class="nav" aria-label="Application navigation">
+    <button data-v="display" class="on" type="button">TV Display</button>
+    <a id="getQueueNav" href="join.html">Get Queue</a>
+    <button data-v="staff" type="button">Staff Console</button>
+    <button data-v="setup" type="button">Setup</button>
+  </nav>
+  <section id="display">
+    <div class="page-head"><div><div class="eyebrow">TIPON FEDERATION · SMART VISITOR SERVICES</div><h1>Welcome to tipón.</h1><p>One federation. One simple queue. Scan to register and wait for your number to be called.</p></div>
+      <div class="row"><button id="fullscreen" class="btn primary" type="button" aria-pressed="false">⛶ Full Screen</button></div>
+    </div>
+    <div id="callNotice" class="call-notice hide" aria-live="polite"></div>
+    <div class="tv"><div class="tv-inner">
+      <aside class="qr-panel"><span class="eyebrow">FAST · CONTACTLESS · EASY</span><h2>SCAN TO GET IN QUEUE</h2>
+        <div class="qr-frame"><div id="qr" role="img" aria-label="Scannable QR code for the separate Get Queue registration page"></div></div>
+        <p>Scan the QR with your phone to open the dedicated Get Queue page and enter your details.</p>
+        <a id="joinLink" href="join.html" target="_blank" rel="noopener">Open Get Queue page</a>
+      </aside>
+      <div class="now"><div class="now-title"><div><h2>NOW SERVING</h2><p>Please proceed to your assigned service window.</p></div><span class="live">LIVE QUEUE</span></div><div id="wins" class="windows"></div></div>
+    </div><div class="tv-strip"><strong>UP NEXT</strong><div id="chips" class="row"></div></div>
+    <div class="announcement"><strong>ANNOUNCEMENT</strong><span id="ann" aria-live="polite">Please keep your queue number until called.</span></div></div>
+  </section>
+  <section id="staff" class="hide">
+    <div class="page-head"><div><span class="eyebrow">TIPON FEDERATION · OPERATIONS</span><h1>Staff Console</h1><p>Validate recruitment documents, manage dedicated member service windows, and call waiting applicants.</p></div></div>
+    <div class="tiles">
+      <div class="metric"><span>Pre-screening requests</span><strong id="metricPre">0</strong><small>Awaiting staff verification</small></div>
+      <div class="metric"><span>Waiting applicants</span><strong id="metricWait">0</strong><small>Approved queue numbers</small></div>
+      <div class="metric"><span>Now serving</span><strong id="metricServing">0</strong><small>Active service windows</small></div>
+    </div>
+    <div class="card"><div class="split"><div><h2>Document Pre-screening</h2><p>Staff must check the applicant's actual ID and recruitment requirements before issuing a queue number.</p></div><span class="pill">PHASE 1 · DOCUMENT VERIFICATION</span></div><div id="precheckList" class="table-wrap"></div></div>
+    <div class="card"><div class="split"><div><h2>Service Windows</h2><p>Recruitment and Member Concerns are routed separately. Window 3 defaults to Member Concerns.</p></div><div class="row"><span class="pill" id="wc">3 WINDOWS</span><button id="addWin" class="btn success" type="button">+ Add Window</button></div></div><div id="staffWins" class="window-grid"></div></div>
+    <div class="card"><h2>TV Announcement</h2><p>Editable message synchronized to the TV display through Google Sheets.</p>
+      <label class="field" for="announcementInput">Announcement message<textarea id="announcementInput" maxlength="280" rows="3" placeholder="Type the announcement"></textarea></label>
+      <div class="split" style="margin-top:13px"><small id="announcementCount" class="muted">0 / 280 characters</small><div class="buttons"><button class="btn ghost" id="announcementReset" type="button">Restore Default</button><button class="btn success" id="announcementSave" type="button">Save Announcement</button></div></div>
+    </div>
+    <div class="grid">
+      <div class="card"><h2>Add Transaction Type</h2><div class="grid" style="margin-top:12px"><label class="field" for="newCode">Code<input id="newCode" maxlength="6" placeholder="INQ"></label><label class="field" for="newName">Name<input id="newName" maxlength="60" placeholder="Inquiry"></label></div><button id="addTx" class="btn success" type="button" style="margin-top:14px">+ Add Transaction</button></div>
+      <div class="card"><h2>Applicant Routing</h2><p>Recruitment: form → document self-check → staff verification → queue number → recruitment window.</p><p>Member concerns: select Member Concerns → get an MC queue number → dedicated window for COE, payout, and other inquiries.</p></div>
+    </div>
+    <div class="card"><h2>Waiting Queue</h2><p>Applicants who already have queue numbers.</p><div class="table-wrap"><table><thead><tr><th>Queue</th><th>Name</th><th>Transaction</th><th>Purpose</th></tr></thead><tbody id="wt"></tbody></table></div></div>
+  </section>
+  <section id="setup" class="hide">
+    <div class="page-head"><div><span class="eyebrow">SYSTEM CONFIGURATION</span><h1>Setup &amp; Connections</h1><p>Connection errors and technical notices appear only on this page, not on the TV Display.</p></div></div>
+    <div id="setupAlert" class="status" role="alert">Checking backend connection…</div>
+    <div class="card"><h2>Google Apps Script Connection</h2><p>Backend v4 is required for announcement editing, pre-screening, and dedicated service routing.</p>
+      <label class="field" for="api">Apps Script Web App URL (/exec)<input id="api" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec"></label>
+      <div class="buttons" style="margin-top:13px"><button id="save" class="btn primary" type="button">Save Connection</button><button id="test" class="btn" type="button">Test Connection</button><button id="clear" class="btn ghost" type="button">Clear</button></div>
+      <div class="setup-guide"><b>How to fix “Unknown action”:</b> Open the deployed Apps Script project, replace Code.gs with the <a target="_blank" rel="noopener" href="https://github.com/jericknoelsabang-hue/tipon-queuing-system/blob/main/apps-script/Code.gs">latest GitHub Code.gs</a>, run <code>setupTiponQueueSystem</code>, then choose <b>Deploy → Manage deployments → Edit → New version → Deploy</b>. Keep the same /exec URL.</div>
+    </div>
+    <div class="card"><div class="split"><div><h2>Display Controls</h2><p>Refresh the TV queue or unlock sound on this specific TV computer.</p></div><div class="buttons"><button id="refresh" class="btn" type="button">Refresh Queue</button><button id="sound" class="btn primary" type="button">Enable / Test Sound</button></div></div></div>
+    <div class="card"><h2>Database &amp; Technical Notes</h2><p>Google Sheet: <a href="https://docs.google.com/spreadsheets/d/1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik/edit" target="_blank" rel="noopener">TIPON Queuing Database</a>. Tabs: QUEUE, WINDOWS, TRANSACTION_TYPES, SETTINGS, PRECHECK.</p><p><b>Security:</b> Staff actions are currently PIN-free as requested. Access to the public Apps Script deployment is not authenticated. Do not use this configuration for sensitive production operations without server-side staff authorization.</p><p><b>OCR:</b> Document recognition is a planned future phase, not yet implemented.</p></div>
+  </section>
 </main>
-<script>
-(()=>{'use strict';const C=window.TIPON_CONFIG||{},$=x=>document.getElementById(x),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let S={windowCount:3,maxWindowCount:20,windows:{},waiting:[],transactions:[],announcement:''},seq=0,last={},monitoringReady=false,dirtyAnnouncement=false,filters={},qrData='',armed=localStorage.getItem('tqSound')==='1',ctx=null;
-function url(){return new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||''}function okUrl(){return /^https:\/\/script\.google\.com\//.test(url())}function st(t,k=''){const e=$('status');e.textContent=t;e.className='status '+k}function view(v){['display','join','staff','setup'].forEach(x=>$(x).classList.toggle('hide',x!==v));document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===v))}document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>view(b.dataset.v));
-function jp(a,p={}){return new Promise((res,rej)=>{if(!url())return rej(Error('Apps Script URL not configured.'));const cb='__q'+Date.now()+(++seq),s=document.createElement('script'),tm=setTimeout(()=>done(Error('Connection timed out.')),15000);function done(e,d){clearTimeout(tm);delete window[cb];s.remove();e?rej(e):res(d)}window[cb]=d=>done(null,d);s.onerror=()=>done(Error('Connection failed.'));const u=new URL(url());u.searchParams.set('action',a);u.searchParams.set('callback',cb);Object.entries(p).forEach(([k,v])=>u.searchParams.set(k,v));s.src=u;document.head.appendChild(s)})}
-async function refresh(silent=false){if(!okUrl()){render();if(!silent)st('Setup required: paste Apps Script /exec URL.');return}try{const r=await jp('state');if(!r.ok)throw Error(r.error);if(r.state?.version!=='federation-v3')throw Error('Redeploy the latest Code.gs (Federation v3) to enable announcements and no-PIN controls.');S=r.state;render();st('Connected to TIPON Federation.','ok')}catch(e){if(!silent)st(e.message,'err')}}
-function txs(){return S.transactions||[]}function w(i){return S.windows?.[String(i)]||null}
-function render(){renderTx();renderWins();renderWaiting();renderStaff();renderAnnouncement();renderQR()}
-function renderTx(){const e=$('tx'),old=e.value;e.innerHTML=txs().map(t=>'<option value="'+esc(t.code)+'">'+esc(t.code)+' · '+esc(t.name)+'</option>').join('');if(txs().some(t=>t.code===old))e.value=old}
-function renderWins(){$('wins').innerHTML=Array.from({length:Number(S.windowCount||3)},(_,x)=>x+1).map(i=>{const a=w(i);return '<div class="win"><b>WINDOW '+i+'</b>'+(a?'<div class="badge">'+esc(a.transactionName)+'</div><div class="qno">'+esc(a.queueNo)+'</div><div class="name">'+esc(a.name)+'</div><div>'+esc(a.position)+'</div>':'<div class="qno" style="color:#b9c4cc">---</div><b>WAITING</b>')+'</div>'}).join('');detect()}
-function detect(){for(let i=1;i<=Number(S.windowCount||3);i++){const a=w(i),k=a?a.ticketId+'|'+a.calledAt:'';if(monitoringReady&&k&&last[i]!==k)announce(a,i);last[i]=k}monitoringReady=true}
-function renderWaiting(){const q=S.waiting||[];$('chips').innerHTML=q.length?q.map(x=>'<span class="chip">'+esc(x.queueNo)+'</span>').join(''):'<span class="mut">No waiting queue</span>';$('wt').innerHTML=q.length?q.map(x=>'<tr><td><b>'+esc(x.queueNo)+'</b></td><td>'+esc(x.name)+'</td><td>'+esc(x.transactionName)+'</td><td>'+esc(x.position)+'</td></tr>').join(''):'<tr><td colspan="4">No waiting applicants.</td></tr>'}
-function renderStaff(){$('wc').textContent=S.windowCount+' active';$('addWin').disabled=Number(S.windowCount)>=Number(S.maxWindowCount||20);$('staffWins').innerHTML=Array.from({length:Number(S.windowCount||3)},(_,x)=>x+1).map(i=>{const a=w(i),selected=filters[i]||'ALL';return '<div class="sw"><h3>Window '+i+'</h3><div class="cur">'+(a?'<b>'+esc(a.queueNo)+'</b><br>'+esc(a.name)+'<br><span class="mut">'+esc(a.transactionName)+'</span>':'<span class="mut">No active applicant</span>')+'</div><div class="filters"><select aria-label="Transaction for window '+i+'" data-tf="'+i+'"><option value="ALL">Any transaction</option>'+txs().map(t=>'<option value="'+esc(t.code)+'"'+(selected===t.code?' selected':'')+'>'+esc(t.code)+' · '+esc(t.name)+'</option>').join('')+'</select></div><div class="acts"><button type="button" class="btn p" data-a="call" data-w="'+i+'" '+(a?'disabled':'')+'>Call Next</button><button type="button" class="btn" data-a="recall" data-w="'+i+'" '+(a?'':'disabled')+'>Recall</button><button type="button" class="btn r wide" data-a="complete" data-w="'+i+'" '+(a?'':'disabled')+'>Complete</button></div></div>'}).join('');document.querySelectorAll('[data-tf]').forEach(e=>e.onchange=()=>{filters[e.dataset.tf]=e.value});document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>action(b.dataset.a,Number(b.dataset.w)))}
-function renderAnnouncement(){const value=String(S.announcement||'Please keep your queue number until called.');$('ann').textContent=value;const edit=$('announcementInput');if(!dirtyAnnouncement&&document.activeElement!==edit)edit.value=value;$('announcementCount').textContent=edit.value.length+' / 280 characters'}
-function renderQR(){const u=new URL(C.pagesUrl||location.href);u.searchParams.set('view','join');if(url())u.searchParams.set('api',url());const d=u.toString();if(qrData!==d){qrData=d;$('qr').src='https://api.qrserver.com/v1/create-qr-code/?size=350x350&data='+encodeURIComponent(d)}}
-function ding(){try{const A=window.AudioContext||window.webkitAudioContext;ctx=ctx||new A();ctx.resume?.();const t=ctx.currentTime;[[660,0],[880,.18]].forEach(([f,o])=>{const z=ctx.createOscillator(),g=ctx.createGain();z.frequency.value=f;g.gain.setValueAtTime(.001,t+o);g.gain.exponentialRampToValueAtTime(.2,t+o+.02);g.gain.exponentialRampToValueAtTime(.001,t+o+.25);z.connect(g);g.connect(ctx.destination);z.start(t+o);z.stop(t+o+.27)})}catch{}}
-function announce(a,i){const label='Now serving '+a.queueNo+', '+a.name+', please proceed to Window '+i+'.';$('callNotice').textContent=label;$('callNotice').classList.remove('hide');if(!armed)return;ding();if('speechSynthesis'in window){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance('Queue number '+a.queueNo.replace('-',' ')+', '+a.name+', please proceed to window '+i+'.');u.rate=.9;setTimeout(()=>speechSynthesis.speak(u),350)}}
-$('sound').onclick=()=>{armed=true;localStorage.setItem('tqSound','1');ding();st('Sound enabled on this device. Keep this browser open for announcements.','ok')};$('refresh').onclick=()=>refresh();
-$('form').onsubmit=async e=>{e.preventDefault();if(!okUrl())return view('setup');const f=new FormData(e.target);try{const r=await jp('register',{firstName:f.get('firstName'),lastName:f.get('lastName'),position:f.get('position'),transaction:f.get('transaction')});if(!r.ok)throw Error(r.error);$('ticketNo').textContent=r.ticket.queueNo;$('ticketInfo').innerHTML='<b>'+esc(r.ticket.name)+'</b><br>'+esc(r.ticket.transactionName)+' · TIPON Federation'+(r.duplicate?'<br><span class="mut">Existing active queue number returned.</span>':'');$('ticket').classList.remove('hide');st(r.duplicate?'Existing queue number returned.':'Queue number created.','ok');refresh(true)}catch(x){st(x.message,'err')}};
-async function action(a,i){const card=$('staffWins').children[i-1],tf=card.querySelector('[data-tf]').value;try{const r=await jp(a,{window:i,transaction:tf});if(!r.ok)throw Error(r.error);if((a==='call'||a==='recall')&&r.ticket){announce(r.ticket,i);last[i]=r.ticket.ticketId+'|'+r.ticket.calledAt}refresh(true)}catch(x){st(x.message,'err')}}
-$('addWin').onclick=async()=>{try{const r=await jp('addWindow');if(!r.ok)throw Error(r.error);refresh()}catch(x){st(x.message,'err')}};$('addTx').onclick=async()=>{try{const r=await jp('addTx',{code:$('newCode').value,name:$('newName').value});if(!r.ok)throw Error(r.error);$('newCode').value='';$('newName').value='';refresh()}catch(x){st(x.message,'err')}};
-
-const defaultAnnouncement='Please keep your queue number until called.';
-const announcementInput=$('announcementInput');
-announcementInput.addEventListener('input',()=>{dirtyAnnouncement=true;$('announcementCount').textContent=announcementInput.value.length+' / 280 characters'});
-async function saveAnnouncement(message){
-  if(!okUrl()){view('setup');st('Connect the latest Apps Script backend before saving announcements.','err');return}
-  const value=String(message??'').trim();
-  if(!value||value.length>280){st('Announcement must contain 1 to 280 characters.','err');return}
-  const saveButton=$('announcementSave'),resetButton=$('announcementReset');
-  saveButton.disabled=resetButton.disabled=true;
-  try{const r=await jp('setAnnouncement',{message:value});if(!r.ok)throw Error(r.error);
-    S.announcement=r.announcement;dirtyAnnouncement=false;announcementInput.value=r.announcement;renderAnnouncement();st('TV announcement saved and synced.','ok');
-    await refresh(true);
-  }catch(e){st('Announcement not saved: '+e.message,'err')}finally{saveButton.disabled=resetButton.disabled=false}
-}
-$('announcementSave').onclick=()=>saveAnnouncement(announcementInput.value);
-$('announcementReset').onclick=()=>saveAnnouncement(defaultAnnouncement);
-const fullscreen=$('fullscreen');
-function reflectFullscreen(){const expanded=document.fullscreenElement===$('display');fullscreen.textContent=expanded?'Exit Full Screen':'⛶ Full Screen';fullscreen.setAttribute('aria-pressed',expanded?'true':'false')}
-fullscreen.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if($('display').requestFullscreen)await $('display').requestFullscreen();else throw Error('Full screen is not supported in this browser.');reflectFullscreen()}catch(e){st('Full screen unavailable: '+e.message,'err')}};
-document.addEventListener('fullscreenchange',reflectFullscreen);
-const brandImg=$('brandImg');brandImg.onerror=()=>{$('brandLogo').classList.add('failed')};
-if(brandImg.complete&&!brandImg.naturalWidth)$('brandLogo').classList.add('failed');
-$('save').onclick=()=>{const v=$('api').value.trim();if(!/^https:\/\/script\.google\.com\//.test(v))return alert('Paste the /exec URL.');localStorage.setItem('tqApi',v);refresh();renderQR()};$('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(r.version!=='federation-v3')throw Error('Redeploy the latest Apps Script backend (Federation v3).');st('Connected to TIPON Federation · '+r.windows+' window(s).','ok')}catch(x){st(x.message,'err')}};$('clear').onclick=()=>{localStorage.removeItem('tqApi');$('api').value='';st('Backend URL cleared.')};$('api').value=url();
-const updateClock=()=>{$('clock').textContent=new Date().toLocaleTimeString('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit'})};updateClock();setInterval(updateClock,1000);const sv=new URLSearchParams(location.search).get('view');if(['display','join','staff','setup'].includes(sv))view(sv);refresh();setInterval(()=>refresh(true),2500);
-})();
-</script></body></html>
+<footer class="footer">tipón Federation · WIN AS A TEAM · Smart Queue Management</footer>
+</body></html>
