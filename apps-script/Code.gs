@@ -338,7 +338,22 @@ function state_(p){
   }
   const q=ss.getSheetByName(CFG.queue),waiting=[],completed=[],today=day_();
   const includeCompleted=!(p&&p.view)||String(p.view)==='staff';
-  if(q.getLastRow()>1)q.getRange(2,1,q.getLastRow()-1,QH.length).getValues().forEach(row=>{
+  const rowCount=Math.max(0,q.getLastRow()-1);
+  let queueRows=[];
+  if(rowCount>0){
+    if(!includeCompleted&&rowCount>800){
+      // TV/Setup need today's waiting tickets, not every historic completed record.
+      // Reading one date column first avoids transferring 18 columns of old records.
+      // Find the earliest row for today even when dates are not perfectly grouped.
+      const dateCells=q.getRange(2,2,rowCount,1).getValues();
+      const firstToday=dateCells.findIndex(r=>dayCell_(r[0])===today);
+      if(firstToday>=0)queueRows=q.getRange(firstToday+2,1,rowCount-firstToday,QH.length).getValues();
+    }else{
+      // Keep the original full-history behavior for the Staff Completed Queue.
+      queueRows=q.getRange(2,1,rowCount,QH.length).getValues();
+    }
+  }
+  queueRows.forEach(row=>{
     if(dayCell_(row[1])===today&&String(row[10])==='WAITING')waiting.push(ticket_(row));
     if(includeCompleted&&String(row[10])==='COMPLETED')completed.push(ticket_(row));
   });
@@ -349,7 +364,7 @@ function state_(p){
     federationMode:true,version:'federation-v9'};
   try{
     const json=JSON.stringify(result);
-    if(cache&&json.length<28000)cache.put(cacheKey,json,4);
+    if(cache&&json.length<28000)cache.put(cacheKey,json,2);
   }catch(e){/* A large queue or a transient cache error falls back to direct Sheets reads. */}
   return result;
 }
