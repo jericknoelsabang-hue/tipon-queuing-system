@@ -63,3 +63,88 @@ header{background:#fff;border-top:4px solid var(--gold);border-bottom:1px solid 
 }
 @media(max-width:520px){.brand-meta{display:none}.tipon-logo{width:157px}.announcement-item strong,.announcement-item span{font-size:15px}}
 @media(prefers-reduced-motion:reduce){.announcement-track{animation:none!important;transform:none!important}.announcement-item[aria-hidden="true"]{display:none}}
+
+
+/* 2026-10-30 queue management and responsive TV refinements */
+.site-header{background:#fff;border-top:4px solid var(--gold)}
+.site-header .head{max-width:1760px;min-height:134px;padding:16px 28px;gap:35px}
+.site-header .brand{min-width:0;gap:24px}
+.site-header .tipon-logo{width:250px;max-width:none;max-height:100px;flex:none}
+.brand-copy{min-width:0}.brand-copy .eyebrow{color:#087bad;font-size:11px;letter-spacing:.12em}
+.brand-copy h1{font:750 clamp(25px,2.6vw,40px)/1.2 Poppins,sans-serif;color:#073f5f;margin:4px 0}
+.brand-copy p{font-size:clamp(11px,1vw,14px);color:#54798f;margin:0}
+.site-header .clock{flex:none;line-height:1.3}
+.site-header .clock small,.fullscreen-datetime small{font:800 12px Manrope,sans-serif;color:#6d899a;letter-spacing:.09em}
+.site-header #headerDay{font:800 clamp(14px,1.4vw,21px) Manrope,sans-serif;color:#315b73}
+.site-header #clock{font:800 clamp(27px,2.7vw,44px) Poppins,sans-serif;color:#075b87;line-height:1.2}
+.shell{max-width:1760px}
+.display-actions{display:flex;justify-content:flex-end;margin:0 0 13px}
+.tv{min-height:620px}
+.tv-inner{grid-template-columns:minmax(305px,360px) minmax(0,1fr);gap:23px;align-items:stretch}
+.qr-panel{padding:24px}
+.qr-frame{height:318px;width:318px;border-width:8px}
+#qr img,#qr canvas{width:300px!important;height:300px!important}
+.windows{grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:17px}
+.window{min-height:240px;padding:18px 13px}
+.tv-strip{width:100%;min-height:80px;padding:17px 22px;gap:20px}
+.tv-strip strong{font-size:14px}.chip{font-size:16px;padding:10px 16px}
+.announcement{display:flex!important;min-height:70px;padding:0 19px;gap:22px;white-space:normal;align-items:center;overflow:hidden}
+.announcement-label{flex:none;color:#ffcf7a!important;font:800 16px Manrope,sans-serif!important;letter-spacing:.04em}
+.announcement-message{flex:1;min-width:0;overflow:hidden}
+.announcement-track{animation:none;width:100%;display:block;min-height:0;transform:none;will-change:auto}
+.announcement-track span{display:inline!important;white-space:normal;color:#fff;font-size:clamp(15px,1.5vw,20px);font-weight:600}
+#annCopy{display:none!important}
+.announcement-message.marquee .announcement-track{display:flex;width:max-content;min-height:55px;align-items:center;animation:announcementMove 24s linear infinite}
+.announcement-message.marquee .announcement-track span{display:block!important;white-space:nowrap;flex:none;padding-right:60px}
+.announcement-message.marquee #annCopy{display:block!important}
+.window-grid{grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:17px}
+.recruiter-label{font-size:12px!important;margin:8px 0 0!important}
+.actions-cell{white-space:nowrap}.actions-cell .btn{margin-right:7px}
+.pager{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:14px}
+.pager span,.table-count{font-size:12px;color:#66889b;font-weight:800}
+.queue-table-card table{min-width:780px}
+.inline-editor{background:#f4f9fc;border:1px solid #dbe8ee;padding:21px;border-radius:14px;margin-top:18px}
+.inline-editor h3{font:700 16px Poppins,sans-serif;margin:0 0 13px}
+.inline-editor .buttons{margin-top:14px}
+#display:fullscreen{background:#073957;padding:12px 18px;overflow:auto}
+#display:fullscreen .tv-full-head{display:flex;align-items:center;justify-content:space-between;min-height:115px;margin:0 0 12px;padding:13px 20px;gap:24px;background:#fff;border-radius:13px}
+#display:fullscreen .fullscreen-brand{display:flex;align-items:center;gap:22px;min-width:0}
+#display:fullscreen .fullscreen-brand img{height:78px;width:220px;max-width:none;object-fit:contain}
+#display:fullscreen .brand-copy h1{color:#073f5f;font-size:clamp(21px,2.2vw,36px);margin:2px 0}
+#display:fullscreen .brand-copy p{color:#54798f}
+#display:fullscreen .fullscreen-datetime{flex:none;display:flex;align-items:flex-end;flex-direction:column;text-align:right;line-height:1.3}
+#fullscreenDate{font:800 clamp(13px,1.3vw,20px) Manrope,sans-serif;color:#2d5c76;letter-spacing:0}
+#fullscreenTime{font:800 clamp(27px,2.7vw,43px) Poppins,sans-serif;color:#075b87}
+#display:fullscreen .display-actions{margin-bottom:10px}
+#display:fullscreen .tv{min-height:0;overflow:visible}
+#display:fullscreen .tv-inner{grid-template-columns:minmax(310px,24%) minmax(0,1fr);gap:20px;align-items:stretch}
+#display:fullscreen .qr-panel{padding:16px}
+#display:fullscreen .windows{gap:14px;grid-template-columns:repeat(auto-fit,minmax(195px,1fr))}
+#display:fullscreen .tv-strip{min-height:75px}
+#display:fullscreen .announcement{min-height:74px}
+@media(max-width:1100px){
+ .site-header .head{padding:14px 17px}
+ .site-header .tipon-logo{width:180px}.brand-copy h1{font-size:24px}
+ .tv-inner{grid-template-columns:300px minmax(0,1fr)}
+ #display:fullscreen .tv-inner{grid-template-columns:300px minmax(0,1fr)}
+ #display:fullscreen .fullscreen-brand img{width:150px;height:60px}
+}
+@media(max-width:760px){
+ .site-header .head{align-items:flex-start;flex-wrap:wrap;min-height:0;gap:10px;padding:12px}
+ .site-header .tipon-logo{width:140px}.site-header .brand{gap:11px}
+ .brand-copy h1{font-size:20px}.brand-copy p{font-size:10px}
+ .brand-copy .eyebrow{font-size:8px}
+ .site-header .clock{margin-left:auto}
+ .site-header #clock{font-size:24px}.site-header #headerDay{font-size:12px}
+ .tv-inner,#display:fullscreen .tv-inner{grid-template-columns:1fr}
+ .qr-frame{width:290px;height:290px}
+ #qr img,#qr canvas{width:272px!important;height:272px!important}
+ .windows,#display:fullscreen .windows{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ .announcement{gap:10px;padding:12px;flex-wrap:wrap}
+ .announcement-label{font-size:13px!important}
+ #display:fullscreen .tv-full-head{flex-wrap:wrap}
+ #display:fullscreen .fullscreen-brand img{width:125px}
+ #display:fullscreen .fullscreen-datetime{margin-left:auto}
+}
+@media(max-width:430px){.site-header .brand{flex-wrap:wrap}.site-header .tipon-logo{width:145px}.brand-copy p{display:none}.windows{grid-template-columns:1fr 1fr}.window{min-height:180px}}
+@media(prefers-reduced-motion:reduce){.announcement-message.marquee .announcement-track{animation:none!important}}
