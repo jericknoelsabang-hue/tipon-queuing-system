@@ -37,3 +37,44 @@ function tv(){const count=Number(S.windowCount||3),indexes=Array.from({length:co
  if(initialized){for(const i of indexes){const t=win(i),key=t?t.ticketId+'|'+t.calledAt:'';if(key&&key!==last[i])announce(t,i);last[i]=key}}
  else{indexes.forEach(i=>{const t=win(i);last[i]=t?t.ticketId+'|'+t.calledAt:''});initialized=true}
 }
+function announceEditor(){const e=$('announcementInput');if(!dirty&&document.activeElement!==e)e.value=S.announcement||DEFAULT;$('announcementCount').textContent=e.value.length+' / 280 characters'}
+function pending(){const list=S.prechecks||[];$('metricPre').textContent=list.length;$('metricWait').textContent=(S.waiting||[]).length;
+ $('metricServing').textContent=Array.from({length:Number(S.windowCount||3)},(_,i)=>win(i+1)).filter(Boolean).length;
+ $('precheckList').innerHTML=list.length?'<table><thead><tr><th>Reference</th><th>Name / Purpose</th><th>Transaction</th><th>Document check</th></tr></thead><tbody>'+
+ list.map(x=>'<tr><td><b>'+esc(x.reference)+'</b></td><td>'+esc(x.name)+'<br><small>'+esc(x.position)+'</small></td><td>'+esc(x.transaction)+'</td><td><div class="buttons"><button class="btn success sm" type="button" data-check="approve" data-id="'+esc(x.precheckId)+'">Approve</button><button class="btn danger sm" type="button" data-check="reject" data-id="'+esc(x.precheckId)+'">Incomplete</button></div></td></tr>').join('')+'</tbody></table>':
+ '<p class="empty">No pending pre-screening requests. Applicant records will appear here for verification.</p>';
+ document.querySelectorAll('[data-check]').forEach(e=>e.onclick=()=>review(e.dataset.check==='approve',e.dataset.id))
+}
+function staff(){const n=Number(S.windowCount||3);$('wc').textContent=n+' WINDOWS';$('addWin').disabled=n>=Number(S.maxWindowCount||20);
+ $('staffWins').innerHTML=Array.from({length:n},(_,idx)=>{const i=idx+1,t=win(i),mode=S.routes?.[String(i)]||(i===3?'MC':'RECRUITMENT'),chosen=filters[i]||'ALL',options=(S.transactions||[]).filter(x=>mode==='MC'?x.code==='MC':mode==='RECRUITMENT'?x.code!=='MC':true);
+ return '<div class="window-card"><div class="split"><h3>Window '+i+'</h3><span class="pill '+(mode==='MC'?'warm':'')+'">'+(mode==='MC'?'Member Concerns':mode==='RECRUITMENT'?'Recruitment':'All Services')+'</span></div>'+
+ '<div class="current">'+(t?'<b class="current-no">'+esc(t.queueNo)+'</b><strong>'+esc(t.name)+'</strong><small>'+esc(t.transactionName)+'</small>':'<small class="muted">No active applicant</small>')+'</div>'+
+ '<label class="field">Assigned service<select data-route="'+i+'"><option value="RECRUITMENT"'+(mode==='RECRUITMENT'?' selected':'')+'>Recruitment</option><option value="MC"'+(mode==='MC'?' selected':'')+'>Member Concerns</option><option value="ALL"'+(mode==='ALL'?' selected':'')+'>All Services</option></select></label>'+
+ '<label class="field">Transaction filter<select data-filter="'+i+'"><option value="ALL">Any transaction</option>'+options.map(x=>'<option value="'+esc(x.code)+'"'+(chosen===x.code?' selected':'')+'>'+esc(x.code)+' · '+esc(x.name)+'</option>').join('')+'</select></label>'+
+ '<div class="window-actions"><button class="btn primary" data-action="call" data-win="'+i+'" type="button"'+(t?' disabled':'')+'>Call Next</button><button class="btn ghost" data-action="recall" data-win="'+i+'" type="button"'+(!t?' disabled':'')+'>Recall</button><button class="btn danger wide" data-action="complete" data-win="'+i+'" type="button"'+(!t?' disabled':'')+'>Complete</button></div></div>'
+ }).join('');
+ document.querySelectorAll('[data-route]').forEach(e=>e.onchange=()=>route(+e.dataset.route,e.value));
+ document.querySelectorAll('[data-filter]').forEach(e=>e.onchange=()=>{filters[+e.dataset.filter]=e.value});
+ document.querySelectorAll('[data-action]').forEach(e=>e.onclick=()=>queueAction(e.dataset.action,+e.dataset.win));
+ const q=S.waiting||[];$('wt').innerHTML=q.length?q.map(x=>'<tr><td><b>'+esc(x.queueNo)+'</b></td><td>'+esc(x.name)+'</td><td>'+esc(x.transactionName)+'</td><td>'+esc(x.position)+'</td></tr>').join(''):'<tr><td colspan="4" class="empty">No waiting applicants</td></tr>';
+}
+function render(){tv();pending();staff();announceEditor();qr()}
+async function refresh(silent=false){if(loading)return;loading=true;try{
+ if(!valid(url())){if(!silent)status('No backend configured. Paste Apps Script /exec URL in Setup.','err');render();return}
+ const response=await jp('state');if(!response.ok)throw Error(response.error||'Failed to fetch queue.');S=response.state;render();
+ if(S.version!==REQUIRED)status('Backend is outdated. Deploy Federation v4 Apps Script to activate new features.','err');
+ else status('Connected to TIPON Federation • '+REQUIRED+' • Synced '+new Date().toLocaleTimeString('en-PH',{timeZone:'Asia/Manila'}),'ok')
+ }catch(e){if(!silent||page==='setup')error(e)}finally{loading=false}}
+function ding(){try{const A=window.AudioContext||window.webkitAudioContext;audio=audio||new A();audio.resume?.();
+ const t=audio.currentTime;[[660,0],[880,.18]].forEach(([f,offset])=>{const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=f;g.gain.setValueAtTime(.001,t+offset);g.gain.exponentialRampToValueAtTime(.2,t+offset+.03);g.gain.exponentialRampToValueAtTime(.001,t+offset+.25);o.connect(g);g.connect(audio.destination);o.start(t+offset);o.stop(t+offset+.27)})}catch{}}
+function announce(ticket,i){const message='Queue '+ticket.queueNo+', '+ticket.name+', please proceed to Window '+i+'.';$('callNotice').textContent=message;$('callNotice').classList.remove('hide');
+ if(!armed)return;ding();if('speechSynthesis' in window){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(message);u.rate=.92;u.lang='en-PH';setTimeout(()=>speechSynthesis.speak(u),340)}}
+async function operate(action,params={},after){if(!ready())return null;
+ try{const r=await jp(action,params);if(!r.ok)throw Error(r.error||'Request failed.');if(after)after(r);await refresh(true);return r}
+ catch(e){error(e,true);return null}}
+async function review(approve,id){let note='';if(approve){if(!confirm('Have you physically checked this applicant’s documents? Approve and issue the queue number?'))return}
+ else{const txt=prompt('List missing documents (visible to applicant):','Please complete the required documents.');if(txt===null)return;note=txt}
+ await operate(approve?'approvePrecheck':'rejectPrecheck',{precheckId:id,note})}
+async function queueAction(action,i){const filter=document.querySelector('[data-filter="'+i+'"]');const transaction=filter?.value||'ALL';
+ await operate(action,{window:i,transaction},r=>{if((action==='call'||action==='recall')&&r.ticket){announce(r.ticket,i);last[i]=r.ticket.ticketId+'|'+r.ticket.calledAt}})}
+async function route(i,mode){const r=await operate('setWindowRoute',{window:i,route:mode});if(r)filters[i]='ALL'}
