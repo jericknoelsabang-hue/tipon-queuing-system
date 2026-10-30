@@ -442,3 +442,117 @@ header{background:#fff;border-top:4px solid var(--gold);border-bottom:1px solid 
   #setup .transaction-heading{align-items:stretch;flex-direction:column}
   #setup .transaction-heading #openAddTx{margin-left:0;align-self:stretch}
 }
+
+
+/*
+ * Fullscreen visitor QR: fill the available panel with a scannable code.
+ * White quiet zone remains between the code and its frame for phone scanning.
+ * Desktop side gutters are 12–20px; mobile keeps a comfortable maximum width.
+ */
+#display:fullscreen .tv-inner{
+  grid-template-columns:minmax(398px,31%) minmax(0,1fr);
+  gap:18px;
+  align-items:stretch;
+}
+#display:fullscreen .qr-panel{
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  padding:clamp(12px,1.1vw,20px);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:0;
+  overflow:hidden;
+}
+#display:fullscreen .qr-panel .eyebrow{
+  font-size:clamp(10px,.83vw,14px);
+  letter-spacing:.12em;
+  line-height:1.4;
+}
+#display:fullscreen .qr-panel h2{
+  font-size:clamp(20px,1.55vw,27px);
+  font-weight:800;
+  margin:8px 0 12px;
+  line-height:1.22;
+}
+#display:fullscreen .qr-panel .qr-frame{
+  box-sizing:border-box;
+  width:100%;
+  max-width:455px;
+  height:auto;
+  aspect-ratio:1 / 1;
+  border:7px solid #f1f7fb;
+  padding:12px; /* QR-code quiet zone, in addition to the frame */
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#fff;
+}
+#display:fullscreen .qr-frame #qr{
+  width:100%;
+  height:100%;
+  min-width:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+#display:fullscreen .qr-frame #qr img,
+#display:fullscreen .qr-frame #qr canvas{
+  box-sizing:border-box;
+  display:block;
+  width:100%!important;
+  height:100%!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain;
+  image-rendering:pixelated;
+}
+#display:fullscreen .qr-panel p{
+  width:100%;
+  max-width:455px;
+  margin:14px auto 0;
+  font-size:clamp(16px,1.22vw,20px);
+  font-weight:800;
+  line-height:1.42;
+  letter-spacing:-.015em;
+  color:#486d84;
+  text-align:center;
+}
+#display:fullscreen .now .windows{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:11px;
+}
+@media(max-width:1260px){
+  #display:fullscreen .tv-inner{
+    grid-template-columns:minmax(330px,33%) minmax(0,1fr);
+  }
+  #display:fullscreen .now .windows{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  #display:fullscreen .qr-panel p{font-size:clamp(15px,1.25vw,18px)}
+}
+@media(max-width:850px){
+  #display:fullscreen .tv-inner{grid-template-columns:minmax(0,1fr)}
+  #display:fullscreen .qr-panel{
+    padding:16px;
+    width:100%;
+    justify-content:center;
+  }
+  #display:fullscreen .qr-panel .qr-frame{
+    width:min(100%,410px);
+    max-width:410px;
+  }
+  #display:fullscreen .qr-panel p{
+    max-width:470px;
+    font-size:clamp(16px,2.3vw,19px);
+  }
+  #display:fullscreen .now .windows{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:420px){
+  #display:fullscreen .qr-panel{padding:12px}
+  #display:fullscreen .qr-panel .qr-frame{padding:10px}
+  #display:fullscreen .qr-panel p{font-size:16px;line-height:1.4}
+}
