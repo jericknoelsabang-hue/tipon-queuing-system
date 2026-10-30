@@ -18,14 +18,15 @@ function setupTiponQueueSystem(){
   const all=allTxs_(ss);
   if(!all.some(t=>t.code==='MC'))ss.getSheetByName(CFG.tx).appendRow(['MC','Member Concerns',true,all.length+1]);
   // A disabled transaction remains disabled after setup.
-  return {ok:true,federationMode:true,version:'federation-v7'};
+  return {ok:true,federationMode:true,version:'federation-v8'};
 }
 function doGet(e){
   const p=e?.parameter||{},cb=String(p.callback||'callback').replace(/[^A-Za-z0-9_.$]/g,'');
   try{
     let r;switch(String(p.action||'state')){
-      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v7'};break;
-      case'state':r={ok:true,state:state_()};break;
+      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v8'};break;
+      case'state':r={ok:true,state:state_(p)};break;
+      case'publicConfig':r=publicConfig_();break;
       case'register':r=register_(p);break;
       case'setWindowTx':r=setWindowTx_(p);break;
       case'call':r=call_(p);break;
@@ -39,6 +40,7 @@ function doGet(e){
       case'restoreTx':r=restoreTx_(p);break;
       case'addTx':r=addTx_(p);break;
       case'setAnnouncement':r=setAnnouncement_(p);break;
+      case'announcementChunk':r=announcementChunk_(p);break;
       default:throw Error('Unknown action');
     }return out_(cb,r);
   }catch(err){return out_(cb,{ok:false,error:String(err.message||err)})}
@@ -282,7 +284,12 @@ function restoreTx_(p){
     return{ok:true,code,active:true};
   }finally{lock.releaseLock()}
 }
-function state_(){
+function publicConfig_(){
+  const ss=ss_();
+  const transactions=txs_(ss);
+  return{ok:true,version:'federation-v8',transactions};
+}
+function state_(p){
   const ss=ss_(),w=ss.getSheetByName(CFG.windows),count=Math.max(0,w.getLastRow()-1);
   const windowData=count?w.getRange(2,1,count,WH.length).getValues():[];
   const n=Math.max(1,Math.min(CFG.maxWindows,windowData.reduce((max,r)=>Math.max(max,Number(r[0])||0),0)||4));
@@ -300,17 +307,17 @@ function state_(){
     recruiters[String(i)]=settingMap.get('WINDOW_RECRUITER_'+i)||'';
   }
   const q=ss.getSheetByName(CFG.queue),waiting=[],completed=[],today=day_();
+  const includeCompleted=!(p&&p.view)||String(p.view)==='staff';
   if(q.getLastRow()>1)q.getRange(2,1,q.getLastRow()-1,QH.length).getValues().forEach(row=>{
     if(dayCell_(row[1])===today&&String(row[10])==='WAITING')waiting.push(ticket_(row));
-    if(String(row[10])==='COMPLETED')completed.push(ticket_(row));
+    if(includeCompleted&&String(row[10])==='COMPLETED')completed.push(ticket_(row));
   });
-  completed.reverse();
+  if(includeCompleted)completed.reverse();
   return{windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,completed,
     transactions:activeTx,transactionTypes:txList,assignments,recruiters,
     announcement:settingMap.get('ANNOUNCEMENT')?.trim()||DEFAULT_ANNOUNCEMENT,
-    federationMode:true,version:'federation-v7'};
+    federationMode:true,version:'federation-v8'};
 }
-
 function announcement_(ss){
   const sheet=ss.getSheetByName(CFG.settings);
   if(!sheet||sheet.getLastRow()<2)return DEFAULT_ANNOUNCEMENT;
@@ -318,10 +325,30 @@ function announcement_(ss){
   const value=rows.find(row=>String(row[0]).trim()==='ANNOUNCEMENT');
   return value&&String(value[1]||'').trim() ? String(value[1]).trim() : DEFAULT_ANNOUNCEMENT;
 }
+function announcementChunk_(p){
+  const batch=String(p.batch||'').replace(/[^A-Za-z0-9_-]/g,'').slice(0,64);
+  const total=int_(p.total,1,40),index=int_(p.index,0,total-1);
+  const chunk=String(p.chunk||'');
+  if(!batch||!chunk||chunk.length>1600)throw Error('Invalid announcement upload chunk.');
+  CacheService.getScriptCache().put('ANNOUNCEMENT_'+batch+'_'+index,chunk,300);
+  return{ok:true,index,total};
+}
 function setAnnouncement_(p){
-  const message=txt_(p.message,280);
+  let raw=String(p.message||'');
+  let cache=null,keys=[];
+  if(p.batch){
+    const batch=String(p.batch||'').replace(/[^A-Za-z0-9_-]/g,'').slice(0,64);
+    const total=int_(p.total,1,40);
+    if(!batch)throw Error('Invalid announcement upload reference.');
+    cache=CacheService.getScriptCache();
+    keys=Array.from({length:total},(_,i)=>'ANNOUNCEMENT_'+batch+'_'+i);
+    const fragments=cache.getAll(keys);
+    if(keys.some(key=>fragments[key]===undefined))throw Error('Announcement upload incomplete. Retry Save Announcement.');
+    raw=keys.map(key=>fragments[key]).join('');
+  }
+  if(raw.length<1||raw.length>2500)throw Error('Announcement must contain 1–2,500 characters.');
+  const message=txt_(raw,2500);
   if(!message)throw Error('Please enter an announcement.');
-  if(String(p.message||'').length>280)throw Error('Announcement must not exceed 280 characters.');
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
     const ss=ss_();
@@ -329,10 +356,11 @@ function setAnnouncement_(p){
     let row=0;
     if(sheet.getLastRow()>1){
       const keys=sheet.getRange(2,1,sheet.getLastRow()-1,1).getValues();
-      for(let i=0;i<keys.length;i++)if(String(keys[i][0]).trim()==='ANNOUNCEMENT'){row=i+2;break;}
+      for(let i=0;i<keys.length;i++)if(String(keys[i][0]).trim()==='ANNOUNCEMENT'){row=i+2;break}
     }
     if(!row)row=sheet.getLastRow()+1;
     sheet.getRange(row,1,1,3).setValues([['ANNOUNCEMENT',message,new Date()]]);
+    if(cache&&keys.length)cache.removeAll(keys);
     return{ok:true,announcement:message};
   }finally{lock.releaseLock()}
 }
