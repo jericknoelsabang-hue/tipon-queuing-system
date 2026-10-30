@@ -249,3 +249,92 @@ header{background:#fff;border-top:4px solid var(--gold);border-bottom:1px solid 
  .window-label{font-size:14px}
  .window small{font-size:12px}
 }
+
+
+/* TV presentation refinements: centered serving header, vertically centered windows */
+.tv{display:flex;flex-direction:column}
+.tv-inner{flex:1;min-height:0}
+.now{display:flex;flex-direction:column;min-width:0}
+.now-title{position:relative;display:flex;align-items:center;justify-content:center;text-align:center;min-height:82px;padding:0 126px;margin-bottom:17px}
+.now-title>div{text-align:center;min-width:0}
+.now-title h2{font:800 clamp(27px,2.65vw,43px)/1.16 Poppins,Manrope,sans-serif;letter-spacing:.085em;text-align:center;margin:0 0 5px}
+.now-title p{font-size:clamp(12px,.95vw,16px);font-weight:650;text-align:center;margin:0}
+.now-title .live{position:absolute;right:0;top:14px}
+.now .windows{flex:1;min-height:0;align-items:stretch;align-content:center;justify-items:stretch;justify-content:center;gap:16px}
+.now .window{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;gap:12px;min-height:290px;padding:25px 12px}
+.now .window-label{font-size:clamp(18px,1.45vw,27px);font-weight:900;letter-spacing:.12em;line-height:1.4}
+.now .window .queue-no{font-size:clamp(66px,5.3vw,104px);font-weight:900;line-height:1.05;margin:4px 0}
+.now .window small{font-size:clamp(16px,1.35vw,24px);font-weight:850;line-height:1.35}
+.now .window strong{font-size:clamp(15px,1.15vw,21px);font-weight:800;line-height:1.3}
+#display:fullscreen .now-title{min-height:88px;margin-bottom:16px}
+#display:fullscreen .now-title h2{font-size:clamp(31px,2.8vw,46px)}
+#display:fullscreen .now .windows{align-items:stretch;align-content:center}
+#display:fullscreen .now .window{height:100%;min-height:340px;justify-content:center}
+#display:fullscreen .now .window-label{font-size:clamp(20px,1.6vw,29px)}
+#display:fullscreen .now .window .queue-no{font-size:clamp(74px,5.2vw,116px);line-height:1.05}
+#display:fullscreen .now .window small{font-size:clamp(18px,1.4vw,25px)}
+/* The ANNOUNCEMENT label never moves: only the message scrolls across the display */
+.announcement,#display:fullscreen .announcement{display:flex!important;align-items:center;gap:23px;min-height:118px;padding:18px 24px;overflow:hidden}
+.announcement-label{flex:none;position:relative;z-index:1;white-space:nowrap}
+.announcement-message{position:relative;flex:1;min-width:0;max-width:100%;overflow:hidden!important;white-space:nowrap!important}
+.announcement-message #ann.announcement-ticker{
+  display:inline-block!important;width:max-content;max-width:none;
+  padding-left:100%;white-space:nowrap!important;overflow-wrap:normal!important;
+  font:800 clamp(21px,1.8vw,34px)/1.3 Manrope,sans-serif!important;
+  animation:tipon-message-scroll 24s linear infinite;
+  will-change:transform
+}
+#display:fullscreen .announcement-message #ann.announcement-ticker{font-size:clamp(24px,1.95vw,37px)!important}
+@keyframes tipon-message-scroll{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+/* Uniform legibility and alignment across operational tables */
+.card table{border-collapse:collapse;width:100%}
+.card table th,.card table td{vertical-align:middle;padding:15px 13px;border-bottom:1px solid #e2edf3;line-height:1.45}
+.card table th{font-size:12px;font-weight:900;letter-spacing:.08em;color:#4b728a}
+.card table td{font-size:14px;font-weight:600;color:#1c4760}
+.card table td b{font-size:14px}
+.card .actions-cell{white-space:nowrap;min-width:170px}
+.card .actions-cell .btn{display:inline-flex;align-items:center;justify-content:center;min-width:66px;margin:2px 7px 2px 0;font-size:12px}
+#setupWins th:nth-child(1),#setupWins td:nth-child(1){white-space:nowrap}
+#setupTx th:nth-child(1),#setupTx td:nth-child(1){width:12%}
+#setupTx th:nth-child(3),#setupTx td:nth-child(3){width:14%}
+#setupTx th:last-child,#setupTx td:last-child{min-width:160px}
+.card h2{font-size:21px}
+.card p{font-size:13px}
+.field{font-size:12px}
+.field input,.field select,.field textarea{font-size:14px}
+.table-count,.pager span{font-size:13px}
+.site-header .brand-copy .eyebrow,#display:fullscreen .fullscreen-brand .eyebrow{font-weight:900}
+.site-header .tipon-logo,#display:fullscreen .fullscreen-brand img{
+  image-rendering:auto;object-fit:contain;filter:contrast(1.04) saturate(1.06)
+}
+@media(max-width:1050px){
+ .now-title{padding:0 85px}
+ .now .window{min-height:265px}
+ .now .window-label{font-size:17px}
+ .now .window small{font-size:15px}
+ .now .window .queue-no{font-size:56px}
+ #display:fullscreen .now .window-label{font-size:18px}
+ #display:fullscreen .now .window small{font-size:17px}
+}
+@media(max-width:760px){
+ .now-title{display:flex;flex-direction:column;min-height:0;padding:4px 0 10px;gap:12px}
+ .now-title .live{position:static;align-self:center}
+ .now-title h2{font-size:27px}
+ .now .windows{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .now .window{min-height:200px;padding:15px 7px}
+ .now .window-label,#display:fullscreen .now .window-label{font-size:15px}
+ .now .window small,#display:fullscreen .now .window small{font-size:13px}
+ .now .window .queue-no,#display:fullscreen .now .window .queue-no{font-size:49px}
+ .announcement,#display:fullscreen .announcement{display:flex!important;flex-direction:column;align-items:stretch;gap:8px;min-height:105px;padding:14px 15px}
+ .announcement-message{width:100%}
+ .announcement-message #ann.announcement-ticker{font-size:20px!important}
+ #display:fullscreen .now .window{min-height:205px}
+ .card table th,.card table td{font-size:12px;padding:11px 9px}
+}
+@media(prefers-reduced-motion:reduce){
+ .announcement-message{white-space:normal!important;overflow:visible!important}
+ .announcement-message #ann.announcement-ticker{
+   animation:none!important;transform:none!important;padding-left:0!important;
+   width:auto!important;white-space:normal!important;will-change:auto
+ }
+}
