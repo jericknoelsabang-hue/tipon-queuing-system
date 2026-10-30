@@ -1,7 +1,7 @@
 /* Standalone public TIPON Queue registration — no TV or staff navigation. */
 (()=>{'use strict';
-const $=id=>document.getElementById(id),C=window.TIPON_CONFIG||{},VERSION='federation-v6';
-let service='recruitment',seq=0;
+const $=id=>document.getElementById(id),C=window.TIPON_CONFIG||{},VERSION='federation-v7';
+let service='recruitment',seq=0,memberAvailable=true;
 const apiUrl=()=>new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||'';
 function valid(url){try{const u=new URL(url);return u.origin==='https://script.google.com'&&u.pathname.endsWith('/exec')}catch{return false}}
 function message(text,ok=false){const e=$('message');e.textContent=String(text);e.className='message'+(ok?' ok':'')}
@@ -17,6 +17,7 @@ function jp(action,params={}){return new Promise((resolve,reject)=>{
  tag.src=u.href;document.head.appendChild(tag);
 })}
 function choose(next){
+ if(next==='member'&&!memberAvailable){message('Member Concern is currently unavailable. Please ask reception staff.');return}
  service=next;const recruitment=service==='recruitment';
  $('chooseRecruitment').classList.toggle('chosen',recruitment);
  $('chooseMember').classList.toggle('chosen',!recruitment);
@@ -64,7 +65,16 @@ async function loadTransactions(){
  try{
   const res=await jp('state');if(!res.ok)throw Error(res.error);
   if(res.state?.version!==VERSION){message('The queuing system is awaiting its backend update. Please ask staff for assistance.');return}
-  const tx=(res.state.transactions||[]).filter(t=>t.code!=='MC');
+  const active=res.state.transactions||[];
+  memberAvailable=active.some(t=>t.code==='MC');
+  $('chooseMember').disabled=!memberAvailable;
+  $('chooseMember').setAttribute('aria-disabled',String(!memberAvailable));
+  if(!memberAvailable&&service==='member'){
+    choose('recruitment');
+    message('Member Concern is temporarily unavailable. Please select Recruitment or ask staff.');
+  }
+  const tx=active.filter(t=>t.code!=='MC');
+  $('chooseRecruitment').disabled=!tx.length;
   if(tx.length){const select=$('transaction'),previous=select.value;select.textContent='';
    for(const item of tx){const o=document.createElement('option');o.value=item.code;o.textContent=item.code+' — '+item.name;select.appendChild(o)}
    if(tx.some(t=>t.code===previous))select.value=previous;
