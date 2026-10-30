@@ -1,52 +1,36 @@
-# TIPON Queuing System
+# TIPON Federation Queuing System
 
-QR-based recruitment/member-service queuing system for GitHub Pages + Google Sheets.
+QR-based TIPON Federation recruitment and member service queue powered by GitHub Pages and Google Sheets.
 
-## Features
-- QR registration from phone
-- MPC selection
-- Default transactions: **NH - New Hire**, **RH - Rehire**, **TR - Transfer**
-- Staff can add new transaction types
-- Same normalized **First Name + Last Name** reuses the same active queue number on the same day
-- Dynamic service windows with **Add Window**
-- Call Next / Recall / Complete
-- TV display with waiting queue
-- Ding + browser voice announcement
-- Central Google Sheet database
+## Federation update
 
-## Google Sheet
-`TIPON Queuing System Database`
+- One federation-wide queue. **No MPC selection**, MPC filtering, or cooperative-specific QR screen.
+- Redesigned blue-and-white interface with coral and yellow accents, based on the TIPON Federation website: https://tipon.coop/.
+- QR scan registration with name, purpose, transaction, and same-day active-ticket deduplication.
+- Default transactions: **NH - New Hire**, **RH - Rehire**, **TR - Transfer**; staff may add more.
+- Dynamic windows, Call Next, Recall, Complete, live TV waiting queue, chime and voice notifications.
+- No existing records are deleted. Historical MPC columns and data are retained for compatibility, but new entries are marked TIPON Federation.
 
-https://docs.google.com/spreadsheets/d/1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik/edit
+## Critical: Apps Script redeployment required
 
-Tabs:
-- `QUEUE`
-- `WINDOWS`
-- `TRANSACTION_TYPES`
-- `MPC_CONFIG`
-- `SETTINGS`
+GitHub Pages updates **do not update the deployed Google Apps Script**. Until you deploy the updated backend, the frontend correctly displays a Federation-version mismatch rather than submitting incompatible queue records.
 
-## Required one-time Apps Script setup
-1. Open https://script.google.com and create a new project named **TIPON Queuing Backend**.
-2. Replace `Code.gs` with the complete file in `apps-script/Code.gs` from this repository.
-3. Run `setupTiponQueueSystem` once and approve Google authorization.
-4. Change the default staff PIN by running `setTiponStaffPin` from a bound copy or temporarily change `TIPON_STAFF_PIN` through Script Properties. If using the standalone project, the default PIN is `1234` until changed.
-5. Deploy -> New deployment -> Web app.
-   - Execute as: **Me**
-   - Who has access: **Anyone** (or the widest option permitted by the Workspace)
-6. Copy the deployed URL ending in `/exec`.
-7. Open the GitHub Pages app -> **Setup** -> paste the `/exec` URL -> **Save on This Laptop** -> **Test Connection**.
-8. On the TV/laptop display, click **Enable / Test Sound** once so browser audio announcements are allowed.
+1. Open the existing TIPON Queuing Apps Script project.
+2. Copy the entire updated [apps-script/Code.gs](apps-script/Code.gs) into its Code.gs.
+3. Save and run `setupTiponQueueSystem` once. It does not clear your queue history.
+4. Select **Deploy > Manage deployments > Edit > New version > Deploy**.
+5. In the frontend Setup page, reuse or paste the Google Apps Script `/exec` URL.
+6. Click **Test Connection**, then register a test ticket and verify Call Next, Recall and Complete.
+7. On the display device, click **Enable / Test Sound** to unlock browser audio.
 
-The display QR automatically includes the saved backend URL, so applicants who scan the QR use the same central Google Sheet without needing their own setup.
+The backend requires a configured `STAFF_PIN` Script Property; change the default PIN before production use. Do not commit PINs or secret tokens to GitHub.
+
+**Google Sheet:** https://docs.google.com/spreadsheets/d/1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik/edit
+
+The existing `QUEUE`, `WINDOWS`, and `TRANSACTION_TYPES` tabs remain. `MPC_CONFIG` is now a legacy tab and is not read by the new backend.
 
 ## GitHub Pages
-Repository: https://github.com/jericknoelsabang-hue/tipon-queuing-system
 
-Enable: **Settings -> Pages -> Deploy from a branch -> main -> /(root) -> Save**.
-
-Expected URL:
 https://jericknoelsabang-hue.github.io/tipon-queuing-system/
 
-## MPC logos
-Put a public HTTPS image URL in `MPC_CONFIG` -> `Logo URL`. If blank, the app shows an MPC code badge instead of pretending a placeholder is the official logo.
+Configure **Settings > Pages > Deploy from branch > main > /(root)** if not already enabled.
