@@ -3,15 +3,15 @@
 (()=>{'use strict';
 const C=window.TIPON_CONFIG||{}, $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const REQUIRED='federation-v6',DEFAULT='Please keep your queue number until called.';
+const REQUIRED='federation-v7',DEFAULT='Please keep your queue number until called.';
 let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],transactions:[],transactionTypes:[],assignments:{},announcement:DEFAULT,completed:[],recruiters:{}};
-let seq=0,loading=false,qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
+let seq=0,loading=false,queuedRefresh=false,qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
 let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='';
 function url(){return new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||''}
 function valid(u){try{const p=new URL(u);return p.origin==='https://script.google.com'&&p.pathname.endsWith('/exec')}catch{return false}}
 function status(t,k=''){const e=$('setupAlert');e.textContent=t;e.className='status '+k}
 function view(v){page=v;['display','staff','setup'].forEach(x=>$(x).classList.toggle('hide',x!==v));document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===v));$('fullscreen').classList.toggle('hide',v!=='display');if(v==='setup')setupTables()}
-function error(e,go=false){let t=String(e?.message||e||'Unknown error');if(t.includes('Unknown action'))t='Apps Script is outdated (Unknown action). Redeploy Code.gs Federation v6, then click Test Connection.';status(t,'err');if(go)view('setup')}
+function error(e,go=false){let t=String(e?.message||e||'Unknown error');if(t.includes('Unknown action'))t='Apps Script is outdated (Unknown action). Redeploy Code.gs Federation v7, then click Test Connection.';status(t,'err');if(go)view('setup')}
 document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>view(b.dataset.v));
 function jp(action,params={}){return new Promise((resolve,reject)=>{
  if(!valid(url()))return reject(Error('Configure a valid Apps Script /exec URL in Setup.'));
@@ -22,7 +22,7 @@ function jp(action,params={}){return new Promise((resolve,reject)=>{
  const q=new URL(url());q.searchParams.set('action',action);q.searchParams.set('callback',cb);
  Object.entries(params).forEach(([k,v])=>q.searchParams.set(k,String(v??'')));tag.src=q.href;document.head.appendChild(tag);
 })}
-function ready(){if(S.version===REQUIRED)return true;error(Error('Backend is outdated. Deploy the latest Federation v6 Code.gs.'),true);return false}
+function ready(){if(S.version===REQUIRED)return true;error(Error('Backend is outdated. Deploy the latest Federation v7 Code.gs.'),true);return false}
 function joinURL(){const u=new URL('join.html',C.pagesUrl||location.href);if(valid(url()))u.searchParams.set('api',url());return u.href}
 function qr(){const link=joinURL();$('joinLink').href=link;$('getQueueNav').href=link;if(link===qrUrl)return;
  qrUrl=link;const holder=$('qr');holder.innerHTML='';if(typeof QRCode==='undefined'){holder.textContent='QR unavailable';status('QR generator failed to load. Use Open Get Queue link.','err');return}
@@ -44,7 +44,14 @@ function tv(){
     $('chips').innerHTML=q.length?q.slice(0,20).map(t=>'<span class="chip">'+esc(t.queueNo)+'</span>').join(''):'<span class="muted">No applicants waiting</span>';
   }
   const announcement=String(S.announcement||DEFAULT);
-  if($('ann').textContent!==announcement)$('ann').textContent=announcement;
+  const ticker=$('ann');
+  if(ticker.textContent!==announcement){
+    ticker.textContent=announcement;
+    ticker.style.animationDuration=Math.max(18,announcement.length*.23)+'s';
+    ticker.classList.remove('announcement-ticker');
+    void ticker.offsetWidth;
+    ticker.classList.add('announcement-ticker');
+  }
   if(initialized){
     for(const i of indexes){const t=win(i),key=t?t.ticketId+'|'+t.calledAt:'';
       if(key&&key!==last[i])announce(t,i);last[i]=key;
@@ -100,38 +107,46 @@ function setupTables(){
   const list=Array.isArray(S.transactionTypes)&&S.transactionTypes.length?S.transactionTypes:Array.isArray(S.transactions)?S.transactions:[];
   const activeTx=Array.isArray(S.transactions)?S.transactions:[];
   const windows=S.windows||{}, assigns=S.assignments||{}, recruiters=S.recruiters||{};
-  const serving=Object.values(windows).some(Boolean);
+  const canDeleteWindow=i=>!Object.entries(windows).some(([number,ticket])=>Boolean(ticket)&&Number(number)>=i);
   $('setupWc').textContent=connected?n+' WINDOWS':'LOADING';
   $('addWin').disabled=!writable||n>=Number(S.maxWindowCount||20);
   $('addTx').disabled=!writable;
   $('setupListHint').textContent=!valid(url())?'No Apps Script connection configured. Add a valid /exec URL above.':
     !connected?'Connecting to Apps Script… Existing windows and transactions appear when the backend responds.':
-    !writable?'Read-only records loaded from '+S.version+'. Deploy the latest Federation v6 Apps Script to enable edits.':
-    'Connected to Federation v6. Saved windows and transaction types are available for management.';
+    !writable?'Read-only records loaded from '+S.version+'. Deploy the latest Federation v7 Apps Script to enable edits.':
+    'Connected to Federation v7. Saved windows and transaction types are available for management.';
   const trxName=code=>activeTx.find(x=>x.code===code)?.name||list.find(x=>x.code===code)?.name||(code==='ALL'?'Any transaction':code);
   $('setupWins').innerHTML=n?Array.from({length:n},(_,idx)=>{
     const i=idx+1,t=windows[String(i)]||null,tx=assigns[String(i)]||'ALL',name=recruiters[String(i)]||'—';
     return '<tr><td><b>Window '+i+'</b></td><td>'+esc(trxName(tx))+'</td><td>'+esc(name)+'</td><td>'+(t?'Serving '+esc(t.queueNo):'Available')+'</td><td class="actions-cell">'+
       '<button class="btn sm" data-edit-win="'+i+'" type="button"'+(!writable?' disabled':'')+'>Edit</button>'+
-      '<button class="btn sm danger" data-delete-win="'+i+'" type="button"'+(!writable||serving||n<=1?' disabled':'')+' title="'+(serving?'Complete all active service sessions before deleting windows':'Delete this window')+'">Delete</button></td></tr>';
+      '<button class="btn sm danger" data-delete-win="'+i+'" type="button"'+(!writable||!canDeleteWindow(i)||n<=1?' disabled':'')+' title="'+(!canDeleteWindow(i)?'Complete this or later active windows first':'Delete window immediately')+'">Delete</button></td></tr>';
   }).join(''):'<tr><td colspan="5" class="empty">'+(connected?'No windows available. Add a window in Setup.':'Waiting for saved service windows from Apps Script.')+'</td></tr>';
   $('setupTx').innerHTML=list.length?list.map(x=>{
-    const active=x.active!==false,protectedTx=x.code==='MC';
+    const active=x.active!==false;
     return '<tr><td><b>'+esc(x.code)+'</b></td><td>'+esc(x.name)+'</td><td>'+(active?'Active':'Inactive')+'</td><td class="actions-cell">'+
       '<button class="btn sm" type="button" data-edit-tx="'+esc(x.code)+'"'+(!writable?' disabled':'')+'>Edit</button>'+
-      '<button class="btn sm '+(active?'danger':'success')+'" type="button" data-change-tx="'+esc(x.code)+'" data-mode="'+(active?'delete':'restore')+'"'+(!writable||protectedTx?' disabled':'')+
-      (protectedTx?' title="Member Concern is required for public registration"':'')+'>'+(active?'Delete':'Restore')+'</button></td></tr>';
+      '<button class="btn sm '+(active?'danger':'success')+'" type="button" data-change-tx="'+esc(x.code)+'" data-mode="'+(active?'delete':'restore')+'"'+(!writable?' disabled':'')+'>'+(active?'Delete':'Restore')+'</button></td></tr>';
   }).join(''):'<tr><td colspan="4" class="empty">'+(connected?'No transaction types found in the backend.':'Waiting for saved transaction types from Apps Script.')+'</td></tr>';
   document.querySelectorAll('[data-edit-win]').forEach(b=>b.onclick=()=>openWindowEditor(Number(b.dataset.editWin)));
   document.querySelectorAll('[data-delete-win]').forEach(b=>b.onclick=async()=>{
-    const i=Number(b.dataset.deleteWin);
-    if(confirm('Delete Window '+i+'? Remaining windows will be renumbered. This cannot be undone.'))await operate('deleteWindow',{window:i});
+    if(b.disabled)return;
+    b.disabled=true;b.textContent='Deleting…';
+    const result=await operate('deleteWindow',{window:Number(b.dataset.deleteWin)});
+    if(!result)setupTables();
   });
   document.querySelectorAll('[data-edit-tx]').forEach(b=>b.onclick=()=>openTxEditor(b.dataset.editTx));
   document.querySelectorAll('[data-change-tx]').forEach(b=>b.onclick=async()=>{
     const code=b.dataset.changeTx,remove=b.dataset.mode==='delete';
-    if(confirm((remove?'Deactivate':'Restore')+' transaction '+code+'? Existing queue history will be retained.'))
-      await operate(remove?'deleteTx':'restoreTx',{code});
+    if(!confirm((remove?'Deactivate':'Restore')+' transaction '+code+'? Queue history is retained.'))return;
+    b.disabled=true;
+    const result=await operate(remove?'deleteTx':'restoreTx',{code},()=>{
+      S.transactionTypes=(S.transactionTypes||[]).map(t=>t.code===code?{...t,active:!remove}:t);
+      S.transactions=(S.transactionTypes||[]).filter(t=>t.active);
+      if(remove)for(const k of Object.keys(S.assignments||{}))if(S.assignments[k]===code)S.assignments[k]='ALL';
+      staffSignature='';render();
+    });
+    if(!result)setupTables();
   });
 }
 function openWindowEditor(i){
@@ -147,12 +162,12 @@ function openTxEditor(code){
   $('txEditor').classList.remove('hide');$('txEditor').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function render(){tv();metrics();staff();queueTables();if(page==='setup')setupTables();announceEditor();qr()}
-async function refresh(silent=false){if(loading)return;loading=true;try{
+async function refresh(silent=false){if(loading){queuedRefresh=true;return;}loading=true;try{
  if(!valid(url())){if(!silent)status('No backend configured. Paste Apps Script /exec URL in Setup.','err');render();return}
  const response=await jp('state');if(!response.ok)throw Error(response.error||'Failed to fetch queue.');S={...S,...response.state,transactions:Array.isArray(response.state?.transactions)?response.state.transactions:[],transactionTypes:response.state?.transactionTypes||response.state?.transactions||[]};render();
- if(S.version!==REQUIRED)status('Backend is outdated. Deploy Federation v6 Apps Script to activate new features.','err');
+ if(S.version!==REQUIRED)status('Backend is outdated. Deploy Federation v7 Apps Script to activate new features.','err');
  else status('Connected to TIPON Federation • '+REQUIRED+' • Synced '+new Date().toLocaleTimeString('en-PH',{timeZone:'Asia/Manila'}),'ok')
- }catch(e){if(!silent||page==='setup')error(e)}finally{loading=false}}
+ }catch(e){if(!silent||page==='setup')error(e)}finally{loading=false;if(queuedRefresh){queuedRefresh=false;void refresh(true)}}}
 function ding(){try{const A=window.AudioContext||window.webkitAudioContext;audio=audio||new A();audio.resume?.();
  const t=audio.currentTime;[[660,0],[880,.18]].forEach(([f,offset])=>{const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=f;g.gain.setValueAtTime(.001,t+offset);g.gain.exponentialRampToValueAtTime(.2,t+offset+.03);g.gain.exponentialRampToValueAtTime(.001,t+offset+.25);o.connect(g);g.connect(audio.destination);o.start(t+offset);o.stop(t+offset+.27)})}catch{}}
 function announce(ticket,i){const message='Queue '+ticket.queueNo+', '+ticket.name+', please proceed to Window '+i+'.';$('callNotice').textContent=message;$('callNotice').classList.remove('hide');
@@ -185,28 +200,57 @@ $('announcementReset').onclick=()=>saveAnnouncement(DEFAULT);
 $('addWin').onclick=()=>operate('addWindow');
 $('cancelWindow').onclick=()=>{$('windowEditor').classList.add('hide');editWindow=0};
 $('saveWindow').onclick=async()=>{
-  const r=await operate('saveWindow',{window:editWindow,transaction:$('editWindowTx').value,recruiter:$('editRecruiter').value.trim()});
-  if(r){$('windowEditor').classList.add('hide');editWindow=0}
+  const i=editWindow,transaction=$('editWindowTx').value,recruiter=$('editRecruiter').value.trim();
+  if(!i)return;
+  const save=$('saveWindow');save.disabled=true;save.textContent='Saving…';
+  try{
+    const result=await operate('saveWindow',{window:i,transaction,recruiter},()=>{
+      S.assignments={...(S.assignments||{}),[String(i)]:transaction};
+      S.recruiters={...(S.recruiters||{}),[String(i)]:recruiter};
+      staffSignature='';render();
+    });
+    if(result){$('windowEditor').classList.add('hide');editWindow=0;status('Window '+i+' saved to Google Sheets.','ok')}
+  }finally{save.disabled=false;save.textContent='Save Changes'}
 };
 $('cancelTx').onclick=()=>{$('txEditor').classList.add('hide');editTxCode=''};
 $('saveTx').onclick=async()=>{
-  const r=await operate('editTx',{code:editTxCode,name:$('editTxName').value.trim()});
-  if(r){$('txEditor').classList.add('hide');editTxCode=''}
+  const code=editTxCode,name=$('editTxName').value.trim();
+  if(!code)return;
+  const btn=$('saveTx');btn.disabled=true;
+  try{
+    const result=await operate('editTx',{code,name},()=>{
+      S.transactionTypes=(S.transactionTypes||[]).map(x=>x.code===code?{...x,name}:x);
+      S.transactions=(S.transactions||[]).map(x=>x.code===code?{...x,name}:x);
+      staffSignature='';render();
+    });
+    if(result){$('txEditor').classList.add('hide');editTxCode='';status('Transaction '+code+' saved to Google Sheets.','ok')}
+  }finally{btn.disabled=false}
 };
 for(const key of ['wait','completed'])for(const side of ['Prev','Next']){
   $(key+side).onclick=()=>{if(key==='wait')waitPage+=side==='Next'?1:-1;else completedPage+=side==='Next'?1:-1;queueTables()};
 }
-$('addTx').onclick=async()=>{const r=await operate('addTx',{code:$('newCode').value,name:$('newName').value});if(r){$('newCode').value='';$('newName').value=''}};
+$('addTx').onclick=async()=>{
+  const code=$('newCode').value,name=$('newName').value;
+  const b=$('addTx');b.disabled=true;
+  try{
+    const result=await operate('addTx',{code,name},res=>{
+      const tx={...res.transaction,active:true,sort:(S.transactionTypes||[]).length+1};
+      S.transactionTypes=[...(S.transactionTypes||[]),tx];
+      S.transactions=[...(S.transactions||[]),tx];
+      render();
+    });
+    if(result){$('newCode').value='';$('newName').value=''}
+  }finally{b.disabled=false}
+};
 $('api').value=url();
 $('refresh').onclick=()=>refresh();
 $('sound').onclick=()=>{armed=true;localStorage.setItem('tqSound','1');ding();status('Sound enabled on this device. Return to TV Display.','ok')};
 $('save').onclick=()=>{const v=$('api').value.trim();if(!valid(v)){error(Error('Enter a valid https://script.google.com/.../exec URL.'));return}localStorage.setItem('tqApi',v);qrUrl='';refresh()};
-$('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(r.version!==REQUIRED)throw Error('Backend is '+(r.version||'outdated')+'. Deploy Federation v6 Code.gs.');status('Backend verified • '+r.version+' • '+r.windows+' service windows.','ok');await refresh(true)}catch(e){error(e)}};
+$('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(r.version!==REQUIRED)throw Error('Backend is '+(r.version||'outdated')+'. Deploy Federation v7 Code.gs.');status('Backend verified • '+r.version+' • '+r.windows+' service windows.','ok');await refresh(true)}catch(e){error(e)}};
 $('clear').onclick=()=>{localStorage.removeItem('tqApi');$('api').value='';S.version='';qrUrl='';status('Connection cleared.','err');qr()};
-const full=$('fullscreen'),exitFull=$('exitFullscreen');
-function reflect(){const active=document.fullscreenElement===$('display');full.setAttribute('aria-pressed',active?'true':'false');exitFull.setAttribute('aria-hidden',active?'false':'true')}
+const full=$('fullscreen');
+function reflect(){full.setAttribute('aria-pressed',document.fullscreenElement===$('display')?'true':'false')}
 full.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('display').requestFullscreen()}catch(e){error(e,true)}};
-exitFull.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen()}catch(e){error(e,true)}};
 document.addEventListener('fullscreenchange',reflect);
 function clock(){
   const now=new Date();
@@ -216,5 +260,5 @@ function clock(){
   $('headerDay').textContent=date;$('fullscreenDate').textContent=date;
 }
 clock();setInterval(clock,1000);const requested=new URLSearchParams(location.search).get('view');view(['setup','staff'].includes(requested)?requested:'display');
-render();refresh(false);setInterval(()=>refresh(true),3500);
+render();refresh(false);setInterval(()=>{if(!document.hidden)void refresh(true)},4500);document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refresh(true)});
 })();
