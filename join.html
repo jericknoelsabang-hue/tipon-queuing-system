@@ -1,0 +1,71 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#075477">
+<title>Get Queue Number | tipón Federation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-gradient(180deg,#f6fbfd,#edf5fa)}
+.join-top{height:6px;background:linear-gradient(90deg,#0a81b4 0 63%,#ffc258 63% 82%,#e2544f 82%)}
+.join-head{background:white;border-bottom:1px solid #ddebf2}
+.join-head-inner{max-width:880px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin:auto;gap:12px}
+.join-wordmark{display:flex;gap:12px;align-items:center;color:#087caa;font:700 27px Poppins,sans-serif;letter-spacing:-1px}
+.join-symbol{width:38px;height:38px;position:relative;flex:none}
+.join-symbol i{width:19px;height:19px;position:absolute;border-radius:50%;display:block}.join-symbol i:nth-child(1){background:#c82339;top:0;left:0}.join-symbol i:nth-child(2){background:#fcb646;top:0;right:0}.join-symbol i:nth-child(3){background:#e95b3b;bottom:0;left:4px}.join-symbol i:nth-child(4){background:#ef902d;bottom:2px;right:1px}
+.join-head a{font-weight:900;font-size:12px;text-decoration:none}
+.join-shell{max-width:840px;margin:0 auto;padding:29px 16px 50px}
+.join-hero{text-align:center;margin:0 auto 21px;max-width:680px}.join-hero .eyebrow{font-size:11px}.join-hero h1{font:700 clamp(30px,5vw,43px)/1.18 Poppins,sans-serif;color:#133c55;margin:8px 0;letter-spacing:-.04em}
+.join-hero p{font-size:13px;color:#6d8898;margin:6px 0}
+.progress-steps{display:flex;justify-content:center;align-items:center;gap:11px;margin-top:17px;flex-wrap:wrap}.step{font-size:11px;font-weight:800;color:#8ba2b0;display:flex;align-items:center;gap:8px}.step i{background:#e2edf3;color:#6b8a9c;width:25px;height:25px;border-radius:50%;display:grid;place-items:center;font-style:normal}.step.on{color:#0a7dac}.step.on i{background:#0a7dac;color:white}.step-line{width:28px;height:1px;background:#d7e5ed}
+.service-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
+.service-card{background:#fff;color:#1a425a;border:2px solid #dfeaf0;text-align:left;padding:17px;border-radius:14px;min-height:132px;cursor:pointer}
+.service-card:hover{border-color:#89c9e5}.service-card.chosen{border-color:#0784b8;background:#f0faff;box-shadow:0 8px 25px #0a88ad12}.service-card span{display:block;color:#0b83ad;font-size:10px;font-weight:900;letter-spacing:.15em}.service-card b{font:700 17px Poppins,sans-serif;display:block;margin:6px 0}.service-card small{display:block;color:#668799;font-size:11px;line-height:1.5}
+.section-label{font:700 18px Poppins,sans-serif;color:#214762;margin:0 0 5px}.helper{font-size:12px;color:#7894a5;margin:0 0 13px}
+.check-card{border-radius:12px;background:#f4f9fc;border:1px solid #e1edf3;padding:14px;margin:15px 0}
+.check-card h3{font:700 14px Poppins,sans-serif;margin:0 0 7px}.check-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;font-size:12px;color:#355d73}.check-row input{width:18px;height:18px;margin:1px 0;accent-color:#0883b8;flex:none}.check-card p{font-size:11px;color:#748f9e;margin:6px 0}
+.submit{width:100%;min-height:53px;font-size:13px!important;letter-spacing:.08em}
+.message{font-size:12px;padding:12px 13px;border:1px solid #f0c4c4;background:#fff2f2;border-radius:11px;color:#ad3232;margin:12px 0}.message.ok{border-color:#bce5ce;background:#edfaf1;color:#166e4e}
+.receipt{text-align:center;border:1px dashed #88c8e4;background:linear-gradient(180deg,#fff,#f0f9fe);border-radius:16px;padding:24px 17px;margin-top:14px}.receipt .code{font:800 clamp(36px,7vw,59px) Poppins,sans-serif;color:#087eb0;letter-spacing:-.06em;margin:9px 0}.receipt h2{font:700 20px Poppins,sans-serif;margin:5px 0}.receipt p{font-size:12px;color:#618092;line-height:1.7;margin:7px auto;max-width:440px}.receipt .pill{margin:8px auto}
+.join-foot{text-align:center;font-size:10px;color:#8aa0ad;padding:18px;font-weight:900;letter-spacing:.09em}
+@media(max-width:540px){.service-grid{grid-template-columns:1fr}.service-card{min-height:105px}.join-shell{padding-top:18px}.join-head-inner{padding:11px 14px}.join-wordmark{font-size:23px}.join-hero h1{font-size:32px}.progress-steps{gap:6px}.step-line{width:13px}.join-shell>.card{padding:18px}}
+</style>
+<script defer src="config.js"></script><script defer src="join.js"></script>
+</head><body>
+<div class="join-top"></div><header class="join-head"><div class="join-head-inner">
+  <div class="join-wordmark"><span class="join-symbol" aria-hidden="true"><i></i><i></i><i></i><i></i></span>tipón</div>
+  <a href="./">Back to TV Display</a>
+</div></header>
+<main class="join-shell">
+  <div class="join-hero"><div class="eyebrow">TIPON FEDERATION • DIGITAL QUEUE</div><h1>Get your queue number.</h1><p>Fast registration. Document pre-checking. Less time spent waiting.</p>
+    <div class="progress-steps"><span id="step1" class="step on"><i>1</i>Choose service</span><div class="step-line"></div><span id="step2" class="step on"><i>2</i>Enter details</span><div class="step-line"></div><span id="step3" class="step"><i>3</i>Get confirmed</span></div>
+  </div>
+  <div id="message" class="message hide" role="alert"></div>
+  <div id="entry" class="card">
+    <h2 class="section-label">What brings you here?</h2><p class="helper">Choose the service that matches your visit.</p>
+    <div class="service-grid">
+      <button id="chooseRecruitment" class="service-card chosen" type="button" aria-pressed="true"><span>NEW HIRE • REHIRE • TRANSFER</span><b>Recruitment</b><small>Documents are checked by staff before issuing your recruitment queue number.</small></button>
+      <button id="chooseMember" class="service-card" type="button" aria-pressed="false"><span>COE • PAYOUT • INQUIRIES</span><b>Member Concerns</b><small>Get an MC number for a dedicated member service window.</small></button>
+    </div>
+    <form id="queueForm"><div class="grid">
+      <label class="field" for="firstName">First Name *<input id="firstName" name="firstName" autocomplete="given-name" maxlength="50" required></label>
+      <label class="field" for="lastName">Last Name *<input id="lastName" name="lastName" autocomplete="family-name" maxlength="50" required></label>
+      <label id="transactionField" class="field" for="transaction">Recruitment transaction *<select id="transaction" name="transaction" required><option value="NH">NH - New Hire</option><option value="RH">RH - Rehire</option><option value="TR">TR - Transfer</option></select></label>
+      <label class="field" for="position">Position / Purpose *<input id="position" name="position" maxlength="80" placeholder="e.g. Production Worker" required></label>
+    </div>
+    <div id="recruitmentChecklist" class="check-card"><h3>Pre-screening checklist</h3>
+      <label class="check-row"><input id="hasId" type="checkbox">I have a valid identification document ready for staff checking.</label>
+      <label class="check-row"><input id="hasDocuments" type="checkbox">I have the application documents required for my transaction, ready for staff checking.</label>
+      <p>Self-confirmation is not an approval. Staff will physically verify your requirements before a recruitment queue number is issued. Exact requirements may vary by position.</p>
+    </div>
+    <div id="concernOptions" class="field hide" style="margin-bottom:15px"><label for="concern">Type of concern *</label>
+      <select id="concern"><option value="COE Request">Certificate of Employment (COE)</option><option value="Payout Concern">Payout Concern</option><option value="Membership Records">Membership / Records</option><option value="Other Member Inquiry">Other Member Inquiry</option></select>
+    </div>
+    <button id="submit" class="btn primary submit" type="submit">CONTINUE TO PRE-SCREENING</button></form>
+  </div>
+  <div id="receipt" class="receipt hide" aria-live="polite">
+    <span id="receiptTag" class="pill">SUBMITTED</span><h2 id="receiptTitle">Your request was received</h2>
+    <div id="receiptCode" class="code">PC-001</div><p id="receiptText">Please proceed to the pre-checking station.</p>
+    <div class="buttons" style="justify-content:center;margin-top:16px"><button id="checkStatus" class="btn" type="button">Check Status</button><button id="another" class="btn ghost" type="button">Start Again</button></div>
+  </div>
+</main><footer class="join-foot">tipón Federation • WIN AS A TEAM</footer>
+</body></html>
