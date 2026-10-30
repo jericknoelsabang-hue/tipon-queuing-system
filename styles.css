@@ -338,3 +338,67 @@ header{background:#fff;border-top:4px solid var(--gold);border-bottom:1px solid 
    width:auto!important;white-space:normal!important;will-change:auto
  }
 }
+
+
+/* 2026-10-30: applicant/member experience, clear KPI alignment, tables and actions */
+.site-header .clock,#display:fullscreen .fullscreen-datetime{justify-content:center}
+.site-header .clock #headerDay,#display:fullscreen #fullscreenDate{margin-top:0}
+.announcement .announcement-label,
+#display:fullscreen .announcement .announcement-label{
+  font-weight:950!important;
+  font-size:clamp(18px,1.45vw,25px)!important;
+  letter-spacing:.09em;
+  text-shadow:0 1px 0 rgba(0,0,0,.13)
+}
+.qr-panel{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.qr-panel p{margin:16px auto 0;line-height:1.55;max-width:330px;font-weight:650}
+#display:fullscreen .qr-panel p{margin:17px auto 0}
+.nav-main{justify-content:center}
+.tiles .metric{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;gap:8px;min-height:134px
+}
+.tiles .metric span{text-align:center;font-weight:900;font-size:12px;line-height:1.4}
+.tiles .metric strong{text-align:center;font-size:clamp(36px,2.75vw,48px);line-height:1.2}
+.tiles .metric small{text-align:center;font-size:12px;line-height:1.4}
+.window-actions .btn.success{
+  color:#fff!important;
+  background:#16885e!important;
+  border:1px solid #16885e!important;
+  box-shadow:0 3px 9px rgba(0,92,62,.1)
+}
+.window-actions .btn.success:hover:not(:disabled){background:#0c7652!important}
+.window-actions .btn.success:disabled{
+  background:#f4faf6!important;border:1px solid #b8dfcd!important;
+  color:#79a990!important;box-shadow:none!important
+}
+.table-bottom{
+  display:flex;justify-content:space-between;align-items:center;gap:16px;
+  margin-top:15px;flex-wrap:wrap
+}
+.table-bottom .table-count{
+  display:block;margin:0;font-size:13px;
+  color:#4b748d;font-weight:850;white-space:nowrap
+}
+.table-bottom .pager{margin:0;display:flex;gap:11px;align-items:center}
+.table-bottom .pager button{min-height:36px}
+.table-bottom .pager span{font-weight:800;font-size:13px}
+.get-queue-setup .split{align-items:center;gap:15px}
+.get-queue-setup .btn{white-space:nowrap;display:inline-flex;align-items:center;justify-content:center}
+#setup .card h2{font-size:20px}
+#announcementInput{min-height:132px;font-size:14px;line-height:1.55;resize:vertical}
+#announcementCount{font-size:12px;font-weight:750;white-space:nowrap}
+#setup table th,#setup table td,
+.queue-table-card table th,.queue-table-card table td{vertical-align:middle;line-height:1.5}
+#setup table .actions-cell{white-space:nowrap}
+@media(max-width:760px){
+ .tiles .metric{min-height:105px;gap:5px;padding:14px 9px}
+ .tiles .metric span{font-size:10px}
+ .tiles .metric strong{font-size:31px}
+ .tiles .metric small{font-size:10px}
+ .table-bottom{align-items:stretch;justify-content:center;text-align:center;gap:12px}
+ .table-bottom .pager{justify-content:center}
+ .table-bottom .table-count{width:100%}
+ .get-queue-setup .split{flex-direction:column;align-items:stretch}
+ .get-queue-setup .btn{width:100%}
+}
