@@ -180,28 +180,93 @@ function openTxEditor(code){
   $('txEditor').classList.remove('hide');$('txEditor').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function render(){tv();metrics();staff();queueTables();if(page==='setup')setupTables();announceEditor();qr()}
-async function refresh(silent=false){if(loading){queuedRefresh=true;return;}loading=true;try{
- if(!valid(url())){if(!silent)status('No backend configured. Paste Apps Script /exec URL in Setup.','err');render();return}
- const response=await jp('state',{view:page});if(!response.ok)throw Error(response.error||'Failed to fetch queue.');
- S={...S,...response.state,transactions:Array.isArray(response.state?.transactions)?response.state.transactions:[],transactionTypes:response.state?.transactionTypes||response.state?.transactions||[]};
- hasLoaded=true;render();
- if(!COMPATIBLE.has(S.version))status('Backend is outdated. Deploy Federation v8 Apps Script for the latest features.','err');
- else if(S.version!==REQUIRED)status('Connected to Federation v7 (compatibility mode). Deploy v8 to enable longer announcements.','ok');
- else status('Connected to TIPON Federation • '+REQUIRED+' • Synced '+new Date().toLocaleTimeString('en-PH',{timeZone:'Asia/Manila'}),'ok')
- }catch(e){if(!silent||page==='setup')error(e)}finally{loading=false;if(queuedRefresh){queuedRefresh=false;void refresh(true)}}}
+async function refresh(silent=false){
+ if(writePending>0||loading){queuedRefresh=true;return}
+ loading=true;const serial=writeSerial;
+ try{
+  if(!valid(url())){if(!silent)status('No backend configured. Add an Apps Script /exec URL in Setup.','err');render();return}
+  const response=await jp('state',{view:page});
+  if(!response.ok)throw Error(response.error||'Failed to fetch queue.');
+  if(serial!==writeSerial)return; // Ignore an older poll that started before a successful write.
+  S={...S,...response.state,transactions:Array.isArray(response.state?.transactions)?response.state.transactions:[],transactionTypes:response.state?.transactionTypes||response.state?.transactions||[]};
+  hasLoaded=true;render();
+  if(!COMPATIBLE.has(S.version))status('Backend version is outdated. Check the Apps Script deployment.','err');
+  else status('Connected to TIPON • '+S.version+' • Synced '+new Date().toLocaleTimeString('en-PH',{timeZone:'Asia/Manila'}),'ok');
+ }catch(e){if(!silent||page==='setup')error(e)}
+ finally{
+  loading=false;
+  if(queuedRefresh&&writePending===0){queuedRefresh=false;void refresh(true)}
+ }
+}
 function ding(){try{const A=window.AudioContext||window.webkitAudioContext;audio=audio||new A();audio.resume?.();
  const t=audio.currentTime;[[660,0],[880,.18]].forEach(([f,offset])=>{const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=f;g.gain.setValueAtTime(.001,t+offset);g.gain.exponentialRampToValueAtTime(.2,t+offset+.03);g.gain.exponentialRampToValueAtTime(.001,t+offset+.25);o.connect(g);g.connect(audio.destination);o.start(t+offset);o.stop(t+offset+.27)})}catch{}}
-function announce(ticket,i){const message='Queue '+ticket.queueNo+', '+ticket.name+', please proceed to Window '+i+'.';$('callNotice').textContent=message;$('callNotice').classList.remove('hide');
- if(!armed)return;ding();if('speechSynthesis' in window){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(message);u.rate=.92;u.lang='en-PH';setTimeout(()=>speechSynthesis.speak(u),340)}}
-async function operate(action,params={},after){if(!ready())return null;
- try{const r=await jp(action,params);if(!r.ok)throw Error(r.error||'Request failed.');if(after)after(r);await refresh(true);return r}
- catch(e){error(e,true);return null}}
+function announce(ticket,i){
+ if(!armed)return;
+ const line='Queue '+String(ticket.queueNo||'').replace(/-/g,' ') + ', ' + String(ticket.name||'') + ', please proceed to Window '+i+'.';
+ const triple=[line,line,line].join(' ... ');
+ ding();
+ if('speechSynthesis' in window){
+  try{
+   speechSynthesis.cancel();
+   const u=new SpeechSynthesisUtterance(triple);
+   u.rate=.9;u.pitch=1;u.lang='en-PH';
+   speechSynthesis.speak(u);
+  }catch(e){/* If speech synthesis is blocked, the device chime still works. */}
+ }
+}
+async function operate(action,params={},after){
+ if(!ready())return null;
+ writePending++;writeSerial++;
+ try{
+  const result=await jp(action,params);
+  if(!result.ok)throw Error(result.error||'Request failed.');
+  if(after)after(result);
+  return result;
+ }catch(e){
+  error(e);return null;
+ }finally{
+  writePending--;
+  if(writePending===0){queuedRefresh=false;void refresh(true)}
+ }
+}
 async function queueAction(action,i){
-  await operate(action,{window:i},result=>{
-    if((action==='call'||action==='recall')&&result.ticket){
-      announce(result.ticket,i);last[i]=result.ticket.ticketId+'|'+result.ticket.calledAt;
+ const key=String(i);
+ if(activeWindowActions.has(key))return;
+ activeWindowActions.add(key);clearStaffMessage();
+ const button=document.querySelector('[data-action="'+action+'"][data-win="'+i+'"]');
+ if(button){button.disabled=true;button.textContent=action==='complete'?'Completing…':action==='recall'?'Recalling…':'Calling…'}
+ // Prime audio from the staff member's click; TV devices still require "Enable / Test Sound".
+ if(action==='call'||action==='recall'){
+  armed=true;localStorage.setItem('tqSound','1');
+  try{const A=window.AudioContext||window.webkitAudioContext;if(A){audio=audio||new A();audio.resume?.()}}catch{}
+ }
+ const original=win(i);
+ try{
+  const result=await operate(action,{window:i},reply=>{
+   if(action==='call'||action==='recall'){
+    const ticket=reply.ticket;
+    if(ticket){
+     S.windows={...(S.windows||{}),[key]:ticket};
+     if(action==='call')S.waiting=(S.waiting||[]).filter(x=>x.ticketId!==ticket.ticketId);
+     last[i]=ticket.ticketId+'|'+ticket.calledAt;
+     announce(ticket,i);
     }
+   }else if(action==='complete'){
+    S.windows={...(S.windows||{}),[key]:null};
+    last[i]='';
+    const finished=reply.ticket||original;
+    if(finished)S.completed=[{...finished,status:'COMPLETED',recruiter:finished.recruiter||S.recruiters?.[key]||'',completedAt:new Date().toISOString()},...(S.completed||[])];
+   }
+   staffSignature='';windowSignature='';render();
   });
+  if(result){
+   const number=result.ticket?.queueNo||original?.queueNo||'';
+   staffMessage(action==='complete'?'Completed '+number+' and saved to the queue.':action==='recall'?'Recalled '+number+' (3 voice announcements).':'Called '+number+' (3 voice announcements).','ok');
+  }
+ }finally{
+  activeWindowActions.delete(key);
+  staffSignature='';staff();
+ }
 }
 async function assignTx(i,transaction){
   if(!ready())return;
