@@ -3,7 +3,7 @@
 <title>Get Queue Number | tipón Federation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=7.1">
+<link rel="stylesheet" href="styles.css?v=8.0">
 <style>
 body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-gradient(180deg,#f6fbfd,#edf5fa)}
 .join-top{height:6px;background:linear-gradient(90deg,#0a81b4 0 63%,#ffc258 63% 82%,#e2544f 82%)}
@@ -30,16 +30,59 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
 @media(max-width:540px){.service-grid{grid-template-columns:1fr}.service-card{min-height:105px}.join-shell{padding-top:18px}.join-head-inner{padding:11px 14px}.join-wordmark{font-size:23px}.join-hero h1{font-size:32px}.progress-steps{gap:6px}.step-line{width:13px}.join-shell>.card{padding:18px}}
 
 .join-wordmark{min-height:62px;letter-spacing:normal}.join-logo{display:block;width:205px;max-width:60vw;height:auto;object-fit:contain}.join-mode{font-size:10px;letter-spacing:.14em;font-weight:900;color:#66859a}.service-grid{gap:14px}.service-card{min-height:96px;padding:19px 14px;text-align:center;display:flex;align-items:center;justify-content:center}.service-card b{margin:0;font:700 19px Poppins,sans-serif;color:#154461}.service-card.chosen{background:#eef9ff;box-shadow:0 8px 18px #087db513}.service-card:hover{background:#f4fbff}@media(max-width:540px){.service-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.service-card b{font-size:15px}.service-card{min-height:82px;padding:14px 6px}.join-mode{font-size:8px;text-align:right}.join-logo{width:175px}}
+
+/* Candidate/member-specific registration layout */
+.join-head-inner{justify-content:center;min-height:86px}
+.join-wordmark{justify-content:center;width:100%;min-height:75px}
+.join-logo{width:clamp(215px,25vw,280px);max-width:70vw;max-height:85px;object-fit:contain}
+.join-hero .eyebrow{font-size:12px;letter-spacing:.09em}
+.join-hero h1{font-size:clamp(31px,4.5vw,45px)}
+.progress-steps{gap:13px;margin:20px auto 24px}
+.progress-steps .step{font-size:13px;line-height:1.35}
+.progress-steps .step-line{width:38px}
+#queueForm{margin-top:17px}
+#queueForm .queue-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:17px;row-gap:18px;margin:0;align-items:start}
+#queueForm .queue-fields .field{margin:0;display:flex;flex-direction:column;gap:8px;min-width:0}
+#queueForm .queue-fields input,#queueForm .queue-fields select,#concernOptions input{width:100%;min-height:48px;box-sizing:border-box;font-size:14px}
+#queueForm .queue-fields .field label,#queueForm .queue-fields .field{font-weight:750}
+#concernOptions{display:flex;flex-direction:column;gap:9px;margin:18px 0 0!important}
+#concernOptions.hide{display:none!important}
+#concernOptions label{font-size:12px;font-weight:800;line-height:1.45}
+#queueForm .submit{display:block;margin-top:26px;min-height:54px;border-radius:11px}
+#queueForm .queue-fields .field.hide{display:none!important}
+.receipt-actions{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:19px}
+.receipt-actions button{min-width:150px;min-height:43px}
+.finished-notice{margin-top:16px!important;color:#176c53!important;font-size:13px!important;font-weight:750;max-width:490px}
+#receipt.finished .receipt-actions{display:none}
+@media(max-width:540px){
+ .join-head-inner{padding:13px 15px;min-height:77px;justify-content:center}
+ .join-wordmark{min-height:65px;justify-content:center}
+ .join-logo{width:230px;max-width:80vw}
+ .join-shell{padding:20px 14px 42px}
+ .progress-steps{margin:16px auto 20px;gap:7px}
+ .progress-steps .step{font-size:11px;gap:7px}
+ .progress-steps .step-line{width:18px}
+ #queueForm .queue-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 12px}
+ #queueForm .queue-fields .field{font-size:11px;gap:8px}
+ #queueForm .queue-fields input,#queueForm .queue-fields select,#concernOptions input{min-height:46px}
+ #concernOptions{margin-top:18px!important}
+ #queueForm .submit{margin-top:25px}
+ .receipt-actions{gap:9px}
+ .receipt-actions button{width:100%}
+}
+@media(max-width:370px){
+ #queueForm .queue-fields{grid-template-columns:1fr}
+ .progress-steps .step{font-size:10px}
+}
 </style>
-<script defer src="config.js"></script><script defer src="join.js?v=7.1"></script>
+<script defer src="config.js"></script><script defer src="join.js?v=8.0"></script>
 </head><body>
 <div class="join-top"></div><header class="join-head"><div class="join-head-inner">
   <div class="join-wordmark"><img class="join-logo" src="assets/tipon-logo-hd.webp" alt="tipón Federation"></div>
-  <span class="join-mode">APPLICANT REGISTRATION</span>
 </div></header>
 <main class="join-shell">
-  <div class="join-hero"><div class="eyebrow">TIPON FEDERATION • DIGITAL QUEUE</div><h1>Get your queue number.</h1><p>Fast registration. Choose your service and receive your queue number.</p>
-    <div class="progress-steps"><span id="step1" class="step on"><i>1</i>Choose service</span><div class="step-line"></div><span id="step2" class="step on"><i>2</i>Enter details</span><div class="step-line"></div><span id="step3" class="step"><i>3</i>Get confirmed</span></div>
+  <div class="join-hero"><div class="eyebrow">TIPON • APPLICANT &amp; MEMBER QUEUE</div><h1>Get your queue number.</h1><p>Fast registration. Choose your service and receive your queue number.</p>
+    <div class="progress-steps"><span id="step1" class="step on"><i>1</i>Choose service &amp; enter details</span><div class="step-line"></div><span id="step2" class="step"><i>2</i>Get confirmed</span></div>
   </div>
   <div id="message" class="message hide" role="alert"></div>
   <div id="entry" class="card">
@@ -48,13 +91,13 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
       <button id="chooseRecruitment" class="service-card chosen" type="button" aria-pressed="true"><b>Recruitment</b></button>
       <button id="chooseMember" class="service-card" type="button" aria-pressed="false"><b>Member Concern</b></button>
     </div>
-    <form id="queueForm"><div class="grid">
+    <form id="queueForm"><div class="grid queue-fields">
       <label class="field" for="firstName">First Name *<input id="firstName" name="firstName" autocomplete="given-name" maxlength="50" required></label>
       <label class="field" for="lastName">Last Name *<input id="lastName" name="lastName" autocomplete="family-name" maxlength="50" required></label>
       <label id="transactionField" class="field" for="transaction">Recruitment Transaction *<select id="transaction" name="transaction" required><option value="NH">NH - New Hire</option><option value="RH">RH - Rehire</option><option value="TR">TR - Transfer</option></select></label>
       <label class="field" id="positionField" for="position">Position *<input id="position" name="position" maxlength="80" placeholder="e.g. Production Worker" required></label>
     </div>
-    <div id="concernOptions" class="field hide" style="margin-bottom:15px">
+    <div id="concernOptions" class="field hide">
       <label for="concern">Type of concern *</label>
       <input id="concern" name="concern" type="text" maxlength="80" placeholder="Enter your concern (e.g., COE request)" autocomplete="off">
     </div>
@@ -63,7 +106,8 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
   <div id="receipt" class="receipt hide" aria-live="polite">
     <span id="receiptTag" class="pill">SUBMITTED</span><h2 id="receiptTitle">Your request was received</h2>
     <div id="receiptCode" class="code">PC-001</div><p id="receiptText">Please proceed to the pre-checking station.</p>
-    <div class="buttons" style="justify-content:center;margin-top:16px"><button id="another" class="btn ghost" type="button">Register Another Visitor</button></div>
+    <div class="receipt-actions"><button id="another" class="btn ghost" type="button">Register Another Applicant / Member</button><button id="done" class="btn success" type="button">Done</button></div>
+    <p id="finishedNotice" class="finished-notice hide" role="status">Registration finished. Please keep your queue number and close this page when you're ready.</p>
   </div>
 </main><footer class="join-foot">tipón Federation • WIN AS A TEAM</footer>
 </body></html>
