@@ -1,22 +1,21 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#075477"><title>tipón Federation | Smart Queue</title>
+<meta name="theme-color" content="#075477"><title>tipón | Applicant &amp; Member Queue</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=7.1">
-<script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="app.js?v=7.1"></script>
+<link rel="stylesheet" href="styles.css?v=8.0">
+<script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="app.js?v=8.0"></script>
 </head><body>
 <header class="site-header"><div class="head">
   <div class="brand"><img class="tipon-logo" id="brandPhoto" src="assets/tipon-logo-hd.webp" alt="tipón Federation logo">
-    <div class="brand-copy"><span class="eyebrow">SMART VISITOR SERVICES</span></div>
+    <div class="brand-copy"><span class="eyebrow">APPLICANT &amp; MEMBER QUEUE</span></div>
   </div>
-  <div class="clock"><small>PHILIPPINE STANDARD TIME</small><span id="headerDay">FRIDAY, OCTOBER 30, 2026</span><strong id="clock">--:--:--</strong></div>
+  <div class="clock"><span id="headerDay">FRIDAY, OCTOBER 30, 2026</span><strong id="clock">--:--:--</strong></div>
 </div></header>
 <main class="shell">
   <nav class="nav nav-main" aria-label="Application navigation">
     <button data-v="display" class="on" type="button">TV Display</button>
-    <a id="getQueueNav" href="join.html">Get Queue</a>
     <button data-v="staff" type="button">Staff Console</button>
     <button data-v="setup" type="button">Setup</button>
     <button id="fullscreen" class="btn primary" type="button" aria-pressed="false">⛶ Full Screen</button>
@@ -24,16 +23,15 @@
   <section id="display">
     <div class="tv-full-head">
       <div class="fullscreen-brand"><img src="assets/tipon-logo-hd.webp" alt="tipón Federation logo">
-        <div class="brand-copy"><span class="eyebrow">SMART VISITOR SERVICES</span></div>
+        <div class="brand-copy"><span class="eyebrow">APPLICANT &amp; MEMBER QUEUE</span></div>
       </div>
-      <div class="fullscreen-datetime"><small>PHILIPPINE STANDARD TIME</small><span id="fullscreenDate">FRIDAY, OCTOBER 30, 2026</span><strong id="fullscreenTime">--:--:--</strong></div>
+      <div class="fullscreen-datetime"><span id="fullscreenDate">FRIDAY, OCTOBER 30, 2026</span><strong id="fullscreenTime">--:--:--</strong></div>
     </div>
     <div id="callNotice" class="call-notice hide" aria-live="polite"></div>
     <div class="tv"><div class="tv-inner">
       <aside class="qr-panel"><span class="eyebrow">FAST · CONTACTLESS · EASY</span><h2>SCAN TO GET IN QUEUE</h2>
-        <div class="qr-frame"><div id="qr" role="img" aria-label="Scannable QR code for the separate Get Queue registration page"></div></div>
-        <p>Scan the QR with your phone to open the dedicated Get Queue page and enter your details.</p>
-        <a id="joinLink" href="join.html" target="_blank" rel="noopener">Open Get Queue page</a>
+        <div class="qr-frame"><div id="qr" role="img" aria-label="Scannable QR code for applicant and member registration"></div></div>
+        <p>Scan to register for Recruitment or Member Concern and receive your queue number.</p>
       </aside>
       <div class="now"><div class="now-title"><div><h2>NOW SERVING</h2><p>Please proceed to your assigned service window.</p></div><span class="live">LIVE QUEUE</span></div><div id="wins" class="windows"></div></div>
     </div><div class="tv-strip"><strong>UP NEXT</strong><div id="chips" class="row"></div></div>
@@ -43,30 +41,31 @@
     </div></div>
   </section>
   <section id="staff" class="hide">
-    <div class="page-head"><div><span class="eyebrow">TIPON FEDERATION · OPERATIONS</span><h1>Staff Console</h1><p>Call, recall, and complete queue numbers for your configured service windows.</p></div></div>
+    <div class="page-head"><div><span class="eyebrow">TIPON OPERATIONS</span><h1>Staff Console</h1><p>Call, recall, and complete queue numbers for your configured service windows.</p></div></div>
     <div class="tiles">
       <div class="metric"><span>Service windows</span><strong id="metricWindows">4</strong><small>Assigned transactions</small></div>
       <div class="metric"><span>Waiting applicants</span><strong id="metricWait">0</strong><small>Registered queue numbers</small></div>
       <div class="metric"><span>Now serving</span><strong id="metricServing">0</strong><small>Active service windows</small></div>
     </div>
     <div class="card"><div class="split"><div><h2>Service Windows</h2><p>Use Setup to add, edit, or remove windows and assign recruiters.</p></div><span class="pill" id="wc">4 WINDOWS</span></div><div id="staffWins" class="window-grid"></div></div>
-    <div class="card queue-table-card"><div class="split"><div><h2>Waiting Queue</h2><p>Applicants waiting to be called.</p></div><span id="waitShowing" class="table-count">Showing 0–0 of 0</span></div>
+    <div class="card queue-table-card"><div class="split"><div><h2>Waiting Queue</h2><p>Applicants and members waiting to be called.</p></div></div>
       <div class="table-wrap"><table><thead><tr><th>Date</th><th>Queue</th><th>Name</th><th>Transaction</th><th>Purpose</th><th>Recruiter</th></tr></thead><tbody id="wt"></tbody></table></div>
-      <div class="pager"><button id="waitPrev" class="btn sm ghost" type="button">Previous</button><span id="waitPage">Page 1 of 1</span><button id="waitNext" class="btn sm ghost" type="button">Next</button></div>
+      <div class="table-bottom"><span id="waitShowing" class="table-count">Showing 0–0 of 0</span><div class="pager"><button id="waitPrev" class="btn sm ghost" type="button">Previous</button><span id="waitPage">Page 1 of 1</span><button id="waitNext" class="btn sm ghost" type="button">Next</button></div></div>
     </div>
-    <div class="card queue-table-card"><div class="split"><div><h2>Completed Queue</h2><p>Finished transactions, newest completion first.</p></div><span id="completedShowing" class="table-count">Showing 0–0 of 0</span></div>
+    <div class="card queue-table-card"><div class="split"><div><h2>Completed Queue</h2><p>Finished transactions, newest completion first.</p></div></div>
       <div class="table-wrap"><table><thead><tr><th>Date</th><th>Queue</th><th>Name</th><th>Transaction</th><th>Purpose</th><th>Recruiter</th></tr></thead><tbody id="ct"></tbody></table></div>
-      <div class="pager"><button id="completedPrev" class="btn sm ghost" type="button">Previous</button><span id="completedPage">Page 1 of 1</span><button id="completedNext" class="btn sm ghost" type="button">Next</button></div>
+      <div class="table-bottom"><span id="completedShowing" class="table-count">Showing 0–0 of 0</span><div class="pager"><button id="completedPrev" class="btn sm ghost" type="button">Previous</button><span id="completedPage">Page 1 of 1</span><button id="completedNext" class="btn sm ghost" type="button">Next</button></div></div>
     </div>
   </section>
   <section id="setup" class="hide">
     <div class="page-head"><div><span class="eyebrow">SYSTEM CONFIGURATION</span><h1>Setup &amp; Connections</h1><p>Manage service windows, recruiters, transaction types, and the backend connection.</p></div></div>
     <div id="setupAlert" class="status" role="alert">Checking backend connection…</div>
-    <div class="card"><h2>Google Apps Script Connection</h2><p>Backend v7 supports faster synchronization, window assignments, recruiter records, and transaction management.</p>
+    <div class="card"><h2>Google Apps Script Connection</h2><p>The Apps Script backend supports attendance-independent queuing, member concerns, recruiter assignments, and transaction management.</p>
       <label class="field" for="api">Apps Script Web App URL (/exec)<input id="api" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec"></label>
       <div class="buttons" style="margin-top:13px"><button id="save" class="btn primary" type="button">Save Connection</button><button id="test" class="btn" type="button">Test Connection</button><button id="clear" class="btn ghost" type="button">Clear</button></div>
       <div class="setup-guide"><b>How to fix “Unknown action”:</b> Open the deployed Apps Script project, replace Code.gs with the <a target="_blank" rel="noopener" href="https://github.com/jericknoelsabang-hue/tipon-queuing-system/blob/main/apps-script/Code.gs">latest GitHub Code.gs</a>, run <code>setupTiponQueueSystem</code>, then choose <b>Deploy → Manage deployments → Edit → New version → Deploy</b>. Keep the same /exec URL.</div>
     </div>
+    <div class="card get-queue-setup"><div class="split"><div><h2>Get Queue Page</h2><p>Share this registration page with recruitment applicants and members, or open it to test the QR link.</p></div><a id="getQueueSetup" class="btn primary" href="join.html" target="_blank" rel="noopener">Open Get Queue Page</a></div></div>
     <p id="setupListHint" class="small-muted" role="status">Loading saved windows and transaction types from the backend…</p>
     <div class="card"><div class="split"><div><h2>Service Windows</h2><p>Edit the assigned transaction and recruiter for each window. Only windows without active downstream sessions can be removed safely.</p></div><div class="buttons"><span class="pill" id="setupWc">4 WINDOWS</span><button id="addWin" class="btn success" type="button">+ Add Window</button></div></div>
       <div class="table-wrap"><table><thead><tr><th>Window</th><th>Assigned transaction</th><th>Recruiter</th><th>Status</th><th>Actions</th></tr></thead><tbody id="setupWins"></tbody></table></div>
@@ -85,12 +84,12 @@
       </div>
     </div>
     <div class="card"><h2>TV Announcement</h2><p>Editable message synchronized to the TV display through Google Sheets.</p>
-      <label class="field" for="announcementInput">Announcement message<textarea id="announcementInput" maxlength="280" rows="3" placeholder="Type the announcement"></textarea></label>
-      <div class="split" style="margin-top:13px"><small id="announcementCount" class="muted">0 / 280 characters</small><div class="buttons"><button class="btn ghost" id="announcementReset" type="button">Restore Default</button><button class="btn success" id="announcementSave" type="button">Save Announcement</button></div></div>
+      <label class="field" for="announcementInput">Announcement message<textarea id="announcementInput" maxlength="2500" rows="5" placeholder="Type the announcement"></textarea></label>
+      <div class="split" style="margin-top:13px"><small id="announcementCount" class="muted">0 / 2,500 characters</small><div class="buttons"><button class="btn ghost" id="announcementReset" type="button">Restore Default</button><button class="btn success" id="announcementSave" type="button">Save Announcement</button></div></div>
     </div>
     <div class="card"><div class="split"><div><h2>TV Controls</h2><p>Refresh queue data or unlock sound on this device.</p></div><div class="buttons"><button id="refresh" class="btn" type="button">Refresh Queue</button><button id="sound" class="btn primary" type="button">Enable / Test Sound</button></div></div></div>
     <div class="card"><h2>Database &amp; Technical Notes</h2><p>Google Sheet: <a href="https://docs.google.com/spreadsheets/d/1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik/edit" target="_blank" rel="noopener">TIPON Queuing Database</a>. Tabs: QUEUE, WINDOWS, TRANSACTION_TYPES, SETTINGS (the historical PRECHECK tab is not used by registration).</p><p><b>Security:</b> Staff actions are currently PIN-free as requested. Access to the public Apps Script deployment is not authenticated. Do not use this configuration for sensitive production operations without server-side staff authorization.</p></div>
   </section>
 </main>
-<footer class="footer">tipón Federation · WIN AS A TEAM · Smart Queue Management</footer>
+<footer class="footer">tipón Federation · WIN AS A TEAM · Applicant &amp; Member Queue Management</footer>
 </body></html>
