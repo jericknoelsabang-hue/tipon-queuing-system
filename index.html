@@ -4,8 +4,8 @@
 <meta name="theme-color" content="#075477"><title>tipón | Applicant &amp; Member Queue</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=8.0">
-<script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="app.js?v=8.0"></script>
+<link rel="stylesheet" href="styles.css?v=9.0">
+<script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="app.js?v=9.0"></script>
 </head><body>
 <header class="site-header"><div class="head">
   <div class="brand"><img class="tipon-logo" id="brandPhoto" src="assets/tipon-logo-hd.webp" alt="tipón Federation logo">
@@ -27,7 +27,6 @@
       </div>
       <div class="fullscreen-datetime"><span id="fullscreenDate">FRIDAY, OCTOBER 30, 2026</span><strong id="fullscreenTime">--:--:--</strong></div>
     </div>
-    <div id="callNotice" class="call-notice hide" aria-live="polite"></div>
     <div class="tv"><div class="tv-inner">
       <aside class="qr-panel"><span class="eyebrow">FAST · CONTACTLESS · EASY</span><h2>SCAN TO GET IN QUEUE</h2>
         <div class="qr-frame"><div id="qr" role="img" aria-label="Scannable QR code for applicant and member registration"></div></div>
@@ -42,6 +41,7 @@
   </section>
   <section id="staff" class="hide">
     <div class="page-head"><div><span class="eyebrow">TIPON OPERATIONS</span><h1>Staff Console</h1><p>Call, recall, and complete queue numbers for your configured service windows.</p></div></div>
+    <div id="staffAlert" class="status hide staff-alert" role="status" aria-live="polite"></div>
     <div class="tiles">
       <div class="metric"><span>Service windows</span><strong id="metricWindows">4</strong><small>Assigned transactions</small></div>
       <div class="metric"><span>Waiting applicants</span><strong id="metricWait">0</strong><small>Registered queue numbers</small></div>
@@ -74,9 +74,11 @@
         <label class="field" for="editRecruiter">Recruiter name<input id="editRecruiter" maxlength="80" placeholder="Full name of recruiter" autocomplete="off"></label>
       </div><div class="buttons"><button id="saveWindow" class="btn success" type="button">Save Changes</button><button id="cancelWindow" class="btn ghost" type="button">Cancel</button></div></div>
     </div>
-    <div class="card"><h2>Transaction Types</h2><p>Existing transaction types, including inactive entries, are listed below. Deleting a transaction deactivates it for new registrations, while retaining existing queue history. Inactive types can be restored.</p>
-      <div class="grid" style="margin-top:14px"><label class="field" for="newCode">Transaction Code<input id="newCode" maxlength="6" placeholder="INQ"></label><label class="field" for="newName">Transaction Name<input id="newName" maxlength="60" placeholder="Transaction name"></label></div>
-      <button id="addTx" class="btn success" type="button" style="margin-top:14px">+ Add Transaction Type</button>
+    <div class="card"><div class="split transaction-heading"><div><h2>Transaction Types</h2><p>Manage available transaction types. Deactivation preserves queue history; inactive types can be restored.</p></div><button id="openAddTx" class="btn success" type="button" aria-controls="txAddEditor" aria-expanded="false">+ Add Transaction Type</button></div>
+      <div class="inline-editor hide" id="txAddEditor"><h3>Add Transaction Type</h3><div class="grid">
+        <label class="field" for="newCode">Transaction Code<input id="newCode" maxlength="6" placeholder="e.g. INQ" autocomplete="off"></label>
+        <label class="field" for="newName">Transaction Name<input id="newName" maxlength="60" placeholder="e.g. Member Inquiry" autocomplete="off"></label>
+      </div><div class="buttons"><button id="addTx" class="btn success" type="button">Save Transaction Type</button><button id="cancelAddTx" class="btn ghost" type="button">Cancel</button></div></div>
       <div class="table-wrap"><table><thead><tr><th>Code</th><th>Transaction Type</th><th>Status</th><th>Actions</th></tr></thead><tbody id="setupTx"></tbody></table></div>
       <div class="inline-editor hide" id="txEditor"><h3 id="txEditorTitle">Edit Transaction Type</h3>
         <label class="field" for="editTxName">Transaction Name<input id="editTxName" maxlength="60"></label>
