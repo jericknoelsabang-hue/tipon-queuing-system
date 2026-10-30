@@ -1,6 +1,6 @@
 /* Standalone public TIPON Queue registration — no TV or staff navigation. */
 (()=>{'use strict';
-const $=id=>document.getElementById(id),C=window.TIPON_CONFIG||{},VERSION='federation-v7';
+const $=id=>document.getElementById(id),C=window.TIPON_CONFIG||{},VERSION='federation-v8',COMPATIBLE=new Set(['federation-v7','federation-v8']);
 let service='recruitment',seq=0,memberAvailable=true;
 const apiUrl=()=>new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||'';
 function valid(url){try{const u=new URL(url);return u.origin==='https://script.google.com'&&u.pathname.endsWith('/exec')}catch{return false}}
@@ -32,16 +32,24 @@ function choose(next){
 $('chooseRecruitment').onclick=()=>choose('recruitment');
 $('chooseMember').onclick=()=>choose('member');
 function receipt(ticket){
- $('entry').classList.add('hide');$('receipt').classList.remove('hide');$('step3').classList.add('on');
+ $('entry').classList.add('hide');$('receipt').classList.remove('hide');$('receipt').classList.remove('finished');$('step2').classList.add('on');
  $('receiptTag').textContent='QUEUE NUMBER CONFIRMED';
  $('receiptTitle').textContent='Your queue number is ready';
  $('receiptCode').textContent=String(ticket.queueNo||'---');
  $('receiptText').textContent='Please save your queue number and watch the TV Display for your assigned window.';
+ $('finishedNotice').classList.add('hide');
  clear();
 }
 $('another').onclick=()=>{
- $('receipt').classList.add('hide');$('entry').classList.remove('hide');$('step3').classList.remove('on');
- $('queueForm').reset();choose('recruitment');
+ $('receipt').classList.add('hide');$('receipt').classList.remove('finished');$('entry').classList.remove('hide');$('step2').classList.remove('on');
+ $('finishedNotice').classList.add('hide');$('queueForm').reset();choose($('chooseRecruitment').disabled?'member':'recruitment');
+};
+$('done').onclick=()=>{
+ $('receipt').classList.add('finished');
+ $('receiptTag').textContent='REGISTRATION COMPLETE';
+ $('receiptTitle').textContent='Thank you. Your queue number is confirmed.';
+ $('receiptText').textContent='Please keep your queue number and wait for it to be called at the TV Display.';
+ $('finishedNotice').classList.remove('hide');
 };
 $('queueForm').onsubmit=async event=>{
  event.preventDefault();clear();
@@ -51,8 +59,7 @@ $('queueForm').onsubmit=async event=>{
   const transaction=service==='recruitment' ? $('transaction').value : 'MC';
   const position=service==='recruitment' ? $('position').value.trim() : $('concern').value.trim();
   if(!firstName||!lastName||!position)throw Error('Please complete all required fields.');
-  const health=await jp('health');if(!health.ok)throw Error(health.error||'Could not reach the queue server.');
-  if(health.version!==VERSION)throw Error('The queue server requires an update. Please ask staff to deploy Federation v5.');
+  // One request instead of a health check plus registration. The backend validates and deduplicates applicants.
   const res=await jp('register',{firstName,lastName,position,transaction});
   if(!res.ok)throw Error(res.error||'Unable to generate your queue number.');
   if(!res.ticket||!res.ticket.queueNo)throw Error('The server returned no queue number. Please notify staff.');
@@ -61,26 +68,32 @@ $('queueForm').onsubmit=async event=>{
  finally{button.disabled=false;button.textContent='GET QUEUE NUMBER'}
 };
 async function loadTransactions(){
- if(!valid(apiUrl())){message('The queue is not configured. Please notify reception staff.');return}
+ if(!valid(apiUrl())){message('The queue is not configured. Please notify reception staff.');$('submit').disabled=true;return}
  try{
-  const res=await jp('state');if(!res.ok)throw Error(res.error);
-  if(res.state?.version!==VERSION){message('The queuing system is awaiting its backend update. Please ask staff for assistance.');return}
-  const active=res.state.transactions||[];
+  let res=await jp('publicConfig');
+  // Existing Federation v7 backends can still register while the new Apps Script is being deployed.
+  if(!res.ok&&/Unknown action/i.test(String(res.error||'')))res=await jp('state');
+  if(!res.ok)throw Error(res.error||'Cannot retrieve transaction types.');
+  const version=res.version||res.state?.version;
+  if(version&&!COMPATIBLE.has(version))throw Error('The queuing system requires a backend update. Please contact reception.');
+  const active=res.transactions||res.state?.transactions||[];
   memberAvailable=active.some(t=>t.code==='MC');
   $('chooseMember').disabled=!memberAvailable;
   $('chooseMember').setAttribute('aria-disabled',String(!memberAvailable));
-  if(!memberAvailable&&service==='member'){
-    choose('recruitment');
-    message('Member Concern is temporarily unavailable. Please select Recruitment or ask staff.');
-  }
   const tx=active.filter(t=>t.code!=='MC');
   $('chooseRecruitment').disabled=!tx.length;
-  if(tx.length){const select=$('transaction'),previous=select.value;select.textContent='';
-   for(const item of tx){const o=document.createElement('option');o.value=item.code;o.textContent=item.code+' — '+item.name;select.appendChild(o)}
-   if(tx.some(t=>t.code===previous))select.value=previous;
-  }
- }catch(e){message('Could not load transactions: '+e.message)}
+  if(tx.length){
+    const select=$('transaction'),previous=select.value;select.textContent='';
+    for(const item of tx){const o=document.createElement('option');o.value=item.code;o.textContent=item.code+' — '+item.name;select.appendChild(o)}
+    if(tx.some(t=>t.code===previous))select.value=previous;
+  }else{$('transaction').textContent=''}
+  if(!tx.length&&!memberAvailable){$('submit').disabled=true;message('Recruitment and Member Concern registration are currently unavailable. Please ask staff.');return}
+  $('submit').disabled=false;
+  if(!tx.length&&memberAvailable)choose('member');
+  else if(!memberAvailable&&service==='member')choose('recruitment');
+  clear();
+ }catch(e){message('Could not load available services: '+e.message)}
 }
 localStorage.removeItem('tqPendingPrecheck'); // clear legacy v4 state: no applicant verification is required
-choose('recruitment');loadTransactions();
+choose('recruitment');void loadTransactions();
 })();
