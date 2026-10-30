@@ -15,8 +15,9 @@ function setupTiponQueueSystem(){
   const t=ss.getSheetByName(CFG.tx);
   if(t.getLastRow()<2)t.getRange(2,1,3,4).setValues([['NH','New Hire',true,1],['RH','Rehire',true,2],['TR','Transfer',true,3]]);
   const q=ss.getSheetByName(CFG.queue);if(q.getLastColumn()<QH.length)q.getRange(1,QH.length).setValue('Recruiter');
-  const all=txs_(ss);
-  if(!all.some(t=>t.code==='MC'))ss.getSheetByName(CFG.tx).appendRow(['MC','Member Concerns',true,all.length+1]);
+  const all=allTxs_(ss),mc=all.find(t=>t.code==='MC');
+  if(!mc)ss.getSheetByName(CFG.tx).appendRow(['MC','Member Concerns',true,all.length+1]);
+  else if(!mc.active){const txSheet=ss.getSheetByName(CFG.tx),rows=txSheet.getRange(2,1,txSheet.getLastRow()-1,1).getValues();const index=rows.findIndex(r=>String(r[0])==='MC');if(index>=0)txSheet.getRange(index+2,3).setValue(true);}
   return {ok:true,federationMode:true,version:'federation-v6'};
 }
 function doGet(e){
@@ -35,6 +36,7 @@ function doGet(e){
       case'saveWindow':r=saveWindow_(p);break;
       case'editTx':r=editTx_(p);break;
       case'deleteTx':r=deleteTx_(p);break;
+      case'restoreTx':r=restoreTx_(p);break;
       case'addTx':r=addTx_(p);break;
       case'setAnnouncement':r=setAnnouncement_(p);break;
       default:throw Error('Unknown action');
@@ -197,7 +199,7 @@ function addWindow_(){
 function addTx_(p){
   const c=code_(p.code,6),n=txt_(p.name,60);if(!/^[A-Z0-9]{2,6}$/.test(c)||!n)throw Error('Enter a 2-6 character code and name.');
   const lock=LockService.getScriptLock();lock.waitLock(30000);
-  try{const ss=ss_(),list=txs_(ss);if(list.some(x=>x.code===c))throw Error('Code already exists.');ss.getSheetByName(CFG.tx).appendRow([c,n,true,list.length+1]);return{ok:true,transaction:{code:c,name:n}}}finally{lock.releaseLock()}
+  try{const ss=ss_(),list=allTxs_(ss);if(list.some(x=>x.code===c))throw Error('Code already exists, including inactive records. Restore it in Setup if needed.');ss.getSheetByName(CFG.tx).appendRow([c,n,true,list.length+1]);return{ok:true,transaction:{code:c,name:n}}}finally{lock.releaseLock()}
 }
 function saveWindow_(p){
   const n=windowCount_(),win=int_(p.window,1,n),tx=code_(p.transaction,6),recruiter=txt_(p.recruiter,80);
@@ -244,20 +246,38 @@ function editTx_(p){
 }
 function deleteTx_(p){
   const code=code_(p.code,6);
-  if(['NH','RH','TR','MC'].includes(code))throw Error('Core transaction types cannot be removed.');
+  if(code==='MC')throw Error('Member Concern is required for public registration and cannot be deleted.');
   const lock=LockService.getScriptLock();lock.waitLock(30000);
-  try{const ss=ss_(),q=ss.getSheetByName(CFG.queue);
-    if(q.getLastRow()>1&&q.getRange(2,7,q.getLastRow()-1,1).getValues().some(r=>String(r[0])===code))throw Error('Transaction has queue history; deletion is disabled.');
-    for(let i=1;i<=windowCount_();i++)if(windowTx_(ss,i)===code)throw Error('Transaction is assigned to a window.');
-    const sh=ss.getSheetByName(CFG.tx),rows=sh.getDataRange().getValues(),i=rows.findIndex((r,k)=>k>0&&String(r[0])===code);
-    if(i<1)throw Error('Transaction not found.');sh.deleteRow(i+1);return{ok:true};
+  try{
+    const ss=ss_(),sh=ss.getSheetByName(CFG.tx),rows=sh.getDataRange().getValues();
+    const idx=rows.findIndex((r,i)=>i>0&&String(r[0])===code);if(idx<1)throw Error('Transaction not found.');
+    if(!bool_(rows[idx][2]))return{ok:true,code,active:false};
+    const q=ss.getSheetByName(CFG.queue);
+    if(q.getLastRow()>1&&q.getRange(2,1,q.getLastRow()-1,QH.length).getValues().some(r=>String(r[6])===code&&['WAITING','SERVING'].includes(String(r[10]))))
+      throw Error('Active tickets use this transaction. Complete them before deleting it.');
+    for(let i=1;i<=windowCount_();i++)if(windowTx_(ss,i)===code)
+      throw Error('Transaction is assigned to Window '+i+'. Change its assigned transaction in Setup first.');
+    // Soft-delete preserves completed ticket history and supports later restoration.
+    sh.getRange(idx+1,3).setValue(false);
+    return{ok:true,code,active:false};
+  }finally{lock.releaseLock()}
+}
+function restoreTx_(p){
+  const code=code_(p.code,6);
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    const sh=ss_().getSheetByName(CFG.tx),rows=sh.getDataRange().getValues();
+    const idx=rows.findIndex((r,i)=>i>0&&String(r[0])===code);
+    if(idx<1)throw Error('Transaction not found.');
+    sh.getRange(idx+1,3).setValue(true);
+    return{ok:true,code,active:true};
   }finally{lock.releaseLock()}
 }
 function state_(){
   const ss=ss_(),n=windowCount_(),w=ss.getSheetByName(CFG.windows),windows={};
   w.getRange(2,1,n,WH.length).getValues().forEach(r=>windows[String(r[0])]=r[1]?windowTicket_(r):null);
   const q=ss.getSheetByName(CFG.queue),waiting=[],completed=[],today=day_();if(q.getLastRow()>1)q.getRange(2,1,q.getLastRow()-1,QH.length).getValues().forEach(r=>{const t=ticket_(r);if(dayCell_(r[1])===today&&String(r[10])==='WAITING')waiting.push(t);if(String(r[10])==='COMPLETED')completed.push(t)});completed.reverse();
-  return{windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,completed,transactions:txs_(ss),assignments:Object.fromEntries(Array.from({length:n},(_,i)=>[String(i+1),windowTx_(ss,i+1)])),recruiters:Object.fromEntries(Array.from({length:n},(_,i)=>[String(i+1),settingValue_(ss,'WINDOW_RECRUITER_'+(i+1))])),announcement:announcement_(ss),federationMode:true,version:'federation-v6'}
+  return{windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,completed,transactions:txs_(ss),transactionTypes:allTxs_(ss),assignments:Object.fromEntries(Array.from({length:n},(_,i)=>[String(i+1),windowTx_(ss,i+1)])),recruiters:Object.fromEntries(Array.from({length:n},(_,i)=>[String(i+1),settingValue_(ss,'WINDOW_RECRUITER_'+(i+1))])),announcement:announcement_(ss),federationMode:true,version:'federation-v6'}
 }
 
 function announcement_(ss){
@@ -285,7 +305,8 @@ function setAnnouncement_(p){
     return{ok:true,announcement:message};
   }finally{lock.releaseLock()}
 }
-function txs_(ss){const s=ss.getSheetByName(CFG.tx);if(!s||s.getLastRow()<2)return[];return s.getRange(2,1,s.getLastRow()-1,4).getValues().map(r=>({code:String(r[0]),name:String(r[1]),active:bool_(r[2]),sort:Number(r[3]||999)})).filter(x=>x.code&&x.name&&x.active).sort((a,b)=>a.sort-b.sort)}
+function allTxs_(ss){const s=ss.getSheetByName(CFG.tx);if(!s||s.getLastRow()<2)return[];return s.getRange(2,1,s.getLastRow()-1,4).getValues().map(r=>({code:String(r[0]),name:String(r[1]),active:bool_(r[2]),sort:Number(r[3]||999)})).filter(x=>x.code&&x.name).sort((a,b)=>a.sort-b.sort)}
+function txs_(ss){return allTxs_(ss).filter(x=>x.active)}
 function findTx_(ss,c){return txs_(ss).find(x=>x.code===c)}
 function findActive_(q,today,f,l){if(q.getLastRow()<2)return null;const key=nameKey_(f,l),v=q.getRange(2,1,q.getLastRow()-1,QH.length).getValues();for(const r of v){if(dayCell_(r[1])!==today||!['WAITING','SERVING'].includes(String(r[10])))continue;if(nameKey_(r[15]||String(r[8]).split(' ')[0],r[16]||String(r[8]).split(' ').slice(-1)[0])===key)return r}return null}
 function next_(q,today,tx){let m=0;if(q.getLastRow()<2)return 1;q.getRange(2,1,q.getLastRow()-1,QH.length).getValues().forEach(r=>{if(dayCell_(r[1])===today&&String(r[6])===tx){const x=String(r[3]).match(/-(\d+)$/);if(x)m=Math.max(m,Number(x[1]))}});return m+1}
