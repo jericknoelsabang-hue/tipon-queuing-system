@@ -1,82 +1,68 @@
-# tipón Federation — Smart Queuing System (v4)
+# tipón — Applicant & Member Queuing System
 
-**Live website:** https://jericknoelsabang-hue.github.io/tipon-queuing-system/  
-**QR registration page:** https://jericknoelsabang-hue.github.io/tipon-queuing-system/join.html  
-**Official branding reference:** https://tipon.coop/
+**Live app:** https://jericknoelsabang-hue.github.io/tipon-queuing-system/  
+**QR page:** https://jericknoelsabang-hue.github.io/tipon-queuing-system/join.html  
+**Backend source:** [apps-script/Code.gs](apps-script/Code.gs)  
+**Google Sheets database:** [TIPON Queuing Database](https://docs.google.com/spreadsheets/d/1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik/edit)
 
-TIPON Federation-wide recruitment and member-concerns queuing system, hosted on GitHub Pages and synchronized using Google Apps Script + Google Sheets.
+This is a QR-based queuing system for **recruitment applicants** and **cooperative members with concerns**. The public QR page does not expose TV Display, Staff Console, or Setup navigation.
 
-## Features
+## Main workflows
 
-- **TV Display:** Local QR generation using vendored QRCode.js, current windows, waiting queue, voice/chime, and full screen.
-- **Standalone mobile registration:** TV QR links to \`join.html\`, **not** the TV dashboard.
-- **Applicant pre-screening:** Recruitment candidates complete a self-checklist and submit a **PC-### pre-check reference**. This is *not* a queue number. Staff review actual documents in the Staff Console and **Approve** to issue the real NH / RH / TR ticket, or **Incomplete** with a reason.
-- **Member Concerns:** MC tickets for COE, payout, membership/records, and other concerns. These bypass the recruitment document checklist and route to a dedicated Member Concerns service window.
-- **Window routing:** Window 3 defaults to **Member Concerns**; other windows default to Recruitment. Staff can change any window to Recruitment, Member Concerns, or All Services.
-- **Staff Console:** Document verification, Call Next, Recall, Complete, Add Window, Add Transaction Type, edit TV Announcement.
-- **Setup only:** Apps Script connection errors, Refresh Queue and Enable / Test Sound controls. No technical errors are shown in the public TV Display.
-- **Central Sheets:** Queue history is preserved and the Federation mode does not require MPC selection.
-- **Duplicate name behavior:** Same normalized first and last name uses the same active queue number on the same day.
+1. Scan the TV QR code and select Recruitment or Member Concern.
+2. For Recruitment, choose an active transaction type and enter the position. For Member Concern, type the concern.
+3. Provide first and last name and select **Get Queue Number**.
+4. See the confirmed NH / RH / TR / MC ticket, then choose **Register Another Applicant / Member** or **Done**. Done retains the ticket on screen with a close-page instruction.
+5. Staff use Call Next, Recall, and the green Complete action. Serving tickets and queue history are stored in Google Sheets; duplicate active first-and-last names receive the same daily ticket.
+6. TV Display shows the scan code, NOW SERVING windows, UP NEXT, and a scrolling announcement message with a fixed **ANNOUNCEMENT** label.
 
-## From the October 30, 2026 IE meeting recap
+### Setup
 
-The recruitment process was reported to have 3–4 hour waits, incomplete requirements discovered too late, and separate member concerns competing for recruiters' time.
+- **Get Queue Page** link lives in Setup, not the TV navigation or below the QR code.
+- Manage service windows, assigned transaction, recruiter, and active windows.
+- Manage transaction types with Edit, Delete (deactivate) and Restore. Deactivating a type retains historical tickets and removes it from new registration options.
+- TV Announcement can store up to **2,500 characters** once the Federation v8 Apps Script backend is deployed. Longer messages are transmitted to Apps Script in smaller chunks, then committed together.
+- Refresh Queue, Enable/Test Sound, Save Connection, and Test Connection are in Setup.
+- The Waiting and Completed Queue tables show 10 rows per page, with row counts underneath.
 
-| Proposal | Current implementation |
+## IMPORTANT: Deploy the Google Apps Script backend separately
+
+**Pushing to GitHub changes the GitHub Pages frontend only. It does not deploy the Apps Script web app.** The new backend source reports `federation-v8`.
+
+1. Open the **existing** Google Apps Script project linked to your TIPON Queuing Database.
+2. Back up the current `Code.gs`, then replace it with the entire [latest Code.gs](apps-script/Code.gs).
+3. Save the project, select `setupTiponQueueSystem` and run it once. Grant the required authorization. This initializes sheet headers/defaults without deleting the existing queue.
+4. Select **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy** to update the existing `/exec` deployment.
+5. In the web app, go to **Setup → Test Connection** and confirm **Federation v8**.
+6. Test registrations and staff actions using test accounts before real applicants or members.
+
+**Compatibility:** The new frontend still accepts Federation v7 for basic queue actions and registration. However, a v7 backend cannot save an announcement beyond its previous 280-character limit and does not have the lightweight `publicConfig` endpoint.
+
+## Minimum functional acceptance checks
+
+- **Recruitment:** Select transaction, enter position, generate a ticket on mobile, and verify the same record in `QUEUE`.
+- **Member Concern:** Enter a free-text concern and confirm an MC ticket is created.
+- **Duplicate:** Register the same first and last name again while a queue ticket remains active. Check the same number is returned.
+- **Done:** Confirm that pressing Done preserves the queue number and shows a completion message.
+- **Staff:** Call/recall/complete a test ticket; verify TV Display and Google Sheets reflect the change.
+- **Configuration:** Edit a window's assigned transaction/recruiter; confirm the value persists after refresh.
+- **History:** Deactivate and restore a test transaction type without losing previous queue records.
+- **TV Announcement:** Save a message over 280 characters (up to 2,500), then confirm it appears on the TV and remains after refresh.
+- **Display:** Verify buttons, window centering, the fixed announcement label, and mobile/tablet layout.
+
+## Google Sheets tabs
+
+| Tab | Role |
 |---|---|
-| Pre-check applicant documents before issuing recruitment tickets | **Implemented:** self-declaration plus staff verification and approval. |
-| Dedicated Member Concerns service window | **Implemented:** MC transaction and configurable dedicated routing. |
-| OCR / AI document extraction | **Not implemented:** future phase requiring document access, field-validation rules, privacy review, and a supported scanner/integration. |
-| Measure and compare automated vs. manual window processing time | **Not yet implemented:** data already contains ticket timestamps, but analytical reporting is a separate task. |
+| `QUEUE` | Ticket IDs, statuses, names, transaction, queue dates, recruiter, and timestamps |
+| `WINDOWS` | Active ticket and service-window information |
+| `TRANSACTION_TYPES` | Transaction code, name, active state, and order |
+| `SETTINGS` | Announcements, recruiter names, per-window assignments |
+| `PRECHECK` | Legacy tab; no pre-screening checklist in new registrations |
+| `MPC_CONFIG` | Legacy compatibility tab; no MPC selection in current user flow |
 
-> Document checklist contents are generic and must be validated against the official recruitment requirements for each transaction/site. Staff must inspect the original documents; checkbox self-declaration is not proof of eligibility.
+## Security and production readiness
 
-## CRITICAL: backend redeployment is required
+The current setup uses a public GitHub Pages frontend with a JSONP/GET Apps Script endpoint and **no authenticated staff access**, following earlier user requirements. A separate QR page and hidden navigation do not provide authorization. Anyone with the endpoint URL may potentially read queue details or execute staff actions. Do **not** use it for unrestricted sensitive production data until staff authentication, role authorization, HTTPS POST writes, and data-access restrictions are implemented.
 
-**A GitHub push updates the frontend only. The live Apps Script \`/exec\` URL continues to run its old version until the owner redeploys it.** The reported error **“Announcement not saved: Unknown action”** indicates that the deployed backend does not recognize the latest endpoint.
-
-1. Open your existing TIPON Queuing Google Apps Script project.
-2. Replace its complete \`Code.gs\` with the [current apps-script/Code.gs](apps-script/Code.gs).
-3. Click Save and run \`setupTiponQueueSystem\` once; authorize Google if prompted. This initializes the \`PRECHECK\` and \`SETTINGS\` sheets without erasing existing \`QUEUE\` history.
-4. Choose **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy**. Reuse the existing deployment URL instead of creating a different one.
-5. Open the live app **Setup**, paste the deployed Google Apps Script **/exec** URL if needed, then click **Save Connection** and **Test Connection**.
-6. Verify status **Federation v4** and test registration from a **second device**.
-7. On the TV computer only, go to **Setup → Enable / Test Sound**, then **TV Display → Full Screen**.
-
-If “Unknown action” or “backend outdated” persists, the Apps Script deployment was not successfully updated. Saving Code.gs without **Manage deployments → New version** is not sufficient.
-
-## End-to-end test
-
-1. On a phone, scan TV QR. It must open **/join.html?api=...** (dedicated Get Queue).
-2. Select **Recruitment**; complete the document self-check and submit. Phone shows **PC-001**, *not* NH-001.
-3. Staff Console → Document Pre-screening → verify physical ID and documents → **Approve**.
-4. Phone status changes to real ticket **NH-001**; Staff Console Window 1 (Recruitment) → **Call Next**.
-5. On another phone, select **Member Concerns** → choose COE or payout issue → receive **MC-001**.
-6. Window 3 (Member Concerns) → **Call Next**. Check TV sound and announcement.
-7. In Staff Console, edit the Announcement. Verify it appears on TV. In **Setup**, test Refresh and Sound.
-8. Verify no other existing ticket or historical sheet rows were removed.
-
-## Google Sheet
-
-[Open TIPON Queuing Database](https://docs.google.com/spreadsheets/d/1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik/edit)
-
-| Tab | Purpose |
-|---|---|
-| \`QUEUE\` | NH, RH, TR, MC ticket history; queue status and timestamps |
-| \`WINDOWS\` | Active ticket per service window |
-| \`TRANSACTION_TYPES\` | User-defined categories; new MC transaction added by setup |
-| \`SETTINGS\` | TV announcement, per-window routing |
-| \`PRECHECK\` | Self-check and staff document verification / approval |
-| \`MPC_CONFIG\` | Legacy sheet retained for compatibility, not used by current queue logic |
-
-## Accessibility, privacy and security
-
-- The live app uses a no-PIN Staff Console **at the user's explicit request**. **This is not appropriate for unrestricted public operations without server-side staff authentication**: anyone who learns the /exec URL may invoke staff actions, and the current state endpoint exposes queue and precheck names. Restrict operations to approved staff/devices and implement authorization before handling real applicant data in production.
-- QRCode.js ([MIT](vendor/qrcodejs/LICENSE)) is included locally in the repository; QR rendering does not need the previous external QR-image API.
-- Audio must be enabled with a real user click on each TV browser.
-- The official TIPON promotional brand image is loaded from https://tipon.coop/ and the UI has a local vector fallback if the image is inaccessible.
-- The Google Apps Script JSONP endpoint transmits applicant data in request URLs. For production use, replace this with an authenticated API design using HTTPS POST and suitable access controls.
-
-## Validation
-
-Frontend JS parsed successfully and core Apps Script workflows (setup, duplicate prevention, pre-check submission, approval/rejection, recruitment/MC tickets, routing, announcements and recall) passed simulated Google Sheets tests. **Live Apps Script deployment and cross-device behavior remain unverified until the updated Apps Script web app is deployed and tested.**
+The local tests verify source syntax, UI mappings, and simulated Google Sheets operations; they **do not verify** the deployed Apps Script instance, cross-device synchronization, browser behavior, or production performance.
