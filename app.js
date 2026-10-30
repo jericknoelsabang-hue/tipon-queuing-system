@@ -3,26 +3,39 @@
 (()=>{'use strict';
 const C=window.TIPON_CONFIG||{}, $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const REQUIRED='federation-v8',COMPATIBLE=new Set(['federation-v7','federation-v8']),DEFAULT='Please keep your queue number until called.';
+const REQUIRED='federation-v9',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9']),DEFAULT='Please keep your queue number until called.';
 let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],transactions:[],transactionTypes:[],assignments:{},announcement:DEFAULT,completed:[],recruiters:{}};
-let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,tableSignature={wait:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
+let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,activeWindowActions=new Set(),tableSignature={wait:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
 let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='';
 function url(){return new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||''}
 function valid(u){try{const p=new URL(u);return p.origin==='https://script.google.com'&&p.pathname.endsWith('/exec')}catch{return false}}
-function status(t,k=''){const e=$('setupAlert');e.textContent=t;e.className='status '+k}
+function status(t,k=''){
+ const e=$('setupAlert');e.textContent=t;e.className='status '+k;
+ if(k==='err'&&page==='staff')staffMessage(t,'err');
+}
+function staffMessage(t,k='ok'){
+ const a=$('staffAlert');if(!a)return;
+ a.textContent=t;a.className='status staff-alert '+k;
+}
+function clearStaffMessage(){const a=$('staffAlert');if(a){a.textContent='';a.className='status staff-alert hide'}}
+
 function view(v){const previous=page;page=v;['display','staff','setup'].forEach(x=>$(x).classList.toggle('hide',x!==v));document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===v));$('fullscreen').classList.toggle('hide',v!=='display');if(v==='setup')setupTables();if(previous!==v&&hasLoaded)void refresh(true)}
-function error(e,go=false){let t=String(e?.message||e||'Unknown error');if(t.includes('Unknown action'))t='Apps Script is outdated (Unknown action). Redeploy Code.gs Federation v7, then click Test Connection.';status(t,'err');if(go)view('setup')}
+function error(e){let t=String(e?.message||e||'Unknown error');
+ if(t.includes('Unknown action'))t='Apps Script needs a backend update. Check the Code.gs deployment in Setup.';
+ if(t.includes('timed out'))t='The queue server did not confirm in time. Rechecking the latest queue status; do not repeat the action until the result is visible.';
+ status(t,'err'); /* Never redirect staff away from the active service window. */
+}
 document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>view(b.dataset.v));
 function jp(action,params={}){return new Promise((resolve,reject)=>{
  if(!valid(url()))return reject(Error('Configure a valid Apps Script /exec URL in Setup.'));
  const cb='__tipon'+Date.now()+(++seq),tag=document.createElement('script');let finished=false;
- const tm=setTimeout(()=>finish(Error('Apps Script timed out. Check /exec deployment.')),15000);
+ const tm=setTimeout(()=>finish(Error('Apps Script timed out.')),action==='state'?19000:27000);
  function finish(err,data){if(finished)return;finished=true;clearTimeout(tm);delete window[cb];tag.remove();err?reject(err):resolve(data)}
  window[cb]=data=>finish(null,data);tag.onerror=()=>finish(Error('Cannot connect to Apps Script.'));
  const q=new URL(url());q.searchParams.set('action',action);q.searchParams.set('callback',cb);
  Object.entries(params).forEach(([k,v])=>q.searchParams.set(k,String(v??'')));tag.src=q.href;document.head.appendChild(tag);
 })}
-function ready(){if(COMPATIBLE.has(S.version))return true;error(Error('Update Apps Script to Federation v8. Open Setup → Connection for instructions.'),true);return false}
+function ready(){if(COMPATIBLE.has(S.version))return true;error(Error('Apps Script is disconnected or outdated. Check the connection in Setup.'));return false}
 function joinURL(){const u=new URL('join.html',C.pagesUrl||location.href);if(valid(url()))u.searchParams.set('api',url());return u.href}
 function qr(){const link=joinURL();$('getQueueSetup').href=link;if(link===qrUrl)return;
  qrUrl=link;const holder=$('qr');holder.innerHTML='';if(typeof QRCode==='undefined'){holder.textContent='QR unavailable';status('QR generator failed to load. Use Open Get Queue link.','err');return}
@@ -54,9 +67,10 @@ function tv(){
   }
   if(initialized){
     for(const i of indexes){const t=win(i),key=t?t.ticketId+'|'+t.calledAt:'';
-      if(key&&key!==last[i])announce(t,i);last[i]=key;
+      if(key&&key!==last[i]&&page==='display')announce(t,i);
+      last[i]=key;
     }
-  }else if(S.version===REQUIRED){
+  }else if(COMPATIBLE.has(S.version)){
     indexes.forEach(i=>{const t=win(i);last[i]=t?t.ticketId+'|'+t.calledAt:''});initialized=true;
   }
 }
