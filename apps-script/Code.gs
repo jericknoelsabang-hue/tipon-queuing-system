@@ -1,38 +1,33 @@
-const CFG={spreadsheetId:'1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik',queue:'QUEUE',windows:'WINDOWS',tx:'TRANSACTION_TYPES',mpc:'MPC_CONFIG',maxWindows:20};
+const CFG={spreadsheetId:'1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik',queue:'QUEUE',windows:'WINDOWS',tx:'TRANSACTION_TYPES',mpc:'MPC_CONFIG',settings:'SETTINGS',maxWindows:20};
 const QH=['Ticket ID','Queue Date','Created At','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Status','Window','Called At','Completed At','Last Recalled At','First Name','Last Name'];
 const WH=['Window','Active Ticket ID','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Called At','Updated At'];
 const TH=['Code','Transaction Name','Active','Sort Order'];
 const MH=['MPC Code','MPC Name','Queue Prefix','Logo URL','Active','Sort Order'];
+const DEFAULT_ANNOUNCEMENT='Please keep your queue number until called.';
+const SH=['Setting','Value','Updated At'];
 
 function setupTiponQueueSystem(){
   const ss=SpreadsheetApp.openById(CFG.spreadsheetId);
-  ensure_(ss,CFG.queue,QH);ensure_(ss,CFG.windows,WH);ensure_(ss,CFG.tx,TH);
+  ensure_(ss,CFG.queue,QH);ensure_(ss,CFG.windows,WH);ensure_(ss,CFG.tx,TH);ensure_(ss,CFG.settings,SH);
   const w=ss.getSheetByName(CFG.windows);
   for(let i=1;i<=3;i++)if(!w.getRange(i+1,1).getValue())w.getRange(i+1,1).setValue(i);
   const t=ss.getSheetByName(CFG.tx);
   if(t.getLastRow()<2)t.getRange(2,1,3,4).setValues([['NH','New Hire',true,1],['RH','Rehire',true,2],['TR','Transfer',true,3]]);
-  const p=PropertiesService.getScriptProperties();
-  if(!p.getProperty('STAFF_PIN'))p.setProperty('STAFF_PIN','1234');
-  return {ok:true,federationMode:true};
-}
-function setTiponStaffPin(){
-  const ui=SpreadsheetApp.getUi(),r=ui.prompt('Set Staff PIN','Enter 4-12 digits',ui.ButtonSet.OK_CANCEL);
-  if(r.getSelectedButton()!==ui.Button.OK)return;const v=String(r.getResponseText()).trim();
-  if(!/^\d{4,12}$/.test(v))throw Error('PIN must be 4-12 digits.');
-  PropertiesService.getScriptProperties().setProperty('STAFF_PIN',v);ui.alert('Staff PIN updated.');
+  return {ok:true,federationMode:true,version:'federation-v3'};
 }
 function doGet(e){
   const p=e?.parameter||{},cb=String(p.callback||'callback').replace(/[^A-Za-z0-9_.$]/g,'');
   try{
     let r;switch(String(p.action||'state')){
-      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v2'};break;
+      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v3'};break;
       case'state':r={ok:true,state:state_()};break;
       case'register':r=register_(p);break;
-      case'call':pin_(p.pin);r=call_(p);break;
-      case'recall':pin_(p.pin);r=recall_(p);break;
-      case'complete':pin_(p.pin);r=complete_(p);break;
-      case'addWindow':pin_(p.pin);r=addWindow_();break;
-      case'addTx':pin_(p.pin);r=addTx_(p);break;
+      case'call':r=call_(p);break;
+      case'recall':r=recall_(p);break;
+      case'complete':r=complete_(p);break;
+      case'addWindow':r=addWindow_();break;
+      case'addTx':r=addTx_(p);break;
+      case'setAnnouncement':r=setAnnouncement_(p);break;
       default:throw Error('Unknown action');
     }return out_(cb,r);
   }catch(err){return out_(cb,{ok:false,error:String(err.message||err)})}
@@ -100,7 +95,33 @@ function state_(){
   const ss=ss_(),n=windowCount_(),w=ss.getSheetByName(CFG.windows),windows={};
   w.getRange(2,1,n,WH.length).getValues().forEach(r=>windows[String(r[0])]=r[1]?windowTicket_(r):null);
   const q=ss.getSheetByName(CFG.queue),waiting=[],today=day_();if(q.getLastRow()>1)q.getRange(2,1,q.getLastRow()-1,QH.length).getValues().forEach(r=>{if(dayCell_(r[1])===today&&String(r[10])==='WAITING')waiting.push(ticket_(r))});
-  return{windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,transactions:txs_(ss),federationMode:true}
+  return{windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,transactions:txs_(ss),announcement:announcement_(ss),federationMode:true,version:'federation-v3'}
+}
+
+function announcement_(ss){
+  const sheet=ss.getSheetByName(CFG.settings);
+  if(!sheet||sheet.getLastRow()<2)return DEFAULT_ANNOUNCEMENT;
+  const rows=sheet.getRange(2,1,sheet.getLastRow()-1,2).getValues();
+  const value=rows.find(row=>String(row[0]).trim()==='ANNOUNCEMENT');
+  return value&&String(value[1]||'').trim() ? String(value[1]).trim() : DEFAULT_ANNOUNCEMENT;
+}
+function setAnnouncement_(p){
+  const message=txt_(p.message,280);
+  if(!message)throw Error('Please enter an announcement.');
+  if(String(p.message||'').length>280)throw Error('Announcement must not exceed 280 characters.');
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    const ss=ss_();
+    const sheet=ss.getSheetByName(CFG.settings)||ensure_(ss,CFG.settings,SH);
+    let row=0;
+    if(sheet.getLastRow()>1){
+      const keys=sheet.getRange(2,1,sheet.getLastRow()-1,1).getValues();
+      for(let i=0;i<keys.length;i++)if(String(keys[i][0]).trim()==='ANNOUNCEMENT'){row=i+2;break;}
+    }
+    if(!row)row=sheet.getLastRow()+1;
+    sheet.getRange(row,1,1,3).setValues([['ANNOUNCEMENT',message,new Date()]]);
+    return{ok:true,announcement:message};
+  }finally{lock.releaseLock()}
 }
 function txs_(ss){const s=ss.getSheetByName(CFG.tx);if(!s||s.getLastRow()<2)return[];return s.getRange(2,1,s.getLastRow()-1,4).getValues().map(r=>({code:String(r[0]),name:String(r[1]),active:bool_(r[2]),sort:Number(r[3]||999)})).filter(x=>x.code&&x.name&&x.active).sort((a,b)=>a.sort-b.sort)}
 function findTx_(ss,c){return txs_(ss).find(x=>x.code===c)}
@@ -111,7 +132,7 @@ function ticket_(r){return{ticketId:String(r[0]||''),createdAt:iso_(r[2]),queueN
 function windowTicket_(r){return{window:Number(r[0]),ticketId:String(r[1]||''),queueNo:String(r[2]||''),mpcCode:String(r[3]||''),mpcName:String(r[4]||''),transaction:String(r[5]||''),transactionName:String(r[6]||''),name:String(r[7]||''),position:String(r[8]||''),calledAt:iso_(r[9])}}
 function windowCount_(){const s=ss_().getSheetByName(CFG.windows);let n=0;if(s&&s.getLastRow()>1)s.getRange(2,1,s.getLastRow()-1,1).getValues().forEach(r=>{const x=Number(r[0]);if(Number.isInteger(x)&&x>n)n=x});return Math.max(3,Math.min(CFG.maxWindows,n))}
 function ensure_(ss,name,h){let s=ss.getSheetByName(name)||ss.insertSheet(name);s.getRange(1,1,1,h.length).setValues([h]).setFontWeight('bold').setBackground('#e5e7eb');s.setFrozenRows(1)}
-function ss_(){return SpreadsheetApp.openById(CFG.spreadsheetId)}function pin_(p){if(String(p||'')!==(PropertiesService.getScriptProperties().getProperty('STAFF_PIN')||'1234'))throw Error('Invalid Staff PIN.')}
+function ss_(){return SpreadsheetApp.openById(CFG.spreadsheetId)}
 function nameKey_(f,l){return norm_(f)+'|'+norm_(l)}function norm_(v){let s=String(v||'').trim().toUpperCase();if(s.normalize)s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');return s.replace(/[^A-Z0-9]/g,'')}
 function txt_(v,n){return String(v||'').replace(/[\u0000-\u001F\u007F]/g,' ').replace(/\s+/g,' ').trim().slice(0,n)}function code_(v,n){return String(v||'').trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,n)}
 function int_(v,a,b){v=Number(v);if(!Number.isInteger(v)||v<a||v>b)throw Error('Invalid window.');return v}function bool_(v){return typeof v==='boolean'?v:['TRUE','YES','1','ACTIVE'].includes(String(v).toUpperCase())}
