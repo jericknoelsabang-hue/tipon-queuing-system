@@ -1,6 +1,6 @@
 /* Standalone public TIPON Queue registration — no TV or staff navigation. */
 (()=>{'use strict';
-const $=id=>document.getElementById(id),C=window.TIPON_CONFIG||{},VERSION='federation-v8',COMPATIBLE=new Set(['federation-v7','federation-v8']);
+const $=id=>document.getElementById(id),C=window.TIPON_CONFIG||{},VERSION='federation-v9',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9']);
 let service='recruitment',seq=0,memberAvailable=true;
 const apiUrl=()=>new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||'';
 function valid(url){try{const u=new URL(url);return u.origin==='https://script.google.com'&&u.pathname.endsWith('/exec')}catch{return false}}
@@ -45,10 +45,15 @@ $('another').onclick=()=>{
  $('finishedNotice').classList.add('hide');$('queueForm').reset();choose($('chooseRecruitment').disabled?'member':'recruitment');
 };
 $('done').onclick=()=>{
+ // Browsers permit window.close() for script-opened pages only. A QR-opened tab may stay open.
+ // Try synchronously from the user click, then show an accessible completion fallback.
+ try{window.close()}catch{}
+ if(window.closed)return;
  $('receipt').classList.add('finished');
  $('receiptTag').textContent='REGISTRATION COMPLETE';
  $('receiptTitle').textContent='Thank you. Your queue number is confirmed.';
  $('receiptText').textContent='Please keep your queue number and wait for it to be called at the TV Display.';
+ $('finishedNotice').textContent='Registration finished. You may close this tab. Your queue number remains valid.';
  $('finishedNotice').classList.remove('hide');
 };
 $('queueForm').onsubmit=async event=>{
