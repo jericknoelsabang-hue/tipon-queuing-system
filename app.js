@@ -129,6 +129,7 @@ function setupTables(){
   $('setupWc').textContent=connected?n+' WINDOWS':'LOADING';
   $('addWin').disabled=!writable||n>=Number(S.maxWindowCount||20);
   $('addTx').disabled=!writable;
+  $('openAddTx').disabled=!writable;
   $('setupListHint').textContent=!valid(url())?'No Apps Script connection configured. Add a valid /exec URL above.':
     !connected?'Connecting to Apps Script… Existing windows and transactions appear when the backend responds.':
     !writable?'Read-only backend '+S.version+'. Deploy the latest Federation v8 Apps Script to enable edits.':
@@ -296,7 +297,7 @@ async function saveAnnouncement(value){
   if(!ready())return;
   const btn=$('announcementSave');btn.disabled=true;btn.textContent='Saving…';
   try{
-    const chunks=S.version===REQUIRED?announcementParts(message):[message];
+    const chunks=S.version!=='federation-v7'?announcementParts(message):[message];
     let result;
     if(chunks.length===1)result=await jp('setAnnouncement',{message});
     else{
@@ -348,9 +349,20 @@ $('saveTx').onclick=async()=>{
 for(const key of ['wait','completed'])for(const side of ['Prev','Next']){
   $(key+side).onclick=()=>{if(key==='wait')waitPage+=side==='Next'?1:-1;else completedPage+=side==='Next'?1:-1;queueTables()};
 }
+$('openAddTx').onclick=()=>{
+ const editor=$('txAddEditor'),isOpening=editor.classList.contains('hide');
+ editor.classList.toggle('hide',!isOpening);
+ $('openAddTx').setAttribute('aria-expanded',String(isOpening));
+ if(isOpening)$('newCode').focus();
+};
+$('cancelAddTx').onclick=()=>{
+ $('txAddEditor').classList.add('hide');
+ $('openAddTx').setAttribute('aria-expanded','false');
+};
 $('addTx').onclick=async()=>{
-  const code=$('newCode').value,name=$('newName').value;
-  const b=$('addTx');b.disabled=true;
+  const code=$('newCode').value.trim().toUpperCase(),name=$('newName').value.trim();
+  if(!/^[A-Z0-9]{2,6}$/.test(code)||!name){error(Error('Enter a 2–6 character transaction code and a transaction name.'));return}
+  const b=$('addTx');b.disabled=true;b.textContent='Saving…';
   try{
     const result=await operate('addTx',{code,name},res=>{
       const tx={...res.transaction,active:true,sort:(S.transactionTypes||[]).length+1};
@@ -358,14 +370,30 @@ $('addTx').onclick=async()=>{
       S.transactions=[...(S.transactions||[]),tx];
       render();
     });
-    if(result){$('newCode').value='';$('newName').value=''}
-  }finally{b.disabled=false}
+    if(result){
+      $('newCode').value='';$('newName').value='';
+      $('txAddEditor').classList.add('hide');
+      $('openAddTx').setAttribute('aria-expanded','false');
+      status('Transaction '+code+' saved.','ok');
+    }
+  }finally{b.disabled=false;b.textContent='Save Transaction Type'}
 };
 $('api').value=url();
 $('refresh').onclick=()=>refresh();
-$('sound').onclick=()=>{armed=true;localStorage.setItem('tqSound','1');ding();status('Sound enabled on this device. Return to TV Display.','ok')};
+$('sound').onclick=()=>{
+ armed=true;localStorage.setItem('tqSound','1');ding();
+ if('speechSynthesis' in window){
+  try{
+   speechSynthesis.cancel();
+   const test=new SpeechSynthesisUtterance('TIPON queue announcement system is ready.');
+   test.rate=.92;test.lang='en-PH';
+   speechSynthesis.speak(test);
+  }catch{}
+ }
+ status('Sound and voice announcements enabled on this device. Queue calls will be spoken three times.','ok');
+};
 $('save').onclick=()=>{const v=$('api').value.trim();if(!valid(v)){error(Error('Enter a valid https://script.google.com/.../exec URL.'));return}localStorage.setItem('tqApi',v);qrUrl='';refresh()};
-$('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(!COMPATIBLE.has(r.version))throw Error('Backend is '+(r.version||'outdated')+'. Deploy Federation v8 Code.gs.');status('Backend verified • '+r.version+' • '+r.windows+' service windows.'+(r.version!==REQUIRED?' Upgrade to v8 for 2,500-character announcements.':''),'ok');await refresh(true)}catch(e){error(e)}};
+$('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(!COMPATIBLE.has(r.version))throw Error('Backend is '+(r.version||'outdated')+'. Deploy the latest Code.gs.');status('Backend verified • '+r.version+' • '+r.windows+' service windows.'+(r.version!==REQUIRED?' Update to v9 for latest performance improvements.':''),'ok');await refresh(true)}catch(e){error(e)}};
 $('clear').onclick=()=>{localStorage.removeItem('tqApi');$('api').value='';S.version='';qrUrl='';status('Connection cleared.','err');qr()};
 const full=$('fullscreen');
 function reflect(){full.setAttribute('aria-pressed',document.fullscreenElement===$('display')?'true':'false')}
@@ -379,5 +407,5 @@ function clock(){
   $('headerDay').textContent=date;$('fullscreenDate').textContent=date;
 }
 clock();setInterval(clock,1000);const requested=new URLSearchParams(location.search).get('view');view(['setup','staff'].includes(requested)?requested:'display');
-render();refresh(false);setInterval(()=>{if(!document.hidden)void refresh(true)},4500);document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refresh(true)});
+render();refresh(false);setInterval(()=>{if(!document.hidden)void refresh(true)},5500);document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refresh(true)});
 })();
