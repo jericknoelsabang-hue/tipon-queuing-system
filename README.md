@@ -61,6 +61,15 @@ This is a QR-based queuing system for **recruitment applicants** and **cooperati
 | `PRECHECK` | Legacy tab; no pre-screening checklist in new registrations |
 | `MPC_CONFIG` | Legacy compatibility tab; no MPC selection in current user flow |
 
+## Fullscreen QR and synchronization (October 30 polish)
+
+- The fullscreen TV QR dynamically fills its white panel, leaving moderate side gutters and a scan-friendly white quiet zone. The QR bitmap is rendered at 640×640 source resolution and scaled with CSS for high-DPI displays; applicant/member instructions are larger on the TV.
+- **Near-real-time polling:** while visible, TV fullscreen requests queue state approximately every **2 seconds**, standard TV and Staff Console every **2.5 seconds**, and Setup approximately every **6.5 seconds**. Requests are serialized, older responses after navigation/writes are discarded, background tabs pause polling, and errors retry with backoff.
+- **Google Apps Script source improvement:** the latest `Code.gs` keeps a **2-second** server-side cache for state snapshots (instead of 4), clearing it on successful writes. On longer queue histories, TV/Setup reads only the necessary current-day queue rows rather than every column of all historical tickets. The Staff Console still includes historical completed tickets.
+- **Deployment:** the frontend improvements ship through GitHub Pages. To activate the backend cache improvement, deploy a **new version of the existing Apps Script web app** using the latest `Code.gs` while retaining its `/exec` URL. The API version remains `federation-v9`; no schema reset or migration is needed.
+- **Expectation:** Google Apps Script and Google Sheets do **not** provide websocket-style push notifications. Updates will appear on subsequent polls, normally within a few seconds when connected, depending on Apps Script latency and quotas. This is not guaranteed subsecond realtime.
+- **Branch cleanup:** `queue-visual-fixes-20261030-v7` has already been fully included in `main`. It is safe to remove from **GitHub → Branches** when no longer needed; its recent-push banner is GitHub UI and is not part of the queuing app.
+
 ## Security and production readiness
 
 The current setup uses a public GitHub Pages frontend with a JSONP/GET Apps Script endpoint and **no authenticated staff access**, following earlier user requirements. A separate QR page and hidden navigation do not provide authorization. Anyone with the endpoint URL may potentially read queue details or execute staff actions. Do **not** use it for unrestricted sensitive production data until staff authentication, role authorization, HTTPS POST writes, and data-access restrictions are implemented.
