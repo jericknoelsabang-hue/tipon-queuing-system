@@ -11,7 +11,7 @@ function setupTiponQueueSystem(){
   const ss=SpreadsheetApp.openById(CFG.spreadsheetId);
   ensure_(ss,CFG.queue,QH);ensure_(ss,CFG.windows,WH);ensure_(ss,CFG.tx,TH);ensure_(ss,CFG.settings,SH);ensure_(ss,CFG.precheck,PH);
   const w=ss.getSheetByName(CFG.windows);
-  for(let i=1;i<=4;i++)if(!w.getRange(i+1,1).getValue())w.getRange(i+1,1).setValue(i);
+  if(w.getLastRow()<2)for(let i=1;i<=4;i++)w.getRange(i+1,1).setValue(i);
   const t=ss.getSheetByName(CFG.tx);
   if(t.getLastRow()<2)t.getRange(2,1,3,4).setValues([['NH','New Hire',true,1],['RH','Rehire',true,2],['TR','Transfer',true,3]]);
   const q=ss.getSheetByName(CFG.queue);if(q.getLastColumn()<QH.length)q.getRange(1,QH.length).setValue('Recruiter');
