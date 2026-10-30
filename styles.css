@@ -148,3 +148,104 @@ header{background:#fff;border-top:4px solid var(--gold);border-bottom:1px solid 
 }
 @media(max-width:430px){.site-header .brand{flex-wrap:wrap}.site-header .tipon-logo{width:145px}.brand-copy p{display:none}.windows{grid-template-columns:1fr 1fr}.window{min-height:180px}}
 @media(prefers-reduced-motion:reduce){.announcement-message.marquee .announcement-track{animation:none!important}}
+
+
+/* 2026-10-30 TV screen readability and Setup layout refinements */
+.site-header .head{max-width:1880px;min-height:130px;padding:18px 30px;gap:30px}
+.site-header .brand{min-width:0;gap:25px;align-items:center}
+.site-header .tipon-logo{width:clamp(195px,16vw,285px);max-width:33vw;max-height:112px;object-fit:contain}
+.site-header .brand-copy .eyebrow{font-size:clamp(13px,1.05vw,19px);line-height:1.45;letter-spacing:.09em;color:#075b87}
+.site-header .clock{flex:none;align-items:flex-end;gap:2px}
+.site-header .clock small{font-size:clamp(11px,1vw,17px);font-weight:900;color:#618196}
+.site-header #headerDay{font-size:clamp(18px,1.65vw,28px);font-weight:900;line-height:1.3}
+.site-header #clock{font-size:clamp(35px,3.25vw,56px);font-weight:900;line-height:1.15;font-variant-numeric:tabular-nums}
+.nav.nav-main{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;margin:0 0 22px}
+.nav-main button,.nav-main a{min-width:110px;min-height:48px;padding:10px 17px;font-size:13px}
+.nav-main #fullscreen{min-width:126px}
+.nav-main .hide{display:none!important}
+.tv-strip{width:100%;min-height:105px;padding:20px 26px;gap:22px;border-radius:15px}
+.tv-strip strong{font-size:clamp(14px,1.2vw,19px);font-weight:900;letter-spacing:.12em}
+.tv-strip .chip{font-size:clamp(16px,1.4vw,22px);padding:11px 17px}
+.announcement{display:grid!important;grid-template-columns:max-content minmax(0,1fr);align-items:center;gap:23px;min-height:116px;padding:20px 24px;white-space:normal;overflow:visible}
+.announcement .announcement-label{color:#ffcf7a!important;font:900 clamp(16px,1.24vw,22px)/1.3 Manrope,sans-serif!important;letter-spacing:.08em}
+.announcement-message{display:block;min-width:0;max-width:100%;overflow:visible}
+.announcement-message #ann{display:block!important;white-space:normal!important;overflow-wrap:anywhere;font:800 clamp(21px,1.8vw,33px)/1.35 Manrope,sans-serif!important;color:#fff;letter-spacing:0}
+.windows{gap:16px;grid-template-columns:repeat(auto-fit,minmax(175px,1fr))}
+.window{min-width:0;min-height:260px;gap:7px;padding:20px 12px}
+.window-label{font-size:clamp(16px,1.24vw,22px);font-weight:900;letter-spacing:.12em;color:#557a92}
+.window .queue-no{font-size:clamp(44px,4.1vw,75px);font-weight:900;line-height:1.2;letter-spacing:-.04em;margin:5px 0}
+.window small{font-size:clamp(15px,1.22vw,20px);font-weight:800;line-height:1.3}
+.window strong{font-size:clamp(14px,1.14vw,19px);line-height:1.3}
+#display:fullscreen{padding:14px 21px;overflow:auto}
+#display:fullscreen .tv-full-head{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;column-gap:25px;min-height:148px;padding:18px 25px;background:#fff;margin-bottom:13px;max-height:none}
+#display:fullscreen .fullscreen-brand{display:flex;align-items:center;gap:22px;min-width:0}
+#display:fullscreen .fullscreen-brand img{height:auto;width:clamp(225px,16vw,340px);max-width:36vw;max-height:125px;object-fit:contain}
+#display:fullscreen .fullscreen-brand .eyebrow{font-size:clamp(14px,1.2vw,22px);font-weight:900;line-height:1.4;letter-spacing:.095em;color:#075b87}
+#display:fullscreen .fullscreen-datetime{display:flex;flex-direction:column;align-items:flex-end;gap:1px;white-space:nowrap;text-align:right}
+#display:fullscreen .fullscreen-datetime small{font-size:clamp(12px,1vw,18px);font-weight:900;letter-spacing:.06em}
+#display:fullscreen #fullscreenDate{font-size:clamp(19px,1.75vw,30px);font-weight:900;line-height:1.25;letter-spacing:0}
+#display:fullscreen #fullscreenTime{font-size:clamp(36px,3.2vw,58px);font-weight:900;line-height:1.18;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+#display:fullscreen .fullscreen-exit{flex:none;min-height:48px;min-width:135px;font-size:13px;white-space:nowrap}
+#display:fullscreen .tv{padding:20px;min-height:650px}
+#display:fullscreen .tv-inner{grid-template-columns:minmax(380px,26%) minmax(0,1fr);gap:23px}
+#display:fullscreen .qr-panel{min-width:0;padding:22px}
+#display:fullscreen .qr-panel h2{font-size:clamp(20px,1.4vw,27px)}
+#display:fullscreen .qr-frame{width:388px;height:388px;max-width:100%;border-width:8px}
+#display:fullscreen #qr img,#display:fullscreen #qr canvas{width:360px!important;height:360px!important;max-width:100%;image-rendering:pixelated}
+#display:fullscreen .qr-panel p{font-size:13px}
+#display:fullscreen .windows{grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:14px}
+#display:fullscreen .window{min-height:300px;padding:20px 12px}
+#display:fullscreen .window-label{font-size:clamp(17px,1.25vw,23px)}
+#display:fullscreen .queue-no{font-size:clamp(52px,4vw,88px);margin:6px 0}
+#display:fullscreen .window small{font-size:clamp(16px,1.2vw,22px)}
+#display:fullscreen .tv-strip{min-height:109px}
+#display:fullscreen .announcement{min-height:123px}
+#display:fullscreen .announcement-label{font-size:clamp(17px,1.25vw,23px)!important}
+#display:fullscreen .announcement-message #ann{font-size:clamp(24px,1.9vw,36px)!important}
+#setupListHint{margin:0 0 16px;font-size:12px}
+@media(max-width:1190px){
+ .site-header .tipon-logo{width:185px;max-width:28vw}
+ .site-header .brand-copy .eyebrow{font-size:13px}
+ .site-header #headerDay{font-size:17px}.site-header #clock{font-size:33px}
+ #display:fullscreen .tv-full-head{grid-template-columns:minmax(0,1fr) auto;row-gap:8px}
+ #display:fullscreen .fullscreen-brand img{width:190px;max-width:24vw}
+ #display:fullscreen .fullscreen-brand .eyebrow{font-size:13px}
+ #display:fullscreen .fullscreen-exit{grid-column:2;grid-row:2;justify-self:end}
+ #display:fullscreen .tv-inner{grid-template-columns:minmax(320px,32%) minmax(0,1fr)}
+ #display:fullscreen .qr-frame{width:318px;height:318px}
+ #display:fullscreen #qr img,#display:fullscreen #qr canvas{width:300px!important;height:300px!important}
+}
+@media(max-width:850px){
+ .site-header .head{flex-wrap:wrap;min-height:0;padding:13px;gap:12px}
+ .site-header .tipon-logo{width:170px;max-width:42vw}
+ .site-header .clock{margin-left:auto}
+ .site-header #clock{font-size:27px}
+ .site-header #headerDay{font-size:13px}
+ .site-header .clock small{font-size:10px}
+ .nav.nav-main{gap:8px}
+ .nav-main button,.nav-main a{min-width:0;min-height:42px;font-size:11px;padding:9px 12px}
+ .announcement{grid-template-columns:1fr;gap:8px;padding:15px 16px}
+ .announcement-message #ann{font-size:clamp(19px,3.7vw,27px)!important}
+ #display:fullscreen .tv-full-head{grid-template-columns:1fr auto;gap:12px;padding:12px}
+ #display:fullscreen .fullscreen-brand{gap:10px}
+ #display:fullscreen .fullscreen-brand img{width:150px;max-width:38vw}
+ #display:fullscreen .fullscreen-brand .eyebrow{font-size:11px}
+ #display:fullscreen .fullscreen-datetime{grid-column:1;grid-row:2;align-items:flex-start;text-align:left}
+ #display:fullscreen .fullscreen-exit{grid-column:2;grid-row:2}
+ #display:fullscreen #fullscreenDate{font-size:15px}
+ #display:fullscreen #fullscreenTime{font-size:29px}
+ #display:fullscreen .tv-inner{grid-template-columns:1fr}
+ #display:fullscreen .qr-frame{width:318px;height:318px}
+ #display:fullscreen .windows{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+ #display:fullscreen .announcement-message #ann{font-size:24px!important}
+}
+@media(max-width:470px){
+ .site-header .brand{flex-wrap:wrap}
+ .site-header .tipon-logo{width:165px}
+ .site-header .brand-copy .eyebrow{font-size:10px}
+ #display:fullscreen .fullscreen-brand{flex-wrap:wrap}
+ .tv-strip{min-height:86px;padding:16px}
+ .window .queue-no{font-size:42px}
+ .window-label{font-size:14px}
+ .window small{font-size:12px}
+}
