@@ -1,6 +1,6 @@
 /* Standalone public TIPON Queue registration — no TV or staff navigation. */
 (()=>{'use strict';
-const $=id=>document.getElementById(id),C=window.TIPON_CONFIG||{},VERSION='federation-v5';
+const $=id=>document.getElementById(id),C=window.TIPON_CONFIG||{},VERSION='federation-v6';
 let service='recruitment',seq=0;
 const apiUrl=()=>new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||'';
 function valid(url){try{const u=new URL(url);return u.origin==='https://script.google.com'&&u.pathname.endsWith('/exec')}catch{return false}}
