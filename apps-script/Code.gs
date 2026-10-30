@@ -1,6 +1,6 @@
 const CFG={spreadsheetId:'1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik',queue:'QUEUE',windows:'WINDOWS',tx:'TRANSACTION_TYPES',mpc:'MPC_CONFIG',settings:'SETTINGS',precheck:'PRECHECK',maxWindows:20};
 const QH=['Ticket ID','Queue Date','Created At','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Status','Window','Called At','Completed At','Last Recalled At','First Name','Last Name','Recruiter'];
-const WH=['Window','Active Ticket ID','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Called At','Updated At'];
+const WH=['Window','Active Ticket ID','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Called At','Updated At','Queue Row'];
 const TH=['Code','Transaction Name','Active','Sort Order'];
 const MH=['MPC Code','MPC Name','Queue Prefix','Logo URL','Active','Sort Order'];
 const DEFAULT_ANNOUNCEMENT='Please keep your queue number until called.';
@@ -18,13 +18,13 @@ function setupTiponQueueSystem(){
   const all=allTxs_(ss);
   if(!all.some(t=>t.code==='MC'))ss.getSheetByName(CFG.tx).appendRow(['MC','Member Concerns',true,all.length+1]);
   // A disabled transaction remains disabled after setup.
-  return {ok:true,federationMode:true,version:'federation-v8'};
+  return {ok:true,federationMode:true,version:'federation-v9'};
 }
 function doGet(e){
   const p=e?.parameter||{},cb=String(p.callback||'callback').replace(/[^A-Za-z0-9_.$]/g,'');
   try{
     let r;switch(String(p.action||'state')){
-      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v8'};break;
+      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v9'};break;
       case'state':r={ok:true,state:state_(p)};break;
       case'publicConfig':r=publicConfig_();break;
       case'register':r=register_(p);break;
@@ -56,11 +56,25 @@ function register_(p){
   }finally{lock.releaseLock()}
 }
 function issueTicket_(ss,tx,first,last,pos){
-  const q=ss.getSheetByName(CFG.queue),today=day_(),existing=findActive_(q,today,first,last);
-  if(existing)return {ok:true,duplicate:true,ticket:ticket_(existing),message:'Existing active queue number returned.'};
-  const n=next_(q,today,tx.code),num=tx.code+'-'+String(n).padStart(3,'0'),now=new Date(),id=Utilities.getUuid(),name=first+' '+last;
+  const q=ss.getSheetByName(CFG.queue),today=day_(),count=Math.max(0,q.getLastRow()-1);
+  // Read history once: duplicate checks and the next sequence number share the same scan.
+  const rows=count?q.getRange(2,1,count,QH.length).getValues():[];
+  const desired=nameKey_(first,last);
+  let max=0;
+  for(const row of rows){
+    if(dayCell_(row[1])!==today)continue;
+    const status=String(row[10]),person=nameKey_(row[15]||String(row[8]).split(' ')[0],row[16]||String(row[8]).split(' ').slice(-1)[0]);
+    if(['WAITING','SERVING'].includes(status)&&person===desired)
+      return{ok:true,duplicate:true,ticket:ticket_(row),message:'Existing active queue number returned.'};
+    if(String(row[6])===tx.code){
+      const suffix=String(row[3]).match(/-(\d+)$/);
+      if(suffix)max=Math.max(max,Number(suffix[1]));
+    }
+  }
+  const num=tx.code+'-'+String(max+1).padStart(3,'0'),now=new Date(),id=Utilities.getUuid(),name=first+' '+last;
   const row=[id,today,now,num,'TIPON','TIPON Federation',tx.code,tx.name,name,pos,'WAITING','','','','',first,last,''];
-  q.appendRow(row);return {ok:true,duplicate:false,ticket:ticket_(row)};
+  q.appendRow(row);
+  return{ok:true,duplicate:false,ticket:ticket_(row)};
 }
 function submitPrecheck_(p){
   const first=txt_(p.firstName,50),last=txt_(p.lastName,50),position=txt_(p.position,80),tx=code_(p.transaction,6);
@@ -170,7 +184,7 @@ function call_(p){
     if(i<0)throw Error('No matching applicant is waiting.');
     const r=v[i],now=new Date(),recruiter=txt_(settingValue_(ss,'WINDOW_RECRUITER_'+win),80);q.getRange(i+2,11,1,3).setValues([['SERVING',win,now]]);q.getRange(i+2,18).setValue(recruiter);r[17]=recruiter;
     r[10]='SERVING';r[11]=win;r[12]=now;
-    w.getRange(row,1,1,WH.length).setValues([[win,r[0],r[3],r[4],r[5],r[6],r[7],r[8],r[9],now,now]]);
+    w.getRange(row,1,1,WH.length).setValues([[win,r[0],r[3],r[4],r[5],r[6],r[7],r[8],r[9],now,now,i+2]]);
     return {ok:true,ticket:ticket_(r)};
   }finally{lock.releaseLock()}
 }
@@ -179,7 +193,7 @@ function recall_(p){
   try{
     const ss=ss_(),w=ss.getSheetByName(CFG.windows),win=int_(p.window,1,windowCount_()),r=w.getRange(win+1,1,1,WH.length).getValues()[0];
     if(!r[1])throw Error('Window is empty.');
-    const q=ss.getSheetByName(CFG.queue),row=findId_(q,String(r[1])),now=new Date();
+    const q=ss.getSheetByName(CFG.queue),row=queueRowForWindow_(q,r),now=new Date();
     if(row>1)q.getRange(row,15).setValue(now);
     // Refresh the announcement marker while preserving original QUEUE.Called At.
     w.getRange(win+1,10,1,2).setValues([[now,now]]);r[9]=now;
@@ -190,8 +204,11 @@ function complete_(p){
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
     const ss=ss_(),w=ss.getSheetByName(CFG.windows),win=int_(p.window,1,windowCount_()),r=w.getRange(win+1,1,1,WH.length).getValues()[0];
-    if(!r[1])throw Error('Window is empty.');const q=ss.getSheetByName(CFG.queue),row=findId_(q,String(r[1]));if(row<2)throw Error('Ticket not found.');
-    q.getRange(row,11).setValue('COMPLETED');q.getRange(row,14).setValue(new Date());w.getRange(win+1,2,1,WH.length-1).clearContent();return{ok:true}
+    if(!r[1])throw Error('Window is empty.');const q=ss.getSheetByName(CFG.queue),row=queueRowForWindow_(q,r);if(row<2)throw Error('Ticket not found.');
+    const completedAt=new Date();
+    q.getRange(row,11).setValue('COMPLETED');q.getRange(row,14).setValue(completedAt);
+    w.getRange(win+1,2,1,WH.length-1).clearContent();
+    return{ok:true,window:win,ticket:{...windowTicket_(r),status:'COMPLETED',completedAt:iso_(completedAt)}}
   }finally{lock.releaseLock()}
 }
 function addWindow_(){
@@ -287,7 +304,7 @@ function restoreTx_(p){
 function publicConfig_(){
   const ss=ss_();
   const transactions=txs_(ss);
-  return{ok:true,version:'federation-v8',transactions};
+  return{ok:true,version:'federation-v9',transactions};
 }
 function state_(p){
   const ss=ss_(),w=ss.getSheetByName(CFG.windows),count=Math.max(0,w.getLastRow()-1);
@@ -316,7 +333,7 @@ function state_(p){
   return{windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,completed,
     transactions:activeTx,transactionTypes:txList,assignments,recruiters,
     announcement:settingMap.get('ANNOUNCEMENT')?.trim()||DEFAULT_ANNOUNCEMENT,
-    federationMode:true,version:'federation-v8'};
+    federationMode:true,version:'federation-v9'};
 }
 function announcement_(ss){
   const sheet=ss.getSheetByName(CFG.settings);
@@ -372,9 +389,17 @@ function next_(q,today,tx){let m=0;if(q.getLastRow()<2)return 1;q.getRange(2,1,q
 function findId_(s,id){if(s.getLastRow()<2)return-1;const x=s.getRange(2,1,s.getLastRow()-1,1).createTextFinder(id).matchEntireCell(true).findNext();return x?x.getRow():-1}
 function ticket_(r){return{ticketId:String(r[0]||''),createdAt:iso_(r[2]),queueNo:String(r[3]||''),mpcCode:String(r[4]||''),mpcName:String(r[5]||''),transaction:String(r[6]||''),transactionName:String(r[7]||''),name:String(r[8]||''),position:String(r[9]||''),status:String(r[10]||''),window:r[11]||'',calledAt:iso_(r[12]),date:dayCell_(r[1]),recruiter:String(r[17]||''),completedAt:iso_(r[13])}}
 function windowTicket_(r){return{window:Number(r[0]),ticketId:String(r[1]||''),queueNo:String(r[2]||''),mpcCode:String(r[3]||''),mpcName:String(r[4]||''),transaction:String(r[5]||''),transactionName:String(r[6]||''),name:String(r[7]||''),position:String(r[8]||''),calledAt:iso_(r[9])}}
+function queueRowForWindow_(q,windowRow){
+ const stored=Number(windowRow[11]);
+ if(Number.isInteger(stored)&&stored>=2&&stored<=q.getLastRow()){
+   if(String(q.getRange(stored,1).getValue())===String(windowRow[1]))return stored;
+ }
+ return findId_(q,String(windowRow[1]));
+}
 function windowCount_(){const s=ss_().getSheetByName(CFG.windows);let n=0;if(s&&s.getLastRow()>1)s.getRange(2,1,s.getLastRow()-1,1).getValues().forEach(r=>{const x=Number(r[0]);if(Number.isInteger(x)&&x>n)n=x});return Math.max(1,Math.min(CFG.maxWindows,n||4))}
 function ensure_(ss,name,h){let s=ss.getSheetByName(name)||ss.insertSheet(name);s.getRange(1,1,1,h.length).setValues([h]).setFontWeight('bold').setBackground('#e5e7eb');s.setFrozenRows(1);return s}
-function ss_(){return SpreadsheetApp.openById(CFG.spreadsheetId)}
+let _tiponSpreadsheet=null;
+function ss_(){return _tiponSpreadsheet||(_tiponSpreadsheet=SpreadsheetApp.openById(CFG.spreadsheetId))}
 function nameKey_(f,l){return norm_(f)+'|'+norm_(l)}function norm_(v){let s=String(v||'').trim().toUpperCase();if(s.normalize)s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');return s.replace(/[^A-Z0-9]/g,'')}
 function txt_(v,n){return String(v||'').replace(/[\u0000-\u001F\u007F]/g,' ').replace(/\s+/g,' ').trim().slice(0,n)}function code_(v,n){return String(v||'').trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,n)}
 function int_(v,a,b){v=Number(v);if(!Number.isInteger(v)||v<a||v>b)throw Error('Invalid window.');return v}function bool_(v){return typeof v==='boolean'?v:['TRUE','YES','1','ACTIVE'].includes(String(v).toUpperCase())}
