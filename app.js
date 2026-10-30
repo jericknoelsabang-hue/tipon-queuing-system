@@ -82,7 +82,7 @@ function staff(){
 }
 function dateDisplay(x){
   const raw=String(x.date||x.createdAt||'').slice(0,10);
-  const parts=raw.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+  const parts=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return parts?parts[2]+'/'+parts[3]+'/'+parts[1]:raw||'—';
 }
 function queueTables(){
