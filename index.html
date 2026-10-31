@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=10.0">
-<script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="app.js?v=10.0"></script>
+<script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="app.js?v=10.0"></script><script defer src="requirements-setup.js?v=1"></script>
 </head><body>
 <header class="site-header"><div class="head">
   <div class="brand"><img class="tipon-logo" id="brandPhoto" src="assets/tipon-logo-hd.webp" alt="tipón Federation logo">
@@ -92,6 +92,20 @@
       <div class="split" style="margin-top:13px"><small id="announcementCount" class="muted">0 / 2,500 characters</small><div class="buttons"><button class="btn ghost" id="announcementReset" type="button">Restore Default</button><button class="btn success" id="announcementSave" type="button">Save Announcement</button></div></div>
     </div>
     <div class="card"><div class="split"><div><h2>TV Controls</h2><p>Refresh queue data or unlock sound on this device.</p></div><div class="buttons"><button id="refresh" class="btn" type="button">Refresh Queue</button><button id="sound" class="btn primary" type="button">Enable / Test Sound</button></div></div></div>
+    <div class="card" id="reqSetup"><div class="split"><div><h2>Pre-Employment Requirements</h2><p>Configure applicant requirements for Recruitment. Empty by default. Add, edit, or delete entries without changing website code.</p></div></div>
+      <p class="helper">Requirements are used for all recruitment transactions when set to All Recruitment. Enter specific document terms and review them before saving.</p>
+      <div class="grid">
+        <label class="field">Requirement Name *<input id="reqName" maxlength="100" placeholder="e.g., NBI Clearance"></label>
+        <label class="field">Recruitment Transaction<select id="reqTx"><option value="ALL">All Recruitment Transactions</option></select></label>
+        <label class="field">Recruiter Management Key<input type="password" id="reqAdminKey" autocomplete="off" placeholder="Set via Apps Script properties"></label>
+      </div>
+      <label style="display:block;margin:12px 0"><input type="checkbox" id="reqRequired" checked> Required document</label>
+      <label class="field">Recognition Search Terms / Aliases<textarea id="reqKeywords" rows="2" placeholder="Comma-separated terms. Confirm and edit."></textarea></label>
+      <div class="buttons" style="margin:12px 0"><button class="btn" type="button" id="reqGenerate">Suggest Recognition Terms</button><button class="btn success" type="button" id="reqSave">Add Requirement</button><button class="btn ghost" type="button" id="reqCancel">Clear / Cancel</button></div>
+      <p class="small-muted" id="reqStatus" role="status">Loading requirements...</p>
+      <div class="table-wrap"><table><thead><tr><th>Requirement</th><th>Transaction</th><th>Required</th><th>Recognition Terms</th><th>Actions</th></tr></thead><tbody id="reqRows"><tr><td colspan="5">Loading…</td></tr></tbody></table></div>
+      <p class="small-muted"><b>Pilot limitation:</b> Recognition terms are suggestions, not official verification. Document photos remain on the applicant device in this version. AI API and secure image upload are disabled.</p>
+    </div>
     <div class="card"><h2>Database &amp; Technical Notes</h2><p>Google Sheet: <a href="https://docs.google.com/spreadsheets/d/1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik/edit" target="_blank" rel="noopener">TIPON Queuing Database</a>. Tabs: QUEUE, WINDOWS, TRANSACTION_TYPES, SETTINGS (the historical PRECHECK tab is not used by registration).</p><p><b>Security:</b> Staff actions are currently PIN-free as requested. Access to the public Apps Script deployment is not authenticated. Do not use this configuration for sensitive production operations without server-side staff authorization.</p></div>
   </section>
 </main>

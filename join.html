@@ -96,7 +96,7 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
  .join-brand-label{font-size:clamp(17px,5.5vw,24px);padding-left:10px}
 }
 </style>
-<script defer src="config.js"></script><script defer src="join.js?v=10.0"></script>
+<script defer src="config.js"></script><script defer src="join.js?v=10.0"></script><script defer src="requirements-client.js?v=1"></script>
 </head><body>
 <div class="join-top"></div><header class="join-head"><div class="join-head-inner">
   <div class="join-wordmark"><img class="join-logo" src="assets/tipon-logo-hd.webp" alt="tipón Federation"><span class="join-brand-label">TAWAG<span>.</span></span></div>
@@ -121,6 +121,19 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
     <div id="concernOptions" class="field hide">
       <label for="concern">Type of concern *</label>
       <input id="concern" name="concern" type="text" maxlength="80" placeholder="Enter your concern (e.g., COE request)" autocomplete="off">
+    </div>
+    <div id="scanDecision" class="card" style="margin:16px 0;padding:20px;background:#eff7fb;border:1px solid #c6dde9">
+      <h3>Pre-Employment Requirements</h3><p>Would you like to check your pre-employment requirements before getting a queue number?</p>
+      <label style="margin-right:18px"><input type="radio" name="scanChoice" id="scanNo" checked> No, continue to queue</label>
+      <label><input type="radio" name="scanChoice" id="scanYes"> Yes, check my requirements</label>
+    </div>
+    <div id="scanBox" class="card hide" style="padding:20px;margin:14px 0">
+      <h3>Document Capture</h3>
+      <p class="helper">Complete your photos first, then select Confirm &amp; Analyze. Pre-screening is optional and will not prevent queue registration.</p>
+      <div style="padding:12px;background:#eef6fa;border-radius:8px"><b>Data Privacy Notice</b><p>Photos may contain personal information. During this pilot, photos remain temporarily on your device and are not transmitted to an AI service or stored in Google Drive. The recruiter checks document authenticity and completeness. Do not submit government identification numbers in free-text fields.</p>
+      <label><input id="privacyAgree" type="checkbox"> I understand and consent to this optional document pre-screening.</label></div>
+      <div id="scanControls" class="hide"><div id="scanPreview"></div><button type="button" id="scanAnalyze" class="btn success">CONFIRM &amp; ANALYZE</button><div id="scanReport" class="hide" aria-live="polite"></div></div>
+      <p id="scanNotice" class="helper" role="status"></p>
     </div>
     <button id="submit" class="btn primary submit" type="submit">GET QUEUE NUMBER</button></form>
   </div>
