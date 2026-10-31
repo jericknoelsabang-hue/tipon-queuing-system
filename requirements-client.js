@@ -61,7 +61,7 @@ function reset(){
 function renderGallery(){
  $('scanPhotoCount').textContent=photos.length+' photo'+(photos.length===1?'':'s')+' captured';
  $('scanPhotoSub').textContent=photos.length?'Review the photos below. Remove and retake blurry images.':'Add all document photos before reviewing.';
- $('scanGallery').innerHTML=photos.map((p,i)=>'<div class="scan-photo-card"><img src="'+esc(p.url)+'" alt="Requirement photo '+(i+1)+'"><div class="scan-card-footer"><span>PHOTO '+(i+1)+'</span><button class="scan-remove" type="button" data-remove="'+esc(p.id)+'" aria-label="Remove photo '+(i+1)+'">Remove</button></div></div>').join('');
+ $('scanGallery').innerHTML=photos.map((p,i)=>'<div class="scan-photo-card"><img src="'+esc(p.url)+'" alt="Requirement photo '+(i+1)+'"><div class="scan-photo-indicator" data-photo-indicator="'+esc(p.id)+'">READY</div><progress class="scan-photo-progress" data-photo-progress="'+esc(p.id)+'" max="100" value="0" aria-label="Document processing progress"></progress><div class="scan-card-footer"><span>PHOTO '+(i+1)+'</span><button class="scan-remove" type="button" data-remove="'+esc(p.id)+'" aria-label="Remove photo '+(i+1)+'">Remove</button></div></div>').join('');
  $('scanReview').classList.toggle('hide',photos.length===0);
 }
 function closeCamera(){
@@ -151,6 +151,13 @@ function assess(textList,req){
  if(best===1)return {status:'FOR_RECRUITER_REVIEW',detail:'Partial text match only. Recruiter review required.'};
  return {status:'NOT_DETECTED',detail:'No matching terms found in the captured text. Add or retake the correct document.'};
 }
+function photoProgress(index,label,percent){
+ const p=photos[index];if(!p)return;
+ const indicator=document.querySelector('[data-photo-indicator="'+p.id+'"]');
+ const progress=document.querySelector('[data-photo-progress="'+p.id+'"]');
+ if(indicator)indicator.textContent=label;
+ if(progress)progress.value=percent;
+}
 function progress(message,index,total){
  $('scanProgress').classList.remove('hide');
  const pct=total?Math.round(100*index/total):0;
@@ -166,12 +173,12 @@ async function review(){
    const t=await loadTesseract();
    worker=await t.createWorker('eng');
    for(let i=0;i<photos.length;i++){
-     progress('Reading document '+(i+1)+' of '+photos.length+'…',i,photos.length);
-     try{const result=await worker.recognize(photos[i].blob);const text=String(result&&result.data&&result.data.text||'').trim();if(text)textList.push(text)}
-     catch(e){scannerError='Some photos could not be read. Retake blurry pages if needed.'}
+     progress('Reading document '+(i+1)+' of '+photos.length+'…',i,photos.length);photoProgress(i,'SCANNING',22);
+     try{const result=await worker.recognize(photos[i].blob);const text=String(result&&result.data&&result.data.text||'').trim();if(text)textList.push(text);photoProgress(i,text?'TEXT READ':'NO TEXT',100)}
+     catch(e){photoProgress(i,'REVIEW',100);scannerError='Some photos could not be read. Retake blurry pages if needed.'}
      progress('Processed '+(i+1)+' of '+photos.length+' photos.',i+1,photos.length);
    }
- }catch(e){scannerAvailable=false;scannerError=String(e.message||e)}
+ }catch(e){scannerAvailable=false;scannerError=String(e.message||e);photos.forEach((p,i)=>photoProgress(i,'MANUAL REVIEW',0))}
  finally{if(worker){try{await worker.terminate()}catch{}worker=null}}
  const items=applicable();const reviewed=items.map(req=>({name:req.name,...(scannerAvailable?assess(textList,req):{status:'FOR_RECRUITER_REVIEW',detail:'Scanner unavailable; recruiter must check the originals.'})}));
  const pct=items.length?reviewed.filter(x=>x.status==='POSSIBLE_MATCH').length+'/'+items.length:'No configured list';
