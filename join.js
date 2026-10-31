@@ -68,11 +68,12 @@ $('queueForm').onsubmit=async event=>{
   const position=service==='recruitment' ? $('position').value.trim() : $('concern').value.trim();
   if(!firstName||!lastName||!position)throw Error('Please complete all required fields.');
   // One request instead of a health check plus registration. The backend validates and deduplicates applicants.
-  const res=await jp('register',{firstName,lastName,position,transaction});
+  const precheck=service==='recruitment'&&$('scanYes')?.checked&&$('privacyAgree')?.checked?'yes':'no';
+  const res=await jp('register',{firstName,lastName,position,transaction,precheck});
   if(!res.ok)throw Error(res.error||'Unable to generate your queue number.');
   if(!res.ticket||!res.ticket.queueNo)throw Error('The server returned no queue number. Please notify staff.');
   receipt(res.ticket,Boolean(res.duplicate));
-   window.dispatchEvent(new CustomEvent('tipon:ticket',{detail:{ticket:res.ticket,duplicate:Boolean(res.duplicate)}}));
+   window.dispatchEvent(new CustomEvent('tipon:ticket',{detail:{ticket:res.ticket,duplicate:Boolean(res.duplicate),intakeToken:res.intakeToken||''}}));
  }catch(e){message(e.message)}
  finally{button.disabled=false;button.textContent='GET QUEUE NUMBER'}
 };
