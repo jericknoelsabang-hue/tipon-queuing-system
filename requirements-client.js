@@ -33,7 +33,7 @@ function applicable(){const tx=$('transaction').value;return requirements.filter
 function note(text){$('scanNotice').textContent=text}
 function updateSubmit(){
  const isRecruitment=service==='recruitment';
- const show=!isRecruitment||decision==='no'||(decision==='yes'&&consent&&reviewReady);
+ const show=!isRecruitment||decision==='no'||(decision==='yes'&&consent&&reviewReady&&$('applicantFieldsConfirmed')?.checked===true);
  $('submit').classList.toggle('hide',!show);
  if(show)$('submit').textContent='GET QUEUE NUMBER';
  $('scanDecision').classList.toggle('hide',!isRecruitment);
@@ -193,6 +193,7 @@ async function review(){
  (scannerError?'<p><b>Scanner note:</b> '+esc(scannerError)+'</p>':'')+
  '<p>You may now get your queue number.</p>';
  $('scanReport').classList.remove('hide');$('scanProgress').classList.add('hide');
+ window.dispatchEvent(new CustomEvent('tipon:ocr-ready',{detail:{texts:textList.slice()}}));
  textList=[]; // Do not retain OCR text beyond this assessment.
  reviewReady=true;reviewBusy=false;btn.disabled=false;btn.textContent='CHECK CAPTURED DOCUMENTS';
  updateSubmit();
@@ -237,11 +238,12 @@ function init(){
    renderGallery();invalidateReview();
  });
  $('scanReview').addEventListener('click',review);
+ $('applicantFieldsConfirmed').addEventListener('change',updateSubmit);
  $('transaction').addEventListener('change',()=>{clearPhotos();void refreshRequirements()});
  for(const btn of [$('chooseRecruitment'),$('chooseMember')])btn.addEventListener('click',setService);
  $('another').addEventListener('click',reset);
  $('queueForm').addEventListener('submit',e=>{
-   if(service==='recruitment'&&decision==='yes'&&!reviewReady){
+   if(service==='recruitment'&&decision==='yes'&&(!reviewReady||!$('applicantFieldsConfirmed').checked)){
      e.preventDefault();e.stopImmediatePropagation();
      note('Capture your documents and run the document check before requesting your queue number.');
      $('scanBox').scrollIntoView({behavior:'smooth',block:'center'});
