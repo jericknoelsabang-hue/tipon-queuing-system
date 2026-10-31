@@ -226,7 +226,20 @@ function complete_(p){
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
     const ss=ss_(),w=ss.getSheetByName(CFG.windows),win=int_(p.window,1,windowCount_()),r=w.getRange(win+1,1,1,WH.length).getValues()[0];
-    if(!r[1])throw Error('Window is empty.');const q=ss.getSheetByName(CFG.queue),row=queueRowForWindow_(q,r);if(row<2)throw Error('Ticket not found.');
+    const expected=txt_(p.ticketId,100),active=String(r[1]||'');
+    if(!active||(expected&&active!==expected)){
+      // Retry-safe: a previous request may have completed but its JSONP response timed out.
+      if(expected){
+        const queue=ss.getSheetByName(CFG.queue),found=findId_(queue,expected);
+        if(found>1){
+          const existing=queue.getRange(found,1,1,QH.length).getValues()[0];
+          if(String(existing[10])==='COMPLETED')return{ok:true,alreadyCompleted:true,window:win,ticket:ticket_(existing)};
+        }
+      }
+      throw Error(active?'Service window changed. Refresh the Staff Console before completing.':'Window is empty or already completed.');
+    }
+    const q=ss.getSheetByName(CFG.queue),row=queueRowForWindow_(q,r);
+    if(row<2)throw Error('Ticket not found.');
     const completedAt=new Date();
     // One contiguous Sheets write replaces two separate status/timestamp writes.
     const statusBlock=q.getRange(row,11,1,4),previous=statusBlock.getValues()[0];
