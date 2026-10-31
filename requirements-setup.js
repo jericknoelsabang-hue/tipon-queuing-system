@@ -172,7 +172,7 @@ async function write(op,payload){
 function init(){
  if(!$('reqSetup'))return;
  $('reqStaffUrl').value=staffUrl();
- $('reqStaffOpen').href=valid(staffUrl())?staffUrl()+'?mode=requirementsStaffBridge':'#';
+ $('reqStaffOpen').href=valid(staffUrl())?staffUrl()+'?mode=manageRequirements':'#';
  $('reqStaffSave').onclick=()=>{
    const value=$('reqStaffUrl').value.trim();
    if(!valid(value)){status('Enter a valid STAFF-ONLY Apps Script /exec URL.');return}
