@@ -95,8 +95,40 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
  .join-logo{width:min(55vw,205px)}
  .join-brand-label{font-size:clamp(17px,5.5vw,24px);padding-left:10px}
 }
+
+/* Document camera and opt-in prescreening: accessible on mobile, tablet and desktop. */
+.scan-decision,.scan-box{background:#f3faff;border:1px solid #cfe5f0;border-radius:14px;margin:17px 0;padding:19px}
+.scan-decision h3,.scan-box h3{font:750 16px Poppins,sans-serif;color:#0d4260;margin:0 0 9px}
+.scan-decision p,.scan-box p{font-size:12px;line-height:1.55;color:#50738a}
+.scan-choice{display:flex;gap:16px;flex-wrap:wrap;margin-top:13px}.scan-choice label{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#0b405b}
+.scan-choice input,.scan-privacy input{width:18px;height:18px;accent-color:#0887b2}
+.scan-privacy{background:#f4fbff;border:1px solid #c8e0ed;border-radius:11px;padding:15px;margin:14px 0}
+.scan-privacy strong{color:#14516b}.scan-privacy label{display:flex;align-items:flex-start;gap:9px;font-size:12px;font-weight:700;color:#20536a}.scan-privacy p{margin:8px 0 12px}
+.scan-action-center{display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;gap:6px;margin:16px auto}
+.scan-main-btn{min-height:48px;min-width:245px;font-size:13px}
+.scan-photo-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;color:#14516b;font-size:12px;margin:20px 0 11px}
+.scan-photo-heading span{font-weight:500;color:#68879a}
+.scan-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(114px,1fr));gap:12px}
+.scan-photo-card{position:relative;background:#fff;border:1px solid #c5dce8;border-radius:12px;overflow:hidden;min-height:147px}
+.scan-photo-card img{display:block;object-fit:cover;width:100%;height:118px;background:#dfeef5}
+.scan-photo-card .scan-card-footer{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;font-size:11px;font-weight:750;color:#25576f;gap:6px}
+.scan-photo-card .scan-remove{font-size:12px;border:0;background:#f9e9e9;color:#9d3333;border-radius:6px;cursor:pointer;padding:4px 6px}
+.scan-progress{background:#e6f3fc;border:1px solid #a6d2ea;border-radius:11px;padding:12px;color:#12475f;margin:12px 0;font-weight:650;font-size:12px}
+.scan-progress progress{width:100%;margin-top:8px;accent-color:#168eb9}
+.scan-report{background:#eef8f1;border:1px solid #a7dabc;border-radius:11px;padding:14px;color:#19513d;margin:14px 0;font-size:12px}
+.scan-report p{margin:7px 0}.scan-report .scan-review-line{border-bottom:1px solid #d1e9d7;padding:8px 0}
+.scan-report .scan-review-line:last-child{border:0}
+.scan-camera{position:fixed;z-index:9999;inset:0;background:rgba(2,20,35,.96);display:flex;justify-content:center;align-items:center;padding:14px;overflow-y:auto}
+.scan-camera-shell{width:min(920px,100%);display:flex;flex-direction:column;gap:10px;color:#fff}
+.scan-camera-head,.scan-camera-actions{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.scan-camera-head{justify-content:space-between}.scan-camera-head strong{font:750 18px Poppins,sans-serif}
+.scan-camera video{width:100%;height:min(65vh,640px);object-fit:contain;background:#0a141a;border:2px solid #4b7c9b;border-radius:13px}
+.scan-camera-actions .btn{min-height:44px}.scan-shutter{font-weight:900;font-size:14px!important}
+#scanCameraStatus{text-align:center;font-size:12px;color:#dcebf6;line-height:1.6}
+@media(max-width:540px){.scan-choice{flex-direction:column}.scan-camera-actions{display:grid;grid-template-columns:1fr 1fr}.scan-camera-actions button:first-child{grid-column:1/-1}.scan-camera video{height:57vh}.scan-main-btn{width:100%;min-width:0}}
+
 </style>
-<script defer src="config.js"></script><script defer src="join.js?v=10.0"></script><script defer src="requirements-client.js?v=1"></script>
+<script defer src="config.js"></script><script defer src="join.js?v=10.0"></script><script defer src="requirements-client.js?v=2.0"></script>
 </head><body>
 <div class="join-top"></div><header class="join-head"><div class="join-head-inner">
   <div class="join-wordmark"><img class="join-logo" src="assets/tipon-logo-hd.webp" alt="tipón Federation"><span class="join-brand-label">TAWAG<span>.</span></span></div>
@@ -122,18 +154,49 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
       <label for="concern">Type of concern *</label>
       <input id="concern" name="concern" type="text" maxlength="80" placeholder="Enter your concern (e.g., COE request)" autocomplete="off">
     </div>
-    <div id="scanDecision" class="card" style="margin:16px 0;padding:20px;background:#eff7fb;border:1px solid #c6dde9">
-      <h3>Pre-Employment Requirements</h3><p>Would you like to check your pre-employment requirements before getting a queue number?</p>
-      <label style="margin-right:18px"><input type="radio" name="scanChoice" id="scanNo" checked> No, continue to queue</label>
-      <label><input type="radio" name="scanChoice" id="scanYes"> Yes, check my requirements</label>
-    </div>
-    <div id="scanBox" class="card hide" style="padding:20px;margin:14px 0">
-      <h3>Document Capture</h3>
-      <p class="helper">Complete your photos first, then select Confirm &amp; Analyze. Pre-screening is optional and will not prevent queue registration.</p>
-      <div style="padding:12px;background:#eef6fa;border-radius:8px"><b>Data Privacy Notice</b><p>Photos may contain personal information. During this pilot, photos remain temporarily on your device and are not transmitted to an AI service or stored in Google Drive. The recruiter checks document authenticity and completeness. Do not submit government identification numbers in free-text fields.</p>
-      <label><input id="privacyAgree" type="checkbox"> I understand and consent to this optional document pre-screening.</label></div>
-      <div id="scanControls" class="hide"><div id="scanPreview"></div><button type="button" id="scanAnalyze" class="btn success">CONFIRM &amp; ANALYZE</button><div id="scanReport" class="hide" aria-live="polite"></div></div>
+    <section id="scanDecision" class="scan-decision">
+      <h3>Pre-Employment Requirements</h3>
+      <p>Would you like to check your documents before getting a queue number?</p>
+      <div class="scan-choice">
+        <label><input type="radio" name="scanChoice" id="scanNo" checked> No, get my queue number</label>
+        <label><input type="radio" name="scanChoice" id="scanYes"> Yes, check my requirements</label>
+      </div>
+    </section>
+    <section id="scanBox" class="scan-box hide" aria-labelledby="scanTitle">
+      <h3 id="scanTitle">Pre-Employment Document Check</h3>
+      <p class="helper">Capture as many document photos as needed. Check all photos together after you finish.</p>
+      <div class="scan-privacy">
+        <strong>Data Privacy Notice</strong>
+        <p>Your photos will be processed temporarily in this browser for a preliminary text check. This version does not upload pictures or personal document information to Google Drive, Google Sheets, or an AI API. Only a recruiter can verify original requirements.</p>
+        <label><input id="privacyAgree" type="checkbox"> I understand and consent to this optional on-device document check.</label>
+      </div>
+      <div id="scanControls" class="hide">
+        <p id="scanConfigMessage" class="helper"></p>
+        <div class="scan-action-center">
+          <button id="scanStart" type="button" class="btn primary scan-main-btn">CAPTURE REQUIREMENTS</button>
+          <p class="helper">Use your camera and press Capture repeatedly. There is no set number of photos.</p>
+        </div>
+        <div class="scan-photo-heading"><strong id="scanPhotoCount">0 photos captured</strong><span id="scanPhotoSub">Add all your requirements before reviewing.</span></div>
+        <div id="scanGallery" class="scan-gallery" aria-live="polite"></div>
+        <div class="scan-action-center"><button id="scanReview" type="button" class="btn success scan-main-btn hide">CHECK CAPTURED DOCUMENTS</button></div>
+        <div id="scanProgress" class="scan-progress hide" role="status" aria-live="polite"></div>
+        <div id="scanReport" class="scan-report hide" aria-live="polite"></div>
+      </div>
       <p id="scanNotice" class="helper" role="status"></p>
+    </section>
+    <div id="scanCamera" class="scan-camera hide" role="dialog" aria-modal="true" aria-label="Capture pre-employment requirements">
+      <div class="scan-camera-shell">
+        <div class="scan-camera-head"><strong>Capture your requirements</strong><button id="scanClose" type="button" class="btn ghost">Close Camera</button></div>
+        <video id="scanVideo" autoplay playsinline muted aria-label="Live document camera preview"></video>
+        <canvas id="scanCanvas" class="hide" aria-hidden="true"></canvas>
+        <div class="scan-camera-actions">
+          <button id="scanShot" type="button" class="btn primary scan-shutter">CAPTURE PHOTO</button>
+          <button id="scanFallbackButton" type="button" class="btn ghost">USE PHONE CAMERA</button>
+          <input type="file" id="scanFallback" accept="image/*" capture="environment" class="hide">
+          <button id="scanFinish" type="button" class="btn success">DONE TAKING PHOTOS</button>
+        </div>
+        <p id="scanCameraStatus" role="status">Point your camera at the document. Keep the entire page visible.</p>
+      </div>
     </div>
     <button id="submit" class="btn primary submit" type="submit">GET QUEUE NUMBER</button></form>
   </div>
