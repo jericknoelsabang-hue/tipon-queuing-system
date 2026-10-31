@@ -198,19 +198,40 @@ async function review(){
  reviewReady=true;reviewBusy=false;btn.disabled=false;btn.textContent='CHECK CAPTURED DOCUMENTS';
  updateSubmit();
 }
+const DEMO_TERMS={
+ 'SSS':'SSS, Social Security System, SSS Number, E-1',
+ 'PAG-IBIG':'Pag-IBIG Fund, Home Development Mutual Fund, HDMF, Member Data Form, MDF',
+ 'PHILHEALTH':'PhilHealth, Philippine Health Insurance Corporation, Member Data Record, MDR',
+ 'NBI':'NBI, National Bureau of Investigation, Multi-Purpose Clearance',
+ 'BIRTH CERTIFICATE':'Birth Certificate, Certificate of Live Birth, PSA, Philippine Statistics Authority',
+ 'TIN':'TIN, Taxpayer Identification Number, Bureau of Internal Revenue, BIR',
+ 'NBI CLEARANCE':'NBI Clearance, National Bureau of Investigation, Multi-Purpose Clearance, NBI'
+};
 async function refreshRequirements(){
+ let source='LIVE';
  try{
    const res=await jsonp('requirements');
    if(!res.ok)throw Error(res.error||'Backend configuration unavailable');
    requirements=Array.isArray(res.requirements)?res.requirements:[];
-   configAvailable=true;
-   $('scanConfigMessage').textContent=requirements.length?
-     'Your recruiter has configured '+applicable().length+' requirement(s) for this transaction.':
-     'Your recruiter has not configured pre-employment requirements yet. Photos can still be reviewed.';
  }catch(e){
-   requirements=[];configAvailable=false;
-   $('scanConfigMessage').textContent='Requirement list is not yet connected to the updated Apps Script. You may still capture photos for on-device review.';
+   source='PUBLIC TEST SNAPSHOT';
+   try{
+     const response=await fetch('requirements-fallback.json',{cache:'no-store'});
+     if(!response.ok)throw Error('No static requirements');
+     const data=await response.json();
+     requirements=Array.isArray(data.requirements)?data.requirements:[];
+   }catch{requirements=[]}
  }
+ // Demo changes are visible only to the recruiter on this same browser.
+ try{
+   const edited=JSON.parse(localStorage.getItem('tqLocalReqDemoV1')||'null');
+   if(Array.isArray(edited)){requirements=edited;source='LOCAL BROWSER DEMO'}
+ }catch{}
+ requirements=requirements.map(r=>({...r,keywords:(r.keywords===r.name&&DEMO_TERMS[String(r.name).toUpperCase()])||r.keywords||r.name}));
+ $('scanConfigMessage').textContent=requirements.length?
+   (source==='LIVE'?'Recruiter requirements loaded from the queue database: ':
+     'Demo requirements ('+source+') — Google Sheets sync requires backend configuration: ')+applicable().length+' applicable for this transaction.':
+   'No configured requirements available. You can still capture photos, but completeness cannot be determined.';
  renderExpected();
 }
 function init(){
