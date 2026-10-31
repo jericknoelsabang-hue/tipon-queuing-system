@@ -29,14 +29,20 @@ function doGet(e){
   const p=e?.parameter||{},cb=String(p.callback||'callback').replace(/[^A-Za-z0-9_.$]/g,'');
   const action=String(p.action||'state');
   try{
+    if(String(p.mode||'')==='requirementsStaffBridge'){
+      // Must run in a staff-only Apps Script deployment (execute as accessing user).
+      requirementEditorAuth_();
+      return HtmlService.createHtmlOutputFromFile('RequirementsStaffBridge')
+        .setTitle('TIPON TAWAG - Recruiter Requirements')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    }
     let r;switch(action){
       case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v10'};break;
       case'state':r={ok:true,state:state_(p)};break;
       case'publicConfig':r=publicConfig_();break;
       case'requirements':r=requirementsConfig_();break;
-      case'upsertRequirement':r=upsertRequirement_(p);break;
-      case'removeRequirement':r=removeRequirement_(p);break;
-      case'recordRequirementScan':r=recordRequirementScan_(p);break;
+      // Sensitive staff writes cannot be performed through public JSONP/GET.
+      // Use the authenticated recruiter Apps Script bridge instead.
       case'register':r=register_(p);break;
       case'setWindowTx':r=setWindowTx_(p);break;
       case'call':r=call_(p);break;
@@ -499,90 +505,90 @@ function requirementsSheet_(){
   const ss=ss_();
   return ss.getSheetByName('REQUIREMENTS_CONFIG')||ensure_(ss,'REQUIREMENTS_CONFIG',RH2);
 }
+function requirementTransactions_(raw){
+  if(Array.isArray(raw)){
+    const c=raw.map(v=>code_(v,6)).filter(Boolean);
+    if(c.includes('ALL'))return ['ALL'];
+    return [...new Set(c)];
+  }
+  const value=String(raw||'ALL').trim();
+  if(!value||value==='ALL')return ['ALL'];
+  try{const json=JSON.parse(value);if(Array.isArray(json))return requirementTransactions_(json)}catch(e){}
+  return requirementTransactions_(value.split(/[,;|]/));
+}
 function requirementsConfig_(){
   const sh=requirementsSheet_();
   const rows=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,RH2.length).getValues():[];
-  return {ok:true,version:1,requirements:rows.filter(r=>r[0]&&bool_(r[4])).map(r=>({
-    id:String(r[0]),name:String(r[1]),transaction:String(r[2]||'ALL'),
-    required:bool_(r[3]),active:true,keywords:String(r[5]||'')
-  }))};
+  return {ok:true,version:2,requirements:rows.filter(r=>r[0]&&bool_(r[4])).map(r=>{
+    const transactions=requirementTransactions_(r[2]);
+    return {id:String(r[0]),name:String(r[1]),transaction:transactions.length===1?transactions[0]:'MULTI',
+      transactions:transactions,required:true,active:true,keywords:String(r[5]||'')};
+  })};
 }
-function requirementEditorAuth_(p){
-  // Intentionally fails closed unless the project owner sets a long random secret in
-  // Apps Script -> Project Settings -> Script properties: TIPON_REQ_ADMIN_KEY.
-  const expected=String(PropertiesService.getScriptProperties().getProperty('TIPON_REQ_ADMIN_KEY')||'');
-  if(expected.length<16)throw Error('Requirement Setup is locked. Configure TIPON_REQ_ADMIN_KEY (16+ characters) in Apps Script properties.');
-  if(String(p.adminKey||'')!==expected)throw Error('Invalid requirement-management access key.');
+function requirementEditorAuth_(){
+  // A shared GET or URL query key is NOT a valid recruiter authorization model.
+  // Separate staff deployment: Execute as "User accessing the web app" and
+  // restrict to signed-in Google users explicitly listed in Script Properties.
+  const current=String(Session.getActiveUser().getEmail()||'').trim().toLowerCase();
+  const allowed=String(PropertiesService.getScriptProperties().getProperty('TIPON_RECRUITER_EMAILS')||'')
+    .toLowerCase().split(/[\s,;]+/).map(s=>s.trim()).filter(Boolean);
+  if(!current||allowed.indexOf(current)<0)
+    throw Error('NOT_AUTHORIZED: Use the staff-only Apps Script deployment with your approved Google Workspace account.');
+  return current;
+}
+function reqStaffList(){
+  const email=requirementEditorAuth_();
+  const res=requirementsConfig_();
+  return {ok:true,email:email,requirements:res.requirements,
+    transactions:txs_(ss_()).filter(t=>t.code!=='MC')};
+}
+function reqStaffSave(p){
+  requirementEditorAuth_();
+  return upsertRequirement_(p||{});
+}
+function reqStaffDelete(p){
+  requirementEditorAuth_();
+  return removeRequirement_(p||{});
 }
 function upsertRequirement_(p){
-  requirementEditorAuth_(p);
-  const name=txt_(p.name,100),transaction=code_(p.transaction||'ALL',6);
+  const name=txt_(p.name,100);
   if(name.length<3)throw Error('Requirement name must contain at least 3 characters.');
-  if(transaction!=='ALL'&&!allTxs_(ss_()).some(t=>t.code===transaction&&t.code!=='MC'))throw Error('Choose a valid recruitment transaction.');
-  const required=String(p.required)==='true';
-  const keywords=txt_(p.keywords,500).split(',').map(x=>x.trim()).filter(Boolean).slice(0,18).join(', ');
-  if(!keywords)throw Error('Add at least one recognition term (or generate terms first).');
-  const id=txt_(p.id,80),lock=LockService.getScriptLock();lock.waitLock(30000);
+  const selected=requirementTransactions_(p.transactions||p.transaction||[]);
+  const allActive=txs_(ss_()).filter(t=>t.code!=='MC').map(t=>t.code);
+  if(!selected.length||selected.some(tx=>tx!=='ALL'&&!allActive.includes(tx)))
+    throw Error('Choose at least one active Recruitment Transaction.');
+  const transaction=selected.includes('ALL')?'ALL':JSON.stringify(selected);
+  const keywords=txt_(p.keywords,500).split(',').map(x=>x.trim()).filter(Boolean).slice(0,24).join(', ')||name;
+  const id=txt_(p.id,80);
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
     const sh=requirementsSheet_(),count=sh.getLastRow()-1;
     const ids=count>0?sh.getRange(2,1,count,1).getValues().map(r=>String(r[0])):[];
     const pos=id?ids.indexOf(id):-1;
-    if(id&&pos<0)throw Error('Requirement not found. Reload Setup.');
+    if(id&&pos<0)throw Error('Requirement not found. Refresh Setup.');
     const row=pos>=0?pos+2:sh.getLastRow()+1;
     const existingCreated=pos>=0?sh.getRange(row,7).getValue():new Date();
     const rid=id||Utilities.getUuid();
-    sh.getRange(row,1,1,RH2.length).setValues([[rid,name,transaction,required,true,keywords,existingCreated,new Date()]]);
-    return{ok:true,id:rid,name,transaction};
+    sh.getRange(row,1,1,RH2.length).setValues([[rid,name,transaction,true,true,keywords,existingCreated,new Date()]]);
+    return {ok:true,id:rid,name:name,transactions:selected};
   }finally{lock.releaseLock()}
 }
 function removeRequirement_(p){
-  requirementEditorAuth_(p);
   const id=txt_(p.id,80);
-  if(!id)throw Error('Choose a requirement to remove.');
+  if(!id)throw Error('Select a requirement.');
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
     const sh=requirementsSheet_(),row=findId_(sh,id);
     if(row<2)throw Error('Requirement not found.');
     sh.getRange(row,5).setValue(false);
     sh.getRange(row,8).setValue(new Date());
-    return{ok:true,id};
+    return {ok:true,id:id};
   }finally{lock.releaseLock()}
 }
+
+// This old anonymous GET precheck summary endpoint is intentionally disabled.
+// Images, OCR text, personal data, and definitive "verified" claims must never
+// be submitted via a URL query string.
 function recordRequirementScan_(p){
-  // Public endpoint: only preliminary statuses, no images, OCR text, government numbers,
-  // free-form applicant data, credentials, or Drive URLs.
-  const ticketId=txt_(p.ticketId,80);
-  const raw=String(p.scans||'');
-  if(!ticketId||raw.length>5000)throw Error('Invalid scan summary.');
-  let scans;
-  try{scans=JSON.parse(raw)}catch(e){throw Error('Invalid scan summary encoding.')}
-  if(!Array.isArray(scans)||scans.length>25)throw Error('Too many requirement statuses.');
-  const lock=LockService.getScriptLock();lock.waitLock(30000);
-  try{
-    const ss=ss_(),q=ss.getSheetByName(CFG.queue);
-    const ticketRow=findId_(q,ticketId);
-    if(ticketRow<2)throw Error('Queue ticket not found.');
-    const ticket=q.getRange(ticketRow,1,1,QH.length).getValues()[0];
-    if(dayCell_(ticket[1])!==day_())throw Error('Scan results can only be recorded on the ticket date.');
-    const transaction=String(ticket[6]);
-    if(transaction==='MC')throw Error('Document scan only applies to recruitment.');
-    const requirements=requirementsConfig_().requirements.filter(r=>r.transaction==='ALL'||r.transaction===transaction);
-    const allowed=new Map(requirements.map(r=>[r.id,r]));
-    const accepted=new Set(['POSSIBLE_MATCH','RETAKE_REQUIRED','MISSING','FOR_RECRUITER_REVIEW']);
-    const sh=ss.getSheetByName('REQUIREMENT_SCANS')||ensure_(ss,'REQUIREMENT_SCANS',RSCAN);
-    const existing=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,5).getValues():[];
-    const now=new Date();let saved=0;
-    for(const scan of scans){
-      const id=String(scan.id||'').slice(0,80),r=allowed.get(id);
-      if(!r)continue;
-      const status=String(scan.status||'FOR_RECRUITER_REVIEW');
-      if(!accepted.has(status))continue;
-      const rowIndex=existing.findIndex(x=>String(x[1])===ticketId&&String(x[4])===id);
-      const row=rowIndex>=0?rowIndex+2:sh.getLastRow()+1;
-      const entry=[rowIndex>=0?sh.getRange(row,1).getValue():Utilities.getUuid(),ticketId,String(ticket[3]),transaction,id,r.name,
-        status,String(scan.photo)==='true'?'YES':'NO','BROWSER_OCR_PRELIMINARY',txt_(scan.at,32),now,'PENDING','Applicant-facing preliminary scan; not document authenticity verification'];
-      sh.getRange(row,1,1,RSCAN.length).setValues([entry]);saved++;
-    }
-    return{ok:true,saved};
-  }finally{lock.releaseLock()}
+  throw Error('Document scan summaries require a secure authenticated backend.');
 }
