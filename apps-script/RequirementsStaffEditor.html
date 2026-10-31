@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<base target="_top"><title>TIPON TAWAG | Recruiter Requirements Manager</title>
+<style>
+*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;background:#ecf5fa;color:#123d54;margin:0;padding:22px}
+.wrap{max-width:1150px;margin:auto}.header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 22px;flex-wrap:wrap}
+h1{margin:0;font-size:27px;color:#073a55}h2{font-size:19px;color:#073a55}p{line-height:1.55;font-size:13px;color:#59758a}
+a{color:#087db1;text-decoration:none;font-size:13px}.panel{background:white;border:1px solid #d4e5ee;border-radius:15px;padding:24px;margin:15px 0;box-shadow:0 8px 24px #0e618010}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+label.field{display:block;font-size:12px;font-weight:700}input[type=text],textarea{display:block;width:100%;border:1px solid #bdd4e1;border-radius:9px;padding:12px;font:14px Arial;margin:7px 0 12px;color:#183f54}
+fieldset{border:1px solid #bdd4e1;border-radius:10px;padding:12px;margin:0 0 12px;min-width:0}
+legend{font-size:12px;font-weight:bold;color:#164c68}.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin:12px 0}
+.choices label,.all{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#184b66}
+input[type=checkbox]{width:18px;height:18px;accent-color:#0783b8}
+.buttons{display:flex;gap:9px;flex-wrap:wrap;margin:15px 0}.btn{min-height:39px;border:1px solid #b8d9e8;border-radius:9px;background:#f6fcff;color:#134d6e;padding:9px 15px;font-weight:bold;cursor:pointer}
+.btn.primary{background:#087fb1;color:white;border-color:#087fb1}.btn.success{background:#07895f;color:white;border-color:#07895f}
+.btn.danger{color:#ad3333;border-color:#ebbfc4;background:#fff4f4}.btn[disabled]{opacity:.5;cursor:wait}
+table{border-collapse:collapse;width:100%;font-size:12px;min-width:650px}th,td{padding:12px;text-align:left;border-bottom:1px solid #dae8f0;vertical-align:top}
+th{background:#f0f7fb;color:#0b527a;text-transform:uppercase;font-size:11px}
+.tablewrap{overflow-x:auto}.status{border-radius:9px;background:#eef6fc;padding:13px;color:#174d69;min-height:40px;font-size:12px}
+small{color:#668499}.rowbuttons{display:flex;gap:6px;flex-wrap:wrap}@media(max-width:650px){body{padding:12px}.grid{grid-template-columns:1fr}.panel{padding:16px}h1{font-size:22px}}
+</style>
+</head><body>
+<div class="wrap">
+  <div class="header"><div><h1>tipón TAWAG — Recruiter Setup</h1><p>Manage dynamic pre-employment requirements. Only authorized Google Workspace recruiters may save.</p></div>
+    <a href="https://jericknoelsabang-hue.github.io/tipon-queuing-system/?view=setup">Back to TIPON TAWAG Setup</a></div>
+  <div class="panel">
+    <h2>Add / Edit Requirement</h2>
+    <div class="grid">
+      <label class="field">Requirement Name *<input id="name" type="text" maxlength="100" placeholder="e.g. NBI Clearance"></label>
+      <fieldset><legend>Recruitment Transactions *</legend>
+        <label class="all"><input id="all" type="checkbox"> All Recruitment Transactions</label>
+        <div id="checks" class="choices"></div>
+        <small>Select one or any number of transactions.</small>
+      </fieldset>
+    </div>
+    <label class="field">Recognition Search Terms<textarea id="keywords" maxlength="500" rows="3" placeholder="Document names and identifying terms to look for"></textarea></label>
+    <div class="buttons">
+      <button id="suggest" class="btn" type="button">Suggest Recognition Terms</button>
+      <button id="save" class="btn success" type="button">Add Requirement</button>
+      <button id="cancel" class="btn" type="button">Clear / Cancel</button>
+    </div>
+    <p id="status" class="status">Checking your Google account permissions…</p>
+  </div>
+  <div class="panel"><h2>Saved Requirements</h2><p>All entries appear in the applicant's recruitment checklist after saving. Changes sync through Google Sheets.</p>
+    <div class="tablewrap"><table><thead><tr><th>Requirement</th><th>Transactions</th><th>Recognition Terms</th><th>Actions</th></tr></thead><tbody id="rows"><tr><td colspan="4">Loading…</td></tr></tbody></table></div>
+    <p><small>OCR search terms cannot confirm document authenticity or employment eligibility. A recruiter must examine the originals.</small></p>
+  </div>
+</div>
+<script>
+(function(){'use strict';
+var $=function(id){return document.getElementById(id)};
+var esc=function(v){return String(v===undefined?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var records=[],txs=[],edit='',busy=false;
+function text(s){$('status').textContent=s}
+function rpc(name,p){return new Promise(function(resolve,reject){
+  if(!google||!google.script||!google.script.run){reject(Error('Google Apps Script is not available'));return}
+  google.script.run.withSuccessHandler(resolve).withFailureHandler(function(e){reject(Error(e&&e.message||e))})[name](p||{});
+})}
+function choices(){
+ var old=selected();
+ $('checks').innerHTML=txs.length?txs.map(function(x){
+  return '<label><input type="checkbox" value="'+esc(x.code)+'"> '+esc(x.name)+' ('+esc(x.code)+')</label>'
+ }).join(''):'<p>No recruitment transactions available.</p>';
+ select(old);
+}
+function selectedCodes(){return Array.from(document.querySelectorAll('#checks input:checked')).map(function(e){return e.value})}
+function selected(){return $('all').checked?['ALL']:selectedCodes()}
+function select(values){
+ var vals=new Set(values||[]),isAll=vals.has('ALL');
+ Array.from(document.querySelectorAll('#checks input')).forEach(function(el){el.checked=isAll||vals.has(el.value)});
+ $('all').checked=isAll||Boolean(txs.length&&selectedCodes().length===txs.length);
+}
+function rowCodes(r){if(Array.isArray(r.transactions))return r.transactions;return [r.transaction||'ALL']}
+function txLabel(r){
+ var codes=rowCodes(r);
+ return codes.includes('ALL')?'All Recruitment':codes.map(function(code){var o=txs.find(function(v){return v.code===code});return o?o.name:code}).join(', ');
+}
+function render(){
+ $('rows').innerHTML=records.length?records.map(function(r){
+   return '<tr><td><b>'+esc(r.name)+'</b></td><td>'+esc(txLabel(r))+'</td><td>'+esc(r.keywords||'—')+'</td><td><div class="rowbuttons">'+
+    '<button type="button" class="btn" data-edit="'+esc(r.id)+'">Edit</button>'+
+    '<button type="button" class="btn danger" data-remove="'+esc(r.id)+'">Delete</button></div></td></tr>';
+ }).join(''):'<tr><td colspan="4">No pre-employment requirements yet.</td></tr>';
+ Array.from(document.querySelectorAll('[data-edit]')).forEach(function(btn){btn.onclick=function(){
+   var r=records.find(function(x){return x.id===btn.dataset.edit});if(!r)return;
+   edit=r.id;$('name').value=r.name;$('keywords').value=r.keywords||'';select(rowCodes(r));
+   $('save').textContent='Save Changes';window.scrollTo({top:0,behavior:'smooth'});
+ }});
+ Array.from(document.querySelectorAll('[data-remove]')).forEach(function(btn){btn.onclick=function(){write('reqStaffDelete',{id:btn.dataset.remove})}});
+}
+async function load(){
+ try{
+   var data=await rpc('reqStaffList');
+   if(!data.ok)throw Error(data.error||'Read failed');
+   records=data.requirements||[];txs=data.transactions||[];choices();render();
+   text('Authorized recruiter: '+data.email+'. Connected to Google Sheets.');
+ }catch(e){text('Permission or connection error: '+e.message);}
+}
+function clear(){edit='';$('name').value='';$('keywords').value='';select([]);$('save').textContent='Add Requirement'}
+async function write(method,payload){
+ if(busy)return;
+ if(method==='reqStaffSave'){
+   var name=$('name').value.trim();if(name.length<3){text('Enter a requirement name of at least 3 characters.');return}
+   var list=selected();if(!list.length){text('Select at least one recruitment transaction.');return}
+   payload={id:edit,name:name,transactions:list,keywords:$('keywords').value.trim()};
+ }
+ busy=true;$('save').disabled=true;
+ try{var data=await rpc(method,payload);if(!data.ok)throw Error(data.error||'Save failed');clear();await load()}
+ catch(e){text('Unable to save: '+e.message)}
+ finally{busy=false;$('save').disabled=false}
+}
+function suggest(s){
+ s=String(s||'').trim();if(!s)return'';
+ var m=[
+  [/nbi|national bureau/i,['NBI Clearance','National Bureau of Investigation','Multi-Purpose Clearance','NBI']],
+  [/psa|birth certificate|live birth/i,['Philippine Statistics Authority','Certificate of Live Birth','PSA']],
+  [/sss|social security/i,['Social Security System','SSS','E-1']],
+  [/philhealth|mdr/i,['PhilHealth','Member Data Record','Philippine Health Insurance Corporation']],
+  [/pag.?ibig|hdmf/i,['Pag-IBIG Fund','Home Development Mutual Fund','Member’s Data Form','MID No']],
+  [/bir|tin/i,['Bureau of Internal Revenue','Taxpayer Identification Number','BIR','TIN']]
+ ];
+ var t=[s];for(var i=0;i<m.length;i++)if(m[i][0].test(s))t=t.concat(m[i][1]);
+ return Array.from(new Set(t)).join(', ');
+}
+$('suggest').onclick=function(){var v=suggest($('name').value);if(!v){text('Type the requirement name first.');return}$('keywords').value=v;text('Suggested standard document names and terms. Review them before saving.')};
+$('save').onclick=function(){write('reqStaffSave')};
+$('cancel').onclick=clear;
+$('all').onchange=function(){var yes=$('all').checked;Array.from(document.querySelectorAll('#checks input')).forEach(function(i){i.checked=yes})};
+$('checks').addEventListener('change',function(){$('all').checked=Boolean(txs.length&&selectedCodes().length===txs.length)});
+void load();
+})();
+</script>
+</body></html>
