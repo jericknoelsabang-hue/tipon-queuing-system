@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><base target="_top">
+<title>TIPON TAWAG Recruiter Requirements Bridge</title>
+<style>html,body{margin:0;padding:0;background:transparent}</style>
+</head><body>
+<script>
+(function(){'use strict';
+  var TRUSTED_PARENT='https://jericknoelsabang-hue.github.io';
+  var CHANNEL='tipon-requirement-staff-v1';
+  var allowed={list:'reqStaffList',save:'reqStaffSave',remove:'reqStaffDelete'};
+  function respond(id,ok,payload){
+    var msg={channel:CHANNEL,id:id,ok:ok};
+    if(ok)msg.result=payload;
+    else msg.error=String(payload&&payload.message||payload||'Request failed').slice(0,250);
+    window.parent.postMessage(msg,TRUSTED_PARENT);
+  }
+  window.addEventListener('message',function(e){
+    if(e.origin!==TRUSTED_PARENT||e.source!==window.parent)return;
+    var d=e.data||{};
+    if(d.channel!==CHANNEL||typeof d.id!=='string'||d.id.length>100||!allowed[d.operation])return;
+    if(!window.google||!google.script||!google.script.run){respond(d.id,false,'Google Apps Script is unavailable.');return;}
+    var args=d.payload&&typeof d.payload==='object'?d.payload:{};
+    try{
+      google.script.run
+        .withSuccessHandler(function(value){respond(d.id,true,value);})
+        .withFailureHandler(function(error){respond(d.id,false,error);})
+        [allowed[d.operation]](args);
+    }catch(err){respond(d.id,false,err);}
+  });
+  window.parent.postMessage({channel:CHANNEL,id:'READY',ok:true},TRUSTED_PARENT);
+})();
+</script>
+</body></html>
