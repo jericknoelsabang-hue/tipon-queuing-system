@@ -72,6 +72,7 @@ $('queueForm').onsubmit=async event=>{
   if(!res.ok)throw Error(res.error||'Unable to generate your queue number.');
   if(!res.ticket||!res.ticket.queueNo)throw Error('The server returned no queue number. Please notify staff.');
   receipt(res.ticket,Boolean(res.duplicate));
+   window.dispatchEvent(new CustomEvent('tipon:ticket',{detail:{ticket:res.ticket,duplicate:Boolean(res.duplicate)}}));
  }catch(e){message(e.message)}
  finally{button.disabled=false;button.textContent='GET QUEUE NUMBER'}
 };
