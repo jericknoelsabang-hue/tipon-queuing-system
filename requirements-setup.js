@@ -85,19 +85,20 @@ function suggest(name){
  }
  return [...new Set(terms.map(s=>s.trim()).filter(Boolean))].join(', ');
 }
-function selectedTx(){return [...document.querySelectorAll('#reqTxChecklist input[type=checkbox]:checked')].map(e=>e.value)}
+function selectedCodes(){return [...document.querySelectorAll('#reqTxChecklist input[type=checkbox]:checked')].map(e=>e.value)}
+function selectedTx(){return $('reqTxAll').checked?['ALL']:selectedCodes()}
 function setTxSelected(values){
  const selected=new Set(Array.isArray(values)?values:[]);
  const all=selected.has('ALL');
  for(const box of document.querySelectorAll('#reqTxChecklist input[type=checkbox]'))box.checked=all||selected.has(box.value);
- $('reqTxAll').checked=all||Boolean(transactions.length&&selectedTx().length===transactions.length);
+ $('reqTxAll').checked=all||Boolean(transactions.length&&selectedCodes().length===transactions.length);
 }
 function renderTransactions(){
  const current=new Set(selectedTx());
  $('reqTxChecklist').innerHTML=transactions.length?transactions.map(tx=>
-  '<label class="req-tx-option"><input type="checkbox" value="'+esc(tx.code)+'"'+(current.has(tx.code)?' checked':'')+'> '+esc(tx.name)+' ('+esc(tx.code)+')</label>').join(''):
+  '<label class="req-tx-option"><input type="checkbox" value="'+esc(tx.code)+'"'+(current.has('ALL')||current.has(tx.code)?' checked':'')+'> '+esc(tx.name)+' ('+esc(tx.code)+')</label>').join(''):
   '<span class="small-muted">No active recruitment transactions found.</span>';
- $('reqTxAll').checked=!!transactions.length&&selectedTx().length===transactions.length;
+ $('reqTxAll').checked=current.has('ALL')||!!transactions.length&&selectedCodes().length===transactions.length;
 }
 function configuredTx(r){
  if(Array.isArray(r.transactions))return r.transactions;
@@ -190,7 +191,7 @@ function init(){
    document.querySelectorAll('#reqTxChecklist input[type=checkbox]').forEach(box=>{box.checked=e.target.checked});
  };
  $('reqTxChecklist').addEventListener('change',()=>{
-   $('reqTxAll').checked=!!transactions.length&&selectedTx().length===transactions.length;
+   $('reqTxAll').checked=!!transactions.length&&selectedCodes().length===transactions.length;
  });
  $('reqSave').onclick=()=>write('save');
  $('reqCancel').onclick=clearEditor;
