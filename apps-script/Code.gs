@@ -6,10 +6,15 @@ const MH=['MPC Code','MPC Name','Queue Prefix','Logo URL','Active','Sort Order']
 const DEFAULT_ANNOUNCEMENT='Please keep your queue number until called.';
 const SH=['Setting','Value','Updated At'];
 const PH=['Precheck ID','Date','Precheck Reference','First Name','Last Name','Transaction Code','Position / Purpose','Applicant','Self-Checklist','Status','Submitted At','Reviewed At','Staff Note','Queue No'];
+// Recruitment requirements: blank by default. A staff-provided title drives an editable, rule-based OCR profile.
+const RH2=['Requirement ID','Requirement Name','Transaction Code','Required','Active','Recognition Keywords','Created At','Updated At'];
+const RSCAN=['Scan ID','Ticket ID','Queue No','Transaction Code','Requirement ID','Requirement Name','Scan Status','Photo Captured','Scan Method','Client Timestamp','Saved At','Recruiter Review','Notes'];
+const RX=['Extraction ID','Ticket ID','Queue No','Requirement ID','Field','Value','Source','Recruiter Verified','Saved At'];
 
 function setupTiponQueueSystem(){
   const ss=SpreadsheetApp.openById(CFG.spreadsheetId);
   ensure_(ss,CFG.queue,QH);ensure_(ss,CFG.windows,WH);ensure_(ss,CFG.tx,TH);ensure_(ss,CFG.settings,SH);ensure_(ss,CFG.precheck,PH);
+  ensure_(ss,'REQUIREMENTS_CONFIG',RH2);ensure_(ss,'REQUIREMENT_SCANS',RSCAN);ensure_(ss,'APPLICANT_EXTRACTIONS',RX);
   const w=ss.getSheetByName(CFG.windows);
   if(w.getLastRow()<2)for(let i=1;i<=4;i++)w.getRange(i+1,1).setValue(i);
   const t=ss.getSheetByName(CFG.tx);
@@ -28,6 +33,10 @@ function doGet(e){
       case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v10'};break;
       case'state':r={ok:true,state:state_(p)};break;
       case'publicConfig':r=publicConfig_();break;
+      case'requirements':r=requirementsConfig_();break;
+      case'upsertRequirement':r=upsertRequirement_(p);break;
+      case'removeRequirement':r=removeRequirement_(p);break;
+      case'recordRequirementScan':r=recordRequirementScan_(p);break;
       case'register':r=register_(p);break;
       case'setWindowTx':r=setWindowTx_(p);break;
       case'call':r=call_(p);break;
@@ -44,7 +53,7 @@ function doGet(e){
       case'announcementChunk':r=announcementChunk_(p);break;
       default:throw Error('Unknown action');
     }
-    if(r&&r.ok&&!['state','health','publicConfig','announcementChunk'].includes(action)){
+    if(r&&r.ok&&!['state','health','publicConfig','requirements','announcementChunk'].includes(action)){
       try{CacheService.getScriptCache().removeAll(['TIPON_STATE_display','TIPON_STATE_staff','TIPON_STATE_setup'])}catch(e){}
     }
     return out_(cb,r);
@@ -480,3 +489,100 @@ function txt_(v,n){return String(v||'').replace(/[\u0000-\u001F\u007F]/g,' ').re
 function int_(v,a,b){v=Number(v);if(!Number.isInteger(v)||v<a||v>b)throw Error('Invalid window.');return v}function bool_(v){return typeof v==='boolean'?v:['TRUE','YES','1','ACTIVE'].includes(String(v).toUpperCase())}
 function day_(){return Utilities.formatDate(new Date(),'Asia/Manila','yyyy-MM-dd')}function dayCell_(v){return v instanceof Date?Utilities.formatDate(v,'Asia/Manila','yyyy-MM-dd'):String(v||'').slice(0,10)}
 function iso_(v){if(!v)return'';return v instanceof Date?v.toISOString():String(v)}function out_(cb,o){return ContentService.createTextOutput(cb+'('+JSON.stringify(o)+');').setMimeType(ContentService.MimeType.JAVASCRIPT)}
+
+/* ===== Dynamic recruitment document pre-screening (pilot) =====
+ * Images and extracted ID numbers are NEVER accepted over the legacy JSONP/GET endpoint.
+ * Only applicant-visible, non-authoritative requirement statuses are recorded here.
+ * For real document uploads/OCR API, use a separately authenticated POST backend.
+ */
+function requirementsSheet_(){
+  const ss=ss_();
+  return ss.getSheetByName('REQUIREMENTS_CONFIG')||ensure_(ss,'REQUIREMENTS_CONFIG',RH2);
+}
+function requirementsConfig_(){
+  const sh=requirementsSheet_();
+  const rows=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,RH2.length).getValues():[];
+  return {ok:true,version:1,requirements:rows.filter(r=>r[0]&&bool_(r[4])).map(r=>({
+    id:String(r[0]),name:String(r[1]),transaction:String(r[2]||'ALL'),
+    required:bool_(r[3]),active:true,keywords:String(r[5]||'')
+  }))};
+}
+function requirementEditorAuth_(p){
+  // Intentionally fails closed unless the project owner sets a long random secret in
+  // Apps Script -> Project Settings -> Script properties: TIPON_REQ_ADMIN_KEY.
+  const expected=String(PropertiesService.getScriptProperties().getProperty('TIPON_REQ_ADMIN_KEY')||'');
+  if(expected.length<16)throw Error('Requirement Setup is locked. Configure TIPON_REQ_ADMIN_KEY (16+ characters) in Apps Script properties.');
+  if(String(p.adminKey||'')!==expected)throw Error('Invalid requirement-management access key.');
+}
+function upsertRequirement_(p){
+  requirementEditorAuth_(p);
+  const name=txt_(p.name,100),transaction=code_(p.transaction||'ALL',6);
+  if(name.length<3)throw Error('Requirement name must contain at least 3 characters.');
+  if(transaction!=='ALL'&&!allTxs_(ss_()).some(t=>t.code===transaction&&t.code!=='MC'))throw Error('Choose a valid recruitment transaction.');
+  const required=String(p.required)==='true';
+  const keywords=txt_(p.keywords,500).split(',').map(x=>x.trim()).filter(Boolean).slice(0,18).join(', ');
+  if(!keywords)throw Error('Add at least one recognition term (or generate terms first).');
+  const id=txt_(p.id,80),lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    const sh=requirementsSheet_(),count=sh.getLastRow()-1;
+    const ids=count>0?sh.getRange(2,1,count,1).getValues().map(r=>String(r[0])):[];
+    const pos=id?ids.indexOf(id):-1;
+    if(id&&pos<0)throw Error('Requirement not found. Reload Setup.');
+    const row=pos>=0?pos+2:sh.getLastRow()+1;
+    const existingCreated=pos>=0?sh.getRange(row,7).getValue():new Date();
+    const rid=id||Utilities.getUuid();
+    sh.getRange(row,1,1,RH2.length).setValues([[rid,name,transaction,required,true,keywords,existingCreated,new Date()]]);
+    return{ok:true,id:rid,name,transaction};
+  }finally{lock.releaseLock()}
+}
+function removeRequirement_(p){
+  requirementEditorAuth_(p);
+  const id=txt_(p.id,80);
+  if(!id)throw Error('Choose a requirement to remove.');
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    const sh=requirementsSheet_(),row=findId_(sh,id);
+    if(row<2)throw Error('Requirement not found.');
+    sh.getRange(row,5).setValue(false);
+    sh.getRange(row,8).setValue(new Date());
+    return{ok:true,id};
+  }finally{lock.releaseLock()}
+}
+function recordRequirementScan_(p){
+  // Public endpoint: only preliminary statuses, no images, OCR text, government numbers,
+  // free-form applicant data, credentials, or Drive URLs.
+  const ticketId=txt_(p.ticketId,80);
+  const raw=String(p.scans||'');
+  if(!ticketId||raw.length>5000)throw Error('Invalid scan summary.');
+  let scans;
+  try{scans=JSON.parse(raw)}catch(e){throw Error('Invalid scan summary encoding.')}
+  if(!Array.isArray(scans)||scans.length>25)throw Error('Too many requirement statuses.');
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    const ss=ss_(),q=ss.getSheetByName(CFG.queue);
+    const ticketRow=findId_(q,ticketId);
+    if(ticketRow<2)throw Error('Queue ticket not found.');
+    const ticket=q.getRange(ticketRow,1,1,QH.length).getValues()[0];
+    if(dayCell_(ticket[1])!==day_())throw Error('Scan results can only be recorded on the ticket date.');
+    const transaction=String(ticket[6]);
+    if(transaction==='MC')throw Error('Document scan only applies to recruitment.');
+    const requirements=requirementsConfig_().requirements.filter(r=>r.transaction==='ALL'||r.transaction===transaction);
+    const allowed=new Map(requirements.map(r=>[r.id,r]));
+    const accepted=new Set(['POSSIBLE_MATCH','RETAKE_REQUIRED','MISSING','FOR_RECRUITER_REVIEW']);
+    const sh=ss.getSheetByName('REQUIREMENT_SCANS')||ensure_(ss,'REQUIREMENT_SCANS',RSCAN);
+    const existing=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,5).getValues():[];
+    const now=new Date();let saved=0;
+    for(const scan of scans){
+      const id=String(scan.id||'').slice(0,80),r=allowed.get(id);
+      if(!r)continue;
+      const status=String(scan.status||'FOR_RECRUITER_REVIEW');
+      if(!accepted.has(status))continue;
+      const rowIndex=existing.findIndex(x=>String(x[1])===ticketId&&String(x[4])===id);
+      const row=rowIndex>=0?rowIndex+2:sh.getLastRow()+1;
+      const entry=[rowIndex>=0?sh.getRange(row,1).getValue():Utilities.getUuid(),ticketId,String(ticket[3]),transaction,id,r.name,
+        status,String(scan.photo)==='true'?'YES':'NO','BROWSER_OCR_PRELIMINARY',txt_(scan.at,32),now,'PENDING','Applicant-facing preliminary scan; not document authenticity verification'];
+      sh.getRange(row,1,1,RSCAN.length).setValues([entry]);saved++;
+    }
+    return{ok:true,saved};
+  }finally{lock.releaseLock()}
+}
