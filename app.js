@@ -3,7 +3,7 @@
 (()=>{'use strict';
 const C=window.TIPON_CONFIG||{}, $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const REQUIRED='federation-v9',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9']),DEFAULT='Please keep your queue number until called.';
+const REQUIRED='federation-v10',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9','federation-v10']),DEFAULT='Please keep your queue number until called.';
 let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],transactions:[],transactionTypes:[],assignments:{},announcement:DEFAULT,completed:[],recruiters:{}};
 let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,pollTimer=null,refreshFailures=0,activeWindowActions=new Set(),tableSignature={wait:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
 let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='';
@@ -19,7 +19,24 @@ function staffMessage(t,k='ok'){
 }
 function clearStaffMessage(){const a=$('staffAlert');if(a){a.textContent='';a.className='status staff-alert hide'}}
 
-function view(v){const previous=page;page=v;['display','staff','setup'].forEach(x=>$(x).classList.toggle('hide',x!==v));document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===v));$('fullscreen').classList.toggle('hide',v!=='display');if(v==='setup')setupTables();if(previous!==v&&hasLoaded)void refresh(true)}
+function view(v){
+  if(!['display','staff','setup'].includes(v))v='display';
+  const previous=page;
+  page=v;
+  // URL and session state both preserve the active tab after F5/Ctrl+R.
+  try{
+    sessionStorage.setItem('tqLastView',v);
+    const locationUrl=new URL(window.location.href);
+    if(v==='display')locationUrl.searchParams.delete('view');
+    else locationUrl.searchParams.set('view',v);
+    history.replaceState(history.state,'',locationUrl.pathname+locationUrl.search+locationUrl.hash);
+  }catch(e){/* Browser storage may be disabled; current tab still works. */}
+  ['display','staff','setup'].forEach(x=>$(x).classList.toggle('hide',x!==v));
+  document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  $('fullscreen').classList.toggle('hide',v!=='display');
+  if(v==='setup')setupTables();
+  if(previous!==v&&hasLoaded)void refresh(true);
+}
 function error(e){let t=String(e?.message||e||'Unknown error');
  if(t.includes('Unknown action'))t='Apps Script needs a backend update. Check the Code.gs deployment in Setup.';
  if(t.includes('timed out'))t='The queue server did not confirm in time. Rechecking the latest queue status; do not repeat the action until the result is visible.';
@@ -122,7 +139,7 @@ function queueTables(){
 function setupTables(){
   const connected=Boolean(S.version), writable=COMPATIBLE.has(S.version);
   const n=connected?Math.max(0,Math.min(Number(S.windowCount)||0,Number(S.maxWindowCount)||20)):0;
-  const list=Array.isArray(S.transactionTypes)&&S.transactionTypes.length?S.transactionTypes:Array.isArray(S.transactions)?S.transactions:[];
+  const list=(Array.isArray(S.transactionTypes)&&S.transactionTypes.length?S.transactionTypes:Array.isArray(S.transactions)?S.transactions:[]).filter(x=>x.active!==false);
   const activeTx=Array.isArray(S.transactions)?S.transactions:[];
   const windows=S.windows||{}, assigns=S.assignments||{}, recruiters=S.recruiters||{};
   const canDeleteWindow=i=>!Object.entries(windows).some(([number,ticket])=>Boolean(ticket)&&Number(number)>=i);
@@ -132,7 +149,7 @@ function setupTables(){
   $('openAddTx').disabled=!writable;
   $('setupListHint').textContent=!valid(url())?'No Apps Script connection configured. Add a valid /exec URL above.':
     !connected?'Connecting to Apps Script… Existing windows and transactions appear when the backend responds.':
-    !writable?'Read-only backend '+S.version+'. Deploy the latest Federation v8 Apps Script to enable edits.':
+    !writable?'Read-only backend '+S.version+'. Deploy the latest Federation v10 Apps Script to enable edits.':
     'Connected to '+S.version+'. Saved windows and transactions are available for management.';
   const trxName=code=>activeTx.find(x=>x.code===code)?.name||list.find(x=>x.code===code)?.name||(code==='ALL'?'Any transaction':code);
   $('setupWins').innerHTML=n?Array.from({length:n},(_,idx)=>{
@@ -142,11 +159,10 @@ function setupTables(){
       '<button class="btn sm danger" data-delete-win="'+i+'" type="button"'+(!writable||!canDeleteWindow(i)||n<=1?' disabled':'')+' title="'+(!canDeleteWindow(i)?'Complete this or later active windows first':'Delete window immediately')+'">Delete</button></td></tr>';
   }).join(''):'<tr><td colspan="5" class="empty">'+(connected?'No windows available. Add a window in Setup.':'Waiting for saved service windows from Apps Script.')+'</td></tr>';
   $('setupTx').innerHTML=list.length?list.map(x=>{
-    const active=x.active!==false;
-    return '<tr><td><b>'+esc(x.code)+'</b></td><td>'+esc(x.name)+'</td><td>'+(active?'Active':'Inactive')+'</td><td class="actions-cell">'+
+    return '<tr><td><b>'+esc(x.code)+'</b></td><td>'+esc(x.name)+'</td><td>Active</td><td class="actions-cell">'+
       '<button class="btn sm" type="button" data-edit-tx="'+esc(x.code)+'"'+(!writable?' disabled':'')+'>Edit</button>'+
-      '<button class="btn sm '+(active?'danger':'success')+'" type="button" data-change-tx="'+esc(x.code)+'" data-mode="'+(active?'delete':'restore')+'"'+(!writable?' disabled':'')+'>'+(active?'Delete':'Restore')+'</button></td></tr>';
-  }).join(''):'<tr><td colspan="4" class="empty">'+(connected?'No transaction types found in the backend.':'Waiting for saved transaction types from Apps Script.')+'</td></tr>';
+      '<button class="btn sm danger" type="button" data-delete-tx="'+esc(x.code)+'"'+(!writable?' disabled':'')+'>Delete</button></td></tr>';
+  }).join(''):'<tr><td colspan="4" class="empty">'+(connected?'No active transaction types. Add one above.':'Waiting for saved transaction types from Apps Script.')+'</td></tr>';
   document.querySelectorAll('[data-edit-win]').forEach(b=>b.onclick=()=>openWindowEditor(Number(b.dataset.editWin)));
   document.querySelectorAll('[data-delete-win]').forEach(b=>b.onclick=async()=>{
     if(b.disabled)return;
@@ -155,17 +171,20 @@ function setupTables(){
     if(!result)setupTables();
   });
   document.querySelectorAll('[data-edit-tx]').forEach(b=>b.onclick=()=>openTxEditor(b.dataset.editTx));
-  document.querySelectorAll('[data-change-tx]').forEach(b=>b.onclick=async()=>{
-    const code=b.dataset.changeTx,remove=b.dataset.mode==='delete';
-    if(!confirm((remove?'Deactivate':'Restore')+' transaction '+code+'? Queue history is retained.'))return;
-    b.disabled=true;
-    const result=await operate(remove?'deleteTx':'restoreTx',{code},()=>{
-      S.transactionTypes=(S.transactionTypes||[]).map(t=>t.code===code?{...t,active:!remove}:t);
-      S.transactions=(S.transactionTypes||[]).filter(t=>t.active);
-      if(remove)for(const k of Object.keys(S.assignments||{}))if(S.assignments[k]===code)S.assignments[k]='ALL';
+  document.querySelectorAll('[data-delete-tx]').forEach(b=>b.onclick=async()=>{
+    if(b.disabled)return;
+    const code=b.dataset.deleteTx;
+    b.disabled=true;b.textContent='Deleting…';
+    // Backend uses a history-safe soft delete; the inactive row disappears from Setup.
+    const result=await operate('deleteTx',{code},()=>{
+      S.transactionTypes=(S.transactionTypes||[]).filter(t=>t.code!==code);
+      S.transactions=(S.transactions||[]).filter(t=>t.code!==code);
+      for(const k of Object.keys(S.assignments||{}))if(S.assignments[k]===code)S.assignments[k]='ALL';
+      if(editTxCode===code){$('txEditor').classList.add('hide');editTxCode=''}
       staffSignature='';render();
     });
     if(!result)setupTables();
+    else status('Transaction '+code+' removed from active services. Previous queue records remain preserved.','ok');
   });
 }
 function openWindowEditor(i){
@@ -242,7 +261,8 @@ function ding(){try{const A=window.AudioContext||window.webkitAudioContext;audio
  const t=audio.currentTime;[[660,0],[880,.18]].forEach(([f,offset])=>{const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=f;g.gain.setValueAtTime(.001,t+offset);g.gain.exponentialRampToValueAtTime(.2,t+offset+.03);g.gain.exponentialRampToValueAtTime(.001,t+offset+.25);o.connect(g);g.connect(audio.destination);o.start(t+offset);o.stop(t+offset+.27)})}catch{}}
 function announce(ticket,i){
  if(!armed)return;
- const line='Queue '+String(ticket.queueNo||'').replace(/-/g,' ') + ', ' + String(ticket.name||'') + ', please proceed to Window '+i+'.';
+ const number=String(ticket.queueNo||'').trim().replace(/-/g,' ').replace(/([0-9])/g,'$1 ');
+ const line=number.trim()+', '+String(ticket.name||'')+', please proceed to Window '+i+'.';
  const triple=[line,line,line].join(' ... ');
  ding();
  if('speechSynthesis' in window){
@@ -260,7 +280,12 @@ async function operate(action,params={},after){
  try{
   const result=await jp(action,params);
   if(!result.ok)throw Error(result.error||'Request failed.');
-  if(after)after(result);
+  if(after){
+    try{after(result)}catch(uiError){
+      // A frontend rendering error must not be presented as a failed backend write.
+      console.warn('Local UI update will be retried on refresh',uiError);
+    }
+  }
   return result;
  }catch(e){
   error(e);return null;
@@ -449,7 +474,12 @@ function clock(){
   $('clock').textContent=time;$('fullscreenTime').textContent=time;
   $('headerDay').textContent=date;$('fullscreenDate').textContent=date;
 }
-clock();setInterval(clock,1000);const requested=new URLSearchParams(location.search).get('view');view(['setup','staff'].includes(requested)?requested:'display');
+clock();setInterval(clock,1000);
+let storedView='display';
+try{storedView=sessionStorage.getItem('tqLastView')||'display'}catch(e){}
+const requested=new URLSearchParams(location.search).get('view');
+view(['display','staff','setup'].includes(requested)?requested:
+     ['display','staff','setup'].includes(storedView)?storedView:'display');
 render();
 void refresh(false);
 document.addEventListener('visibilitychange',()=>{
