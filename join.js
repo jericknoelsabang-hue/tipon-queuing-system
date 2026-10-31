@@ -31,12 +31,15 @@ function choose(next){
 }
 $('chooseRecruitment').onclick=()=>choose('recruitment');
 $('chooseMember').onclick=()=>choose('member');
-function receipt(ticket){
+function receipt(ticket,duplicate=false){
  $('entry').classList.add('hide');$('receipt').classList.remove('hide');$('receipt').classList.remove('finished');$('step2').classList.add('on');
- $('receiptTag').textContent='QUEUE NUMBER CONFIRMED';
- $('receiptTitle').textContent='Your queue number is ready';
+ const completed=String(ticket.status||'').toUpperCase()==='COMPLETED';
+ $('receiptTag').textContent=completed?'ALREADY SERVED TODAY':duplicate?'EXISTING QUEUE NUMBER':'QUEUE NUMBER CONFIRMED';
+ $('receiptTitle').textContent=completed?'This transaction was already completed today':duplicate?'Your existing queue number':'Your queue number is ready';
  $('receiptCode').textContent=String(ticket.queueNo||'---');
- $('receiptText').textContent='Please save your queue number and watch the TV Display for your assigned window.';
+ $('receiptText').textContent=completed?
+  'This number has already been served today. For a different transaction, please select another service or ask the reception team.':
+  'Please save your queue number and watch the TV Display for your assigned service window.';
  $('finishedNotice').classList.add('hide');
  clear();
 }
@@ -68,7 +71,7 @@ $('queueForm').onsubmit=async event=>{
   const res=await jp('register',{firstName,lastName,position,transaction});
   if(!res.ok)throw Error(res.error||'Unable to generate your queue number.');
   if(!res.ticket||!res.ticket.queueNo)throw Error('The server returned no queue number. Please notify staff.');
-  receipt(res.ticket);
+  receipt(res.ticket,Boolean(res.duplicate));
  }catch(e){message(e.message)}
  finally{button.disabled=false;button.textContent='GET QUEUE NUMBER'}
 };
