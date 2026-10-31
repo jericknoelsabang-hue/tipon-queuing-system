@@ -192,7 +192,7 @@ function call_(p){
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
     const ss=ss_(),w=ss.getSheetByName(CFG.windows),win=int_(p.window,1,windowCount_()),row=win+1;
-    if(w.getRange(row,2).getValue())throw Error('Complete current applicant first.');
+    if(w.getRange(row,2).getValue())throw Error('Complete the current applicant/member transaction first.');
     const assigned=windowTx_(ss,win),q=ss.getSheetByName(CFG.queue),today=day_();
     if(q.getLastRow()<2)throw Error('Queue is empty.');
     const selection=todayQueueRows_(q,today),v=selection.rows;
@@ -203,7 +203,7 @@ function call_(p){
       if(assigned!=='ALL'&&String(r[6])!==assigned)continue;
       i=x;break;
     }
-    if(i<0)throw Error('No matching applicant is waiting.');
+    if(i<0)throw Error('No matching applicant or member is waiting.');
     const r=v[i],actualRow=selection.startRow+i,now=new Date(),recruiter=txt_(settingValue_(ss,'WINDOW_RECRUITER_'+win),80);q.getRange(actualRow,11,1,3).setValues([['SERVING',win,now]]);q.getRange(actualRow,18).setValue(recruiter);r[17]=recruiter;
     r[10]='SERVING';r[11]=win;r[12]=now;
     w.getRange(row,1,1,WH.length).setValues([[win,r[0],r[3],r[4],r[5],r[6],r[7],r[8],r[9],now,now,actualRow]]);
