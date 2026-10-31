@@ -18,14 +18,14 @@ function setupTiponQueueSystem(){
   const all=allTxs_(ss);
   if(!all.some(t=>t.code==='MC'))ss.getSheetByName(CFG.tx).appendRow(['MC','Member Concerns',true,all.length+1]);
   // A disabled transaction remains disabled after setup.
-  return {ok:true,federationMode:true,version:'federation-v9'};
+  return {ok:true,federationMode:true,version:'federation-v10'};
 }
 function doGet(e){
   const p=e?.parameter||{},cb=String(p.callback||'callback').replace(/[^A-Za-z0-9_.$]/g,'');
   const action=String(p.action||'state');
   try{
     let r;switch(action){
-      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v9'};break;
+      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v10'};break;
       case'state':r={ok:true,state:state_(p)};break;
       case'publicConfig':r=publicConfig_();break;
       case'register':r=register_(p);break;
@@ -62,22 +62,26 @@ function register_(p){
 }
 function issueTicket_(ss,tx,first,last,pos){
   const q=ss.getSheetByName(CFG.queue),today=day_(),count=Math.max(0,q.getLastRow()-1);
-  // Read history once: duplicate checks and the next sequence number share the same scan.
+  // Name+transaction is unique *per Philippine date*, including completed tickets.
+  // A different transaction receives its own queue number; tomorrow starts a new series.
   const rows=count?q.getRange(2,1,count,QH.length).getValues():[];
-  const desired=nameKey_(first,last);
-  let max=0;
-  for(const row of rows){
-    if(dayCell_(row[1])!==today)continue;
-    const status=String(row[10]),person=nameKey_(row[15]||String(row[8]).split(' ')[0],row[16]||String(row[8]).split(' ').slice(-1)[0]);
-    if(['WAITING','SERVING'].includes(status)&&person===desired)
-      return{ok:true,duplicate:true,ticket:ticket_(row),message:'Existing active queue number returned.'};
-    if(String(row[6])===tx.code){
-      const suffix=String(row[3]).match(/-(\d+)$/);
-      if(suffix)max=Math.max(max,Number(suffix[1]));
-    }
+  const desired=nameKey_(first,last),wantedCode=code_(tx.code,6);
+  let max=0,existing=null;
+  for(let i=rows.length-1;i>=0;i--){
+    const row=rows[i];
+    if(dayCell_(row[1])!==today||code_(row[6],6)!==wantedCode)continue;
+    const suffix=String(row[3]).match(/-(\d+)$/);
+    if(suffix)max=Math.max(max,Number(suffix[1]));
+    const given=String(row[15]||'').trim(),family=String(row[16]||'').trim();
+    const fullName=String(row[8]||'').trim();
+    const person=given&&family?nameKey_(given,family):norm_(fullName);
+    if(!existing&&(person===desired||person===norm_(first+' '+last)))existing=row;
   }
-  const num=tx.code+'-'+String(max+1).padStart(3,'0'),now=new Date(),id=Utilities.getUuid(),name=first+' '+last;
-  const row=[id,today,now,num,'TIPON','TIPON Federation',tx.code,tx.name,name,pos,'WAITING','','','','',first,last,''];
+  if(existing)return{ok:true,duplicate:true,ticket:ticket_(existing),
+    message:'This applicant/member already has a queue number for this transaction today.'};
+  const num=wantedCode+'-'+String(max+1).padStart(4,'0');
+  const now=new Date(),id=Utilities.getUuid(),name=first+' '+last;
+  const row=[id,today,now,num,'TIPON','TIPON Federation',wantedCode,tx.name,name,pos,'WAITING','','','','',first,last,''];
   q.appendRow(row);
   return{ok:true,duplicate:false,ticket:ticket_(row)};
 }
@@ -211,9 +215,15 @@ function complete_(p){
     const ss=ss_(),w=ss.getSheetByName(CFG.windows),win=int_(p.window,1,windowCount_()),r=w.getRange(win+1,1,1,WH.length).getValues()[0];
     if(!r[1])throw Error('Window is empty.');const q=ss.getSheetByName(CFG.queue),row=queueRowForWindow_(q,r);if(row<2)throw Error('Ticket not found.');
     const completedAt=new Date();
-    q.getRange(row,11).setValue('COMPLETED');q.getRange(row,14).setValue(completedAt);
+    // One contiguous Sheets write replaces two separate status/timestamp writes.
+    const statusBlock=q.getRange(row,11,1,4),previous=statusBlock.getValues()[0];
+    statusBlock.setValues([['COMPLETED',previous[1],previous[2],completedAt]]);
     w.getRange(win+1,2,1,WH.length-1).clearContent();
-    return{ok:true,window:win,ticket:{...windowTicket_(r),status:'COMPLETED',completedAt:iso_(completedAt)}}
+    return{ok:true,window:win,ticket:{
+      ...windowTicket_(r),status:'COMPLETED',
+      date:dayCell_(completedAt),completedAt:iso_(completedAt),
+      recruiter:txt_(settingValue_(ss,'WINDOW_RECRUITER_'+win),80)
+    }}
   }finally{lock.releaseLock()}
 }
 function addWindow_(){
@@ -430,7 +440,14 @@ function queueRowForWindow_(q,windowRow){
  return findId_(q,String(windowRow[1]));
 }
 function windowCount_(){const s=ss_().getSheetByName(CFG.windows);let n=0;if(s&&s.getLastRow()>1)s.getRange(2,1,s.getLastRow()-1,1).getValues().forEach(r=>{const x=Number(r[0]);if(Number.isInteger(x)&&x>n)n=x});return Math.max(1,Math.min(CFG.maxWindows,n||4))}
-function ensure_(ss,name,h){let s=ss.getSheetByName(name)||ss.insertSheet(name);s.getRange(1,1,1,h.length).setValues([h]).setFontWeight('bold').setBackground('#e5e7eb');s.setFrozenRows(1);return s}
+function ensure_(ss,name,h){
+  const sheet=ss.getSheetByName(name)||ss.insertSheet(name);
+  sheet.getRange(1,1,1,h.length).setValues([h]).setFontWeight('bold')
+    .setBackground('#075477').setFontColor('#ffffff')
+    .setVerticalAlignment('middle').setWrap(true);
+  sheet.setFrozenRows(1);
+  return sheet;
+}
 let _tiponSpreadsheet=null;
 function ss_(){return _tiponSpreadsheet||(_tiponSpreadsheet=SpreadsheetApp.openById(CFG.spreadsheetId))}
 function nameKey_(f,l){return norm_(f)+'|'+norm_(l)}function norm_(v){let s=String(v||'').trim().toUpperCase();if(s.normalize)s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');return s.replace(/[^A-Z0-9]/g,'')}
