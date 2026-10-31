@@ -19,6 +19,10 @@ function jsonp(action,params={}){return new Promise((resolve,reject)=>{
  for(const [k,v] of Object.entries(params))u.searchParams.set(k,String(v??''));
  node.src=u.href;document.head.appendChild(node);
 })}
+function renderExpected(){
+ const active=applicable();
+ $('scanExpectedList').innerHTML=active.map(r=>'<span class="scan-expected-chip">'+esc(r.name)+'</span>').join('');
+}
 function matchesTx(r,tx){
  if(Array.isArray(r.transactions))return r.transactions.includes('ALL')||r.transactions.includes(tx);
  const old=String(r.transaction||'ALL');if(old==='ALL'||old===tx)return true;
@@ -206,6 +210,7 @@ async function refreshRequirements(){
    requirements=[];configAvailable=false;
    $('scanConfigMessage').textContent='Requirement list is not yet connected to the updated Apps Script. You may still capture photos for on-device review.';
  }
+ renderExpected();
 }
 function init(){
  if(!$('scanDecision'))return;
