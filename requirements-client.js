@@ -31,12 +31,22 @@ $('scanAnalyze').onclick=()=>{if(!state.consent){$('scanNotice').textContent='Ag
 $('transaction').addEventListener('change',()=>{state.photos.clear();state.scans=[];slots();});
 document.querySelectorAll('#chooseRecruitment,#chooseMember').forEach(b=>b.addEventListener('click',showDecision));
 $('another').addEventListener('click',reset);
-$('queueForm').addEventListener('submit',async()=>{if(state.decision!=='yes'||!state.scans.length)return;
-const original=$('firstName').value.trim().toUpperCase()+' '+$('lastName').value.trim().toUpperCase();
-for(let i=0;i<30;i++){if(!$('receipt').classList.contains('hide'))break;await new Promise(r=>setTimeout(r,100));}
-if($('receipt').classList.contains('hide'))return;
-const ticketId=''; // Registration response is captured by legacy form; do not guess server identifiers.
-$('scanNotice').textContent='Photos were handled in browser memory only. Recruiter review is still required.';
-});void reload();showDecision();}
+$('queueForm').addEventListener('submit',event=>{
+  if(serviceRecruitment()&&state.decision==='yes'&&applicable().length&&(!state.consent||!state.scans.length)){
+    event.preventDefault();event.stopImmediatePropagation();$('scanNotice').textContent='Complete photo capture, accept privacy notice and select Confirm & Analyze before getting your queue number.'; $('scanBox').scrollIntoView({behavior:'smooth'});
+  }
+},true);
+window.addEventListener('tipon:ticket',async event=>{
+  const ticket=event.detail?.ticket;
+  if(!ticket?.ticketId||state.decision!=='yes'||!state.scans.length)return;
+  try{
+    const r=await jsonp('recordRequirementScan',{ticketId:ticket.ticketId,scans:JSON.stringify(state.scans.map(x=>({id:x.id,status:x.status,photo:String(x.photo),at:x.at})))});
+    if(!r.ok)throw Error(r.error||'Backend did not save summary');
+    $('receiptText').textContent+=' Requirement photo checklist recorded for recruiter review.';
+  }catch(e){
+    $('receiptText').textContent+=' Requirement checklist was not saved; show your documents to the recruiter.';
+  }
+});
+function serviceRecruitment(){return $('chooseRecruitment').classList.contains('chosen')};void reload();showDecision();}
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init):init();
 })();
