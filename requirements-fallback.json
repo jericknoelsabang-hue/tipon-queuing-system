@@ -1,1 +1,82 @@
-{"version":1,"requirements":[]}
+{
+  "version": 1,
+  "requirements": [
+    {
+      "id": "DEMO-REQ-1",
+      "name": "SSS",
+      "transaction": "ALL",
+      "transactions": [
+        "ALL"
+      ],
+      "required": true,
+      "active": true,
+      "keywords": "SSS"
+    },
+    {
+      "id": "DEMO-REQ-2",
+      "name": "PAG-IBIG",
+      "transaction": "ALL",
+      "transactions": [
+        "ALL"
+      ],
+      "required": true,
+      "active": true,
+      "keywords": "PAG-IBIG"
+    },
+    {
+      "id": "DEMO-REQ-3",
+      "name": "PHILHEALTH",
+      "transaction": "ALL",
+      "transactions": [
+        "ALL"
+      ],
+      "required": true,
+      "active": true,
+      "keywords": "PHILHEALTH"
+    },
+    {
+      "id": "DEMO-REQ-4",
+      "name": "NBI",
+      "transaction": "ALL",
+      "transactions": [
+        "ALL"
+      ],
+      "required": true,
+      "active": true,
+      "keywords": "NBI"
+    },
+    {
+      "id": "DEMO-REQ-5",
+      "name": "BIRTH CERTIFICATE",
+      "transaction": "ALL",
+      "transactions": [
+        "ALL"
+      ],
+      "required": true,
+      "active": true,
+      "keywords": "BIRTH CERTIFICATE"
+    },
+    {
+      "id": "DEMO-REQ-6",
+      "name": "TIN",
+      "transaction": "ALL",
+      "transactions": [
+        "ALL"
+      ],
+      "required": true,
+      "active": true,
+      "keywords": "TIN"
+    },
+    {
+      "id": "DEMO-REQ-7",
+      "name": "NBI CLEARANCE",
+      "transaction": "ALL",
+      "transactions": [
+        "ALL"
+      ],
+      "required": true,
+      "active": true,
+      "keywords": "NBI CLEARANCE"
+    }
+  ]
+}
