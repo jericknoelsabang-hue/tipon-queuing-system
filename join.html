@@ -104,6 +104,8 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
 .scan-choice input,.scan-privacy input{width:18px;height:18px;accent-color:#0887b2}
 .scan-privacy{background:#f4fbff;border:1px solid #c8e0ed;border-radius:11px;padding:15px;margin:14px 0}
 .scan-privacy strong{color:#14516b}.scan-privacy label{display:flex;align-items:flex-start;gap:9px;font-size:12px;font-weight:700;color:#20536a}.scan-privacy p{margin:8px 0 12px}
+.scan-expected-list{display:flex;flex-wrap:wrap;gap:7px;margin:9px 0 14px}
+.scan-expected-chip{padding:6px 10px;border:1px solid #b5d3e3;border-radius:18px;background:#fff;font-size:11px;font-weight:700;color:#17516d}
 .scan-action-center{display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;gap:6px;margin:16px auto}
 .scan-main-btn{min-height:48px;min-width:245px;font-size:13px}
 .scan-photo-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;color:#14516b;font-size:12px;margin:20px 0 11px}
@@ -174,7 +176,7 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
         <label><input id="privacyAgree" type="checkbox"> I understand and consent to this optional on-device document check.</label>
       </div>
       <div id="scanControls" class="hide">
-        <p id="scanConfigMessage" class="helper"></p>
+        <p id="scanConfigMessage" class="helper"></p><div id="scanExpectedList" class="scan-expected-list" aria-label="Recruiter required documents"></div>
         <div class="scan-action-center">
           <button id="scanStart" type="button" class="btn primary scan-main-btn">CAPTURE REQUIREMENTS</button>
           <p class="helper">Use your camera and press Capture repeatedly. There is no set number of photos.</p>
