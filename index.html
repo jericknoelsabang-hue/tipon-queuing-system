@@ -84,7 +84,7 @@
       <div class="buttons" style="margin-top:13px"><button id="save" class="btn primary" type="button">Save Connection</button><button id="test" class="btn" type="button">Test Connection</button><button id="clear" class="btn ghost" type="button">Clear</button></div>
       <div class="req-staff-config">
         <label class="field">Recruiter Setup Connection (staff-only /exec)<input id="reqStaffUrl" type="url" autocomplete="off" placeholder="Staff-only Google Apps Script deployment URL"></label>
-        <div class="buttons"><button id="reqStaffSave" class="btn" type="button">Save Recruiter Connection</button><a id="reqStaffOpen" class="btn ghost" target="_blank" rel="noopener" href="#">Open Staff Deployment</a></div>
+        <div class="buttons"><button id="reqStaffSave" class="btn" type="button">Save Recruiter Connection</button><a id="reqStaffOpen" class="btn ghost" target="_blank" rel="noopener" href="#">Open / Authorize Recruiter Access</a></div>
         <p class="small-muted">Use a separate Google Apps Script deployment: execute as the accessing user and restrict access to authorized recruiters. No shared management key is required.</p>
       </div>
       <div class="setup-guide"><b>How to fix “Unknown action”:</b> Open the deployed Apps Script project, replace Code.gs with the <a target="_blank" rel="noopener" href="https://github.com/jericknoelsabang-hue/tipon-queuing-system/blob/main/apps-script/Code.gs">latest GitHub Code.gs</a>, run <code>setupTiponQueueSystem</code>, then choose <b>Deploy → Manage deployments → Edit → New version → Deploy</b>. Keep the same /exec URL.</div>
