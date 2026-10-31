@@ -36,6 +36,11 @@ function doGet(e){
         .setTitle('TIPON TAWAG - Recruiter Requirements')
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     }
+    if(String(p.mode||'')==='manageRequirements'){
+      requirementEditorAuth_();
+      return HtmlService.createHtmlOutputFromFile('RequirementsStaffEditor')
+        .setTitle('TIPON TAWAG - Manage Pre-Employment Requirements');
+    }
     let r;switch(action){
       case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v10'};break;
       case'state':r={ok:true,state:state_(p)};break;
