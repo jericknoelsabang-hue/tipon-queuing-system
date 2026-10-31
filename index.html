@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=10.0">
-<script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="app.js?v=10.0"></script><script defer src="requirements-setup.js?v=2.0"></script>
+<script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="app.js?v=10.0"></script><script defer src="requirements-setup.js?v=3.0"></script>
 
 <style>
 .req-staff-config{padding:16px 0;margin-top:15px;border-top:1px solid #dce9f0}
@@ -25,7 +25,19 @@
 #reqSetup #reqStatus{font-size:12px;min-height:18px;line-height:1.5}
 @media(max-width:700px){.req-editor-grid{grid-template-columns:1fr}}
 </style>
-</head><body>
+<style>
+.req-dropdown-field{font-size:12px;font-weight:800;color:#24506a;min-width:0}
+.req-dropdown-field small{font-size:11px;color:#65829a;font-weight:500}
+.req-tx-dropdown{position:relative;margin:9px 0 6px}
+.req-tx-dropdown summary{list-style:none;display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #c5dbe9;border-radius:9px;min-height:46px;padding:11px 14px;cursor:pointer;color:#173f59;font-size:13px;font-weight:650}
+.req-tx-dropdown summary::-webkit-details-marker{display:none}
+.req-tx-dropdown summary:after{content:'▾';font-size:19px}
+.req-tx-dropdown[open] summary:after{content:'▴'}
+.req-tx-popup{position:absolute;z-index:30;width:100%;top:calc(100% + 4px);background:#fff;box-shadow:0 14px 28px #042c432b;padding:14px;border:1px solid #b5d2e2;border-radius:12px}
+.req-signon{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:8px 0}
+.req-signon .btn{font-size:12px;text-decoration:none}
+#reqSetup .req-actions{margin-top:14px}
+</style></head><body>
 <header class="site-header"><div class="head">
   <div class="brand"><img class="tipon-logo" id="brandPhoto" src="assets/tipon-logo-hd.webp" alt="tipón Federation logo">
     <div class="brand-copy tawag-brand"><span class="brand-name">TAWAG<span class="brand-dot">.</span></span><span class="brand-tagline">Bawat tawag, may malasakit.</span></div>
@@ -82,11 +94,6 @@
     <div class="card"><h2>Google Apps Script Connection</h2><p>The Apps Script backend supports attendance-independent queuing, member concerns, recruiter assignments, and transaction management.</p>
       <label class="field" for="api">Apps Script Web App URL (/exec)<input id="api" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec"></label>
       <div class="buttons" style="margin-top:13px"><button id="save" class="btn primary" type="button">Save Connection</button><button id="test" class="btn" type="button">Test Connection</button><button id="clear" class="btn ghost" type="button">Clear</button></div>
-      <div class="req-staff-config">
-        <label class="field">Recruiter Setup Connection (staff-only /exec)<input id="reqStaffUrl" type="url" autocomplete="off" placeholder="Staff-only Google Apps Script deployment URL"></label>
-        <div class="buttons"><button id="reqStaffSave" class="btn" type="button">Save Recruiter Connection</button><a id="reqStaffOpen" class="btn ghost" target="_blank" rel="noopener" href="#">Open / Authorize Recruiter Access</a></div>
-        <p class="small-muted">Use a separate Google Apps Script deployment: execute as the accessing user and restrict access to authorized recruiters. No shared management key is required.</p>
-      </div>
       <div class="setup-guide"><b>How to fix “Unknown action”:</b> Open the deployed Apps Script project, replace Code.gs with the <a target="_blank" rel="noopener" href="https://github.com/jericknoelsabang-hue/tipon-queuing-system/blob/main/apps-script/Code.gs">latest GitHub Code.gs</a>, run <code>setupTiponQueueSystem</code>, then choose <b>Deploy → Manage deployments → Edit → New version → Deploy</b>. Keep the same /exec URL.</div>
     </div>
     <div class="card get-queue-setup"><div class="split"><div><h2>Get Queue Page</h2><p>Share this registration page with recruitment applicants and members, or open it to test the QR link.</p></div><a id="getQueueSetup" class="btn primary" href="join.html" target="_blank" rel="noopener">Open Get Queue Page</a></div></div>
@@ -120,12 +127,17 @@
       </div>
       <div class="grid req-editor-grid">
         <label class="field">Requirement Name *<input id="reqName" maxlength="100" autocomplete="off" placeholder="e.g. NBI Clearance"></label>
-        <fieldset class="req-transactions">
-          <legend>Recruitment Transactions *</legend>
-          <label class="req-tx-option req-select-all"><input id="reqTxAll" type="checkbox"> <b>All Recruitment Transactions</b></label>
-          <div id="reqTxChecklist" class="req-tx-list" role="group" aria-label="Select applicable recruitment transactions"></div>
-          <small>Select any number of transactions.</small>
-        </fieldset>
+        <div class="req-dropdown-field">
+          <label class="req-field-label">Recruitment Transactions *</label>
+          <details class="req-tx-dropdown" id="reqTxDropdown">
+            <summary id="reqTxSummary">Select recruitment transactions</summary>
+            <div class="req-tx-popup">
+              <label class="req-tx-option req-select-all"><input id="reqTxAll" type="checkbox"> <b>All Recruitment Transactions</b></label>
+              <div id="reqTxChecklist" class="req-tx-list" role="group" aria-label="Select applicable recruitment transactions"></div>
+            </div>
+          </details>
+          <small>Select one or more transactions.</small>
+        </div>
       </div>
       <label class="field req-keywords">Recognition Search Terms
         <textarea id="reqKeywords" rows="2" maxlength="500" placeholder="e.g. NBI Clearance, National Bureau of Investigation"></textarea>
@@ -134,6 +146,10 @@
         <button class="btn" type="button" id="reqGenerate">Suggest Recognition Terms</button>
         <button class="btn success" type="button" id="reqSave">Add Requirement</button>
         <button class="btn ghost" type="button" id="reqCancel">Clear / Cancel</button>
+      </div>
+      <div class="req-signon">
+        <button id="reqGoogleLogin" class="btn ghost" type="button">Sign in with Google to sync</button>
+        <a class="btn ghost" target="_blank" rel="noopener" href="https://docs.google.com/spreadsheets/d/1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik/edit">Open Requirements Sheet</a>
       </div>
       <p id="reqStatus" class="small-muted" role="status">Checking requirement configuration…</p>
       <div class="table-wrap"><table><thead><tr><th>Requirement</th><th>Transactions</th><th>Recognition Terms</th><th>Actions</th></tr></thead><tbody id="reqRows"><tr><td colspan="4" class="empty">Loading requirements…</td></tr></tbody></table></div>
