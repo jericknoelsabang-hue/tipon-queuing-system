@@ -60,11 +60,23 @@ function register_(p){
     return issueTicket_(ss,tx,first,last,position);
   }finally{lock.releaseLock()}
 }
+function todayQueueRows_(q,today){
+  const count=Math.max(0,q.getLastRow()-1);
+  if(!count)return{rows:[],startRow:2};
+  let first=0;
+  if(count>800){
+    // Read the narrow date column before loading today onward; preserves correct row offsets.
+    const dates=q.getRange(2,2,count,1).getValues();
+    first=dates.findIndex(r=>dayCell_(r[0])===today);
+    if(first<0)return{rows:[],startRow:count+2};
+  }
+  return{rows:q.getRange(first+2,1,count-first,QH.length).getValues(),startRow:first+2};
+}
 function issueTicket_(ss,tx,first,last,pos){
-  const q=ss.getSheetByName(CFG.queue),today=day_(),count=Math.max(0,q.getLastRow()-1);
-  // Name+transaction is unique *per Philippine date*, including completed tickets.
+  const q=ss.getSheetByName(CFG.queue),today=day_();
+  // Name+transaction is unique per Philippine date, including completed tickets.
   // A different transaction receives its own queue number; tomorrow starts a new series.
-  const rows=count?q.getRange(2,1,count,QH.length).getValues():[];
+  const {rows}=todayQueueRows_(q,today);
   const desired=nameKey_(first,last),wantedCode=code_(tx.code,6);
   let max=0,existing=null;
   for(let i=rows.length-1;i>=0;i--){
@@ -183,7 +195,8 @@ function call_(p){
     if(w.getRange(row,2).getValue())throw Error('Complete current applicant first.');
     const assigned=windowTx_(ss,win),q=ss.getSheetByName(CFG.queue),today=day_();
     if(q.getLastRow()<2)throw Error('Queue is empty.');
-    const v=q.getRange(2,1,q.getLastRow()-1,QH.length).getValues();let i=-1;
+    const selection=todayQueueRows_(q,today),v=selection.rows;
+    let i=-1;
     for(let x=0;x<v.length;x++){
       const r=v[x];
       if(dayCell_(r[1])!==today||String(r[10])!=='WAITING')continue;
@@ -191,9 +204,9 @@ function call_(p){
       i=x;break;
     }
     if(i<0)throw Error('No matching applicant is waiting.');
-    const r=v[i],now=new Date(),recruiter=txt_(settingValue_(ss,'WINDOW_RECRUITER_'+win),80);q.getRange(i+2,11,1,3).setValues([['SERVING',win,now]]);q.getRange(i+2,18).setValue(recruiter);r[17]=recruiter;
+    const r=v[i],actualRow=selection.startRow+i,now=new Date(),recruiter=txt_(settingValue_(ss,'WINDOW_RECRUITER_'+win),80);q.getRange(actualRow,11,1,3).setValues([['SERVING',win,now]]);q.getRange(actualRow,18).setValue(recruiter);r[17]=recruiter;
     r[10]='SERVING';r[11]=win;r[12]=now;
-    w.getRange(row,1,1,WH.length).setValues([[win,r[0],r[3],r[4],r[5],r[6],r[7],r[8],r[9],now,now,i+2]]);
+    w.getRange(row,1,1,WH.length).setValues([[win,r[0],r[3],r[4],r[5],r[6],r[7],r[8],r[9],now,now,actualRow]]);
     return {ok:true,ticket:ticket_(r)};
   }finally{lock.releaseLock()}
 }
