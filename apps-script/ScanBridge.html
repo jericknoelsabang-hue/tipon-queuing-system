@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><base target="_top">
+<title>TIPON TAWAG secure intake bridge</title>
+<style>html,body{margin:0;padding:0;background:transparent;font:12px sans-serif;color:#123}</style>
+</head><body>
+<script>
+(function(){
+'use strict';
+var ORIGIN='https://jericknoelsabang-hue.github.io';
+var CHANNEL='tipon.ai.bridge.v1';
+var handlers={
+  health:'bridgeAIHealth',
+  requirements:'bridgeGetRequirements',
+  saveRequirement:'bridgeSaveRequirement',
+  removeRequirement:'bridgeRemoveRequirement',
+  begin:'bridgeBeginScan',
+  analyze:'bridgeAnalyzeDocument',
+  finalize:'bridgeFinalizeScan',
+  extracted:'bridgeGetExtracted',
+  confirm:'bridgeConfirmExtracted',
+  attach:'bridgeAttachTicket'
+};
+function send(payload){try{window.top.postMessage(payload,ORIGIN)}catch(e){}}
+window.addEventListener('message',function(event){
+  if(event.origin!==ORIGIN)return;
+  var data=event.data||{};
+  if(data.channel!==CHANNEL||typeof data.id!=='string'||data.id.length>100)return;
+  var handler=handlers[data.op];
+  if(!handler){send({channel:CHANNEL,id:data.id,ok:false,error:'Unsupported bridge operation'});return;}
+  if(typeof google==='undefined'||!google.script||!google.script.run){
+    send({channel:CHANNEL,id:data.id,ok:false,error:'Apps Script service unavailable'});return;
+  }
+  var payload=data.payload&&typeof data.payload==='object'?data.payload:{};
+  var run=google.script.run.withSuccessHandler(function(result){
+    send({channel:CHANNEL,id:data.id,ok:true,result:result});
+  }).withFailureHandler(function(error){
+    send({channel:CHANNEL,id:data.id,ok:false,error:String(error&&error.message||error||'Server error').slice(0,280)});
+  });
+  try{run[handler](payload)}catch(e){
+    send({channel:CHANNEL,id:data.id,ok:false,error:String(e&&e.message||e).slice(0,280)});
+  }
+});
+send({channel:CHANNEL,id:'READY',ok:true,version:1});
+})();
+</script>
+</body></html>
