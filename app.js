@@ -71,7 +71,7 @@ function tv(){
        '<div class="queue-no idle">—</div><small>READY FOR NEXT</small>')+'</div>'
     }).join('');
     const q=S.waiting||[];
-    $('chips').innerHTML=q.length?q.slice(0,20).map(t=>'<span class="chip">'+esc(t.queueNo)+'</span>').join(''):'<span class="muted">No applicants waiting</span>';
+    $('chips').innerHTML=q.length?q.slice(0,20).map(t=>'<span class="chip">'+esc(t.queueNo)+'</span>').join(''):'<span class="muted">No applicants or members waiting</span>';
   }
   const announcement=String(S.announcement||DEFAULT);
   const ticker=$('ann');
@@ -107,7 +107,7 @@ function staff(){
     const i=idx+1,t=win(i),selected=S.assignments?.[String(i)]||'ALL',
       txName=(S.transactions||[]).find(x=>x.code===selected)?.name||selected, recruiter=S.recruiters?.[String(i)]||'Unassigned';
     return '<div class="window-card"><div class="split"><h3>Window '+i+'</h3><span class="pill">'+esc(txName==='ALL'?'Any transaction':txName)+'</span></div>'+
-      '<div class="current">'+(t?'<b class="current-no">'+esc(t.queueNo)+'</b><strong>'+esc(t.name)+'</strong><small>'+esc(t.transactionName)+'</small>':'<small class="muted">No active applicant</small>')+'</div>'+
+      '<div class="current">'+(t?'<b class="current-no">'+esc(t.queueNo)+'</b><strong>'+esc(t.name)+'</strong><small>'+esc(t.transactionName)+'</small>':'<small class="muted">No active applicant or member</small>')+'</div>'+
       '<p class="recruiter-label"><b>Recruiter:</b> '+esc(recruiter)+'</p>'+
       '<div class="window-actions"><button class="btn primary" data-action="call" data-win="'+i+'" type="button"'+(t?' disabled':'')+'>Call Next</button>'+
       '<button class="btn ghost" data-action="recall" data-win="'+i+'" type="button"'+(!t?' disabled':'')+'>Recall</button>'+
