@@ -177,7 +177,7 @@ function init(){
    const value=$('reqStaffUrl').value.trim();
    if(!valid(value)){status('Enter a valid STAFF-ONLY Apps Script /exec URL.');return}
    localStorage.setItem('tqReqStaffApi',value);
-   $('reqStaffOpen').href=value+'?mode=requirementsStaffBridge';
+   $('reqStaffOpen').href=value+'?mode=manageRequirements';
    status('Staff connection saved. Authorize your Google account when prompted.');
    createBridge();void load();
  };
