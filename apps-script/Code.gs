@@ -15,6 +15,7 @@ function setupTiponQueueSystem(){
   const ss=SpreadsheetApp.openById(CFG.spreadsheetId);
   ensure_(ss,CFG.queue,QH);ensure_(ss,CFG.windows,WH);ensure_(ss,CFG.tx,TH);ensure_(ss,CFG.settings,SH);ensure_(ss,CFG.precheck,PH);
   ensure_(ss,'REQUIREMENTS_CONFIG',RH2);ensure_(ss,'REQUIREMENT_SCANS',RSCAN);ensure_(ss,'APPLICANT_EXTRACTIONS',RX);
+  if(typeof initApplicantDb_==='function')initApplicantDb_();
   const w=ss.getSheetByName(CFG.windows);
   if(w.getLastRow()<2)for(let i=1;i<=4;i++)w.getRange(i+1,1).setValue(i);
   const t=ss.getSheetByName(CFG.tx);
@@ -77,7 +78,12 @@ function register_(p){
   try{
     const ss=ss_(),tx=findTx_(ss,txCode);
     if(!tx)throw Error('Invalid or inactive transaction.');
-    return issueTicket_(ss,tx,first,last,position);
+    const answer=issueTicket_(ss,tx,first,last,position);
+    // Issue a short-lived, ticket-bound POST token only after opt-in consent.
+    // Never expose applicant field values in query parameters or public JSONP.
+    if(txCode!=='MC'&&String(p.precheck||'')==='yes'&&typeof issueApplicantToken_==='function')
+      answer.intakeToken=issueApplicantToken_(answer.ticket);
+    return answer;
   }finally{lock.releaseLock()}
 }
 function todayQueueRows_(q,today){

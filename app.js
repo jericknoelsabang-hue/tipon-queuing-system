@@ -5,7 +5,8 @@ const C=window.TIPON_CONFIG||{}, $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const REQUIRED='federation-v10',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9','federation-v10']),DEFAULT='Please keep your queue number until called.';
 let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],transactions:[],transactionTypes:[],assignments:{},announcement:DEFAULT,completed:[],recruiters:{}};
-let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,pollTimer=null,refreshFailures=0,activeWindowActions=new Set(),tableSignature={wait:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
+let connectionHealthy=false;
+ let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,pollTimer=null,refreshFailures=0,activeWindowActions=new Set(),tableSignature={wait:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
 let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='';
 function url(){return new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||''}
 function valid(u){try{const p=new URL(u);return p.origin==='https://script.google.com'&&p.pathname.endsWith('/exec')}catch{return false}}
@@ -43,16 +44,16 @@ function error(e){let t=String(e?.message||e||'Unknown error');
  status(t,'err'); /* Never redirect staff away from the active service window. */
 }
 document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>view(b.dataset.v));
-function jp(action,params={}){return new Promise((resolve,reject)=>{
- if(!valid(url()))return reject(Error('Configure a valid Apps Script /exec URL in Setup.'));
+function jp(action,params={},endpoint=url()){return new Promise((resolve,reject)=>{
+ if(!valid(endpoint))return reject(Error('Configure a valid Apps Script /exec URL in Setup.'));
  const cb='__tipon'+Date.now()+(++seq),tag=document.createElement('script');let finished=false;
  const tm=setTimeout(()=>finish(Error('Apps Script timed out.')),action==='state'?19000:27000);
  function finish(err,data){if(finished)return;finished=true;clearTimeout(tm);delete window[cb];tag.remove();err?reject(err):resolve(data)}
- window[cb]=data=>finish(null,data);tag.onerror=()=>finish(Error('Cannot connect to Apps Script.'));
- const q=new URL(url());q.searchParams.set('action',action);q.searchParams.set('callback',cb);
+ window[cb]=data=>finish(null,data);tag.onerror=()=>finish(Error('Cannot connect to Apps Script. Check the /exec deployment access, authorization and URL in Setup.'));
+ const q=new URL(endpoint);q.searchParams.set('action',action);q.searchParams.set('callback',cb);
  Object.entries(params).forEach(([k,v])=>q.searchParams.set(k,String(v??'')));tag.src=q.href;document.head.appendChild(tag);
 })}
-function ready(){if(COMPATIBLE.has(S.version))return true;error(Error('Apps Script is disconnected or outdated. Check the connection in Setup.'));return false}
+function ready(){if(connectionHealthy&&COMPATIBLE.has(S.version))return true;error(Error('Apps Script is disconnected or outdated. Restore connectivity before changing queues.'));return false}
 function joinURL(){const u=new URL('join.html',C.pagesUrl||location.href);if(valid(url()))u.searchParams.set('api',url());return u.href}
 function qr(){const link=joinURL();$('getQueueSetup').href=link;if(link===qrUrl)return;
  qrUrl=link;const holder=$('qr');holder.innerHTML='';if(typeof QRCode==='undefined'){holder.textContent='QR unavailable';status('QR generator failed to load. Use Open Get Queue link.','err');return}
@@ -61,7 +62,7 @@ function qr(){const link=joinURL();$('getQueueSetup').href=link;if(link===qrUrl)
 }
 function win(i){return S.windows?.[String(i)]||null}
 function tv(){
-  const count=Number(S.windowCount||4),indexes=Array.from({length:count},(_,i)=>i+1);
+  const count=Number(S.windowCount||0),indexes=Array.from({length:count},(_,i)=>i+1);
   const signature=JSON.stringify({windows:S.windows,waiting:S.waiting,count});
   if(signature!==windowSignature){
     windowSignature=signature;
@@ -93,14 +94,14 @@ function tv(){
 }
 function announceEditor(){const e=$('announcementInput');if(!dirty&&document.activeElement!==e)e.value=S.announcement||DEFAULT;$('announcementCount').textContent=e.value.length.toLocaleString('en-US')+' / 2,500 characters'}
 function metrics(){
-  $('metricWindows').textContent=String(S.windowCount||4);
-  $('metricWait').textContent=String((S.waiting||[]).length);
-  $('metricServing').textContent=String(Array.from({length:Number(S.windowCount||4)},(_,i)=>win(i+1)).filter(Boolean).length);
+  $('metricWindows').textContent=connectionHealthy?String(S.windowCount||0):'—';
+  $('metricWait').textContent=connectionHealthy?String((S.waiting||[]).length):'—';
+  $('metricServing').textContent=connectionHealthy?String(Array.from({length:Number(S.windowCount||0)},(_,i)=>win(i+1)).filter(Boolean).length):'—';
 }
 function staff(){
   const n=Number(S.windowCount||0);
   $('wc').textContent=n+' WINDOWS';
-  const signature=JSON.stringify({n,windows:S.windows,tx:S.transactions,assignments:S.assignments,waiting:S.waiting,recruiters:S.recruiters});
+  const signature=JSON.stringify({n,windows:S.windows,tx:S.transactions,assignments:S.assignments,waiting:S.waiting,recruiters:S.recruiters,connectionHealthy});
   if(signature===staffSignature)return;
   staffSignature=signature;
   $('staffWins').innerHTML=Array.from({length:n},(_,idx)=>{
@@ -109,9 +110,9 @@ function staff(){
     return '<div class="window-card"><div class="split"><h3>Window '+i+'</h3><span class="pill">'+esc(txName==='ALL'?'Any transaction':txName)+'</span></div>'+
       '<div class="current">'+(t?'<b class="current-no">'+esc(t.queueNo)+'</b><strong>'+esc(t.name)+'</strong><small>'+esc(t.transactionName)+'</small>':'<small class="muted">No active applicant or member</small>')+'</div>'+
       '<p class="recruiter-label"><b>Recruiter:</b> '+esc(recruiter)+'</p>'+
-      '<div class="window-actions"><button class="btn primary" data-action="call" data-win="'+i+'" type="button"'+(t?' disabled':'')+'>Call Next</button>'+
-      '<button class="btn ghost" data-action="recall" data-win="'+i+'" type="button"'+(!t?' disabled':'')+'>Recall</button>'+
-      '<button class="btn success wide" data-action="complete" data-win="'+i+'" type="button"'+(!t?' disabled':'')+'>Complete</button></div></div>';
+      '<div class="window-actions"><button class="btn primary" data-action="call" data-win="'+i+'" type="button"'+(t||!connectionHealthy?' disabled':'')+'>Call Next</button>'+
+      '<button class="btn ghost" data-action="recall" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Recall</button>'+
+      '<button class="btn success wide" data-action="complete" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Complete</button></div></div>';
   }).join('');
   document.querySelectorAll('[data-action]').forEach(e=>e.onclick=()=>queueAction(e.dataset.action,+e.dataset.win));
 }
@@ -225,19 +226,29 @@ async function refresh(silent=false){
   if(writePending>0||loading){queuedRefresh=true;return}
   if(pollTimer!==null){clearTimeout(pollTimer);pollTimer=null}
   loading=true;
-  const serial=writeSerial,requestedView=page,requestedUrl=url();
+  const serial=writeSerial,requestedView=page;let requestedUrl=url();
   try{
     if(!valid(requestedUrl)){
       if(!silent)status('No backend configured. Add an Apps Script /exec URL in Setup.','err');
       render();
       return;
     }
-    const response=await jp('state',{view:requestedView});
+    let response;
+    try{response=await jp('state',{view:requestedView},requestedUrl)}
+    catch(originalError){
+      const fallback=String(C.backendUrl||'');
+      if(!valid(fallback)||fallback===requestedUrl)throw originalError;
+      response=await jp('state',{view:requestedView},fallback);
+      if(!response.ok)throw Error(response.error||'Official queue backend did not respond.');
+      localStorage.removeItem('tqApi');
+      try{const u=new URL(window.location.href);u.searchParams.delete('api');history.replaceState(null,'',u.pathname+u.search+u.hash)}catch{}
+      requestedUrl=fallback;
+    }
     if(!response.ok)throw Error(response.error||'Failed to fetch queue.');
     if(serial!==writeSerial||requestedView!==page||requestedUrl!==url()){
       queuedRefresh=true;return; // Drop an obsolete result from before an edit or navigation.
     }
-    refreshFailures=0;
+    refreshFailures=0;connectionHealthy=true;
     S={...S,...response.state,
        transactions:Array.isArray(response.state?.transactions)?response.state.transactions:[],
        transactionTypes:response.state?.transactionTypes||response.state?.transactions||[]};
@@ -249,8 +260,10 @@ async function refresh(silent=false){
       status('Connected to '+S.version+'. Deploy Federation v10 Code.gs to activate the new daily ticket-number and Complete rules.','err');
     else status('Connected to tipón TAWAG • '+S.version+' • Synced '+new Date().toLocaleTimeString('en-PH',{timeZone:'Asia/Manila'}),'ok');
   }catch(e){
+    connectionHealthy=false;
     refreshFailures=Math.min(refreshFailures+1,4);
-    if(!silent||page==='setup')error(e);
+    staffSignature='';if(page==='staff'){metrics();staff();}
+    if(!silent||page==='setup'||page==='staff')error(e);
   }finally{
     loading=false;
     if(writePending>0){queuedRefresh=true;return}
@@ -461,6 +474,19 @@ $('sound').onclick=()=>{
  status('Sound and voice announcements enabled on this device. Queue calls will be spoken three times.','ok');
 };
 $('save').onclick=()=>{const v=$('api').value.trim();if(!valid(v)){error(Error('Enter a valid https://script.google.com/.../exec URL.'));return}localStorage.setItem('tqApi',v);qrUrl='';refresh()};
+$('reconnect').onclick=()=>{
+  const official=String(C.backendUrl||'');
+  if(!valid(official)){error(Error('Default Apps Script URL is missing. Ask the project owner to restore config.js.'));return}
+  localStorage.removeItem('tqApi');
+  try{
+    const active=new URL(window.location.href);
+    active.searchParams.delete('api');
+    history.replaceState(null,'',active.pathname+active.search+active.hash);
+  }catch(e){}
+  $('api').value=official;qrUrl='';S.version='';connectionHealthy=false;
+  status('Rechecking the official Apps Script deployment. If the connection still fails, redeploy Code.gs in Google Apps Script.','');
+  void refresh(false);
+};
 $('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(!COMPATIBLE.has(r.version))throw Error('Backend is '+(r.version||'outdated')+'. Deploy the latest Code.gs.');status('Backend verified • '+r.version+' • '+r.windows+' service windows.'+(r.version!==REQUIRED?' Update to v10 for new daily ticket rules and Complete fixes.':''),'ok');await refresh(true)}catch(e){error(e)}};
 $('clear').onclick=()=>{localStorage.removeItem('tqApi');$('api').value='';S.version='';qrUrl='';status('Connection cleared.','err');qr()};
 const full=$('fullscreen');
