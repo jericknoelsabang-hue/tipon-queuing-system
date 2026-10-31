@@ -309,7 +309,8 @@ async function queueAction(action,i){
  }
  const original=win(i);
  try{
-  const result=await operate(action,{window:i},reply=>{
+  const args=action==='complete'?{window:i,ticketId:original?.ticketId||''}:{window:i};
+  const result=await operate(action,args,reply=>{
    if(action==='call'||action==='recall'){
     const ticket=reply.ticket;
     if(ticket){
@@ -322,7 +323,8 @@ async function queueAction(action,i){
     S.windows={...(S.windows||{}),[key]:null};
     last[i]='';
     const finished=reply.ticket||original;
-    if(finished)S.completed=[{...finished,status:'COMPLETED',recruiter:finished.recruiter||S.recruiters?.[key]||'',completedAt:new Date().toISOString()},...(S.completed||[])];
+    if(finished&&!(S.completed||[]).some(x=>x.ticketId===finished.ticketId))
+      S.completed=[{...finished,status:'COMPLETED',recruiter:finished.recruiter||S.recruiters?.[key]||'',completedAt:finished.completedAt||new Date().toISOString()},...(S.completed||[])];
    }
    staffSignature='';windowSignature='';render();
   });
