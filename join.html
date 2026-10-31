@@ -133,8 +133,14 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
 @media(max-width:540px){.scan-choice{flex-direction:column}.scan-camera-actions{display:grid;grid-template-columns:1fr 1fr}.scan-camera-actions button:first-child{grid-column:1/-1}.scan-camera video{height:57vh}.scan-main-btn{width:100%;min-width:0}}
 
 </style>
-<script defer src="config.js"></script><script defer src="join.js?v=10.0"></script><script defer src="requirements-client.js?v=2.0"></script>
-</head><body>
+<script defer src="config.js"></script><script defer src="applicant-fields.js?v=1"></script><script defer src="join.js?v=10.0"></script><script defer src="requirements-client.js?v=3.0"></script>
+<style>
+.applicant-fields-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:9px;margin:14px 0}
+.applicant-fields-grid label{font-size:11px;font-weight:700;color:#234e60}
+.applicant-fields-grid input{display:block;width:100%;min-height:39px;margin-top:5px;border:1px solid #b2d4e1;border-radius:7px;padding:8px;font-size:12px}
+.applicant-confirm{display:flex;gap:9px;align-items:center;font-size:12px;font-weight:800}
+.applicant-confirm input{width:18px;height:18px;accent-color:#168d69}
+</style></head><body>
 <div class="join-top"></div><header class="join-head"><div class="join-head-inner">
   <div class="join-wordmark"><img class="join-logo" src="assets/tipon-logo-hd.webp" alt="tipón Federation"><span class="join-brand-label">TAWAG<span>.</span></span></div>
 </div></header>
@@ -185,7 +191,13 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
         <div id="scanGallery" class="scan-gallery" aria-live="polite"></div>
         <div class="scan-action-center"><button id="scanReview" type="button" class="btn success scan-main-btn hide">CHECK CAPTURED DOCUMENTS</button></div>
         <div id="scanProgress" class="scan-progress hide" role="status" aria-live="polite"></div>
-        <div id="scanReport" class="scan-report hide" aria-live="polite"></div>
+        <div id="scanReport" class="scan-report hide" aria-live="polite"></div><div id="applicantExtracted" class="scan-report hide">
+          <h3>Applicant Information Found in Documents</h3>
+          <p>Review and correct each field before continuing. Only clearly readable information is suggested; missing fields remain blank.</p>
+          <div id="applicantFields" class="applicant-fields-grid"></div>
+          <label class="applicant-confirm"><input id="applicantFieldsConfirmed" type="checkbox"> I reviewed and confirmed the information above.</label>
+          <p id="applicantSyncStatus" class="helper"></p>
+        </div>
       </div>
       <p id="scanNotice" class="helper" role="status"></p>
     </section>
