@@ -474,6 +474,19 @@ $('sound').onclick=()=>{
  status('Sound and voice announcements enabled on this device. Queue calls will be spoken three times.','ok');
 };
 $('save').onclick=()=>{const v=$('api').value.trim();if(!valid(v)){error(Error('Enter a valid https://script.google.com/.../exec URL.'));return}localStorage.setItem('tqApi',v);qrUrl='';refresh()};
+$('reconnect').onclick=()=>{
+  const official=String(C.backendUrl||'');
+  if(!valid(official)){error(Error('Default Apps Script URL is missing. Ask the project owner to restore config.js.'));return}
+  localStorage.removeItem('tqApi');
+  try{
+    const active=new URL(window.location.href);
+    active.searchParams.delete('api');
+    history.replaceState(null,'',active.pathname+active.search+active.hash);
+  }catch(e){}
+  $('api').value=official;qrUrl='';S.version='';connectionHealthy=false;
+  status('Rechecking the official Apps Script deployment. If the connection still fails, redeploy Code.gs in Google Apps Script.','');
+  void refresh(false);
+};
 $('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(!COMPATIBLE.has(r.version))throw Error('Backend is '+(r.version||'outdated')+'. Deploy the latest Code.gs.');status('Backend verified • '+r.version+' • '+r.windows+' service windows.'+(r.version!==REQUIRED?' Update to v10 for new daily ticket rules and Complete fixes.':''),'ok');await refresh(true)}catch(e){error(e)}};
 $('clear').onclick=()=>{localStorage.removeItem('tqApi');$('api').value='';S.version='';qrUrl='';status('Connection cleared.','err');qr()};
 const full=$('fullscreen');
