@@ -7,7 +7,24 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=10.0">
-<script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="app.js?v=10.0"></script><script defer src="requirements-setup.js?v=1"></script>
+<script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="app.js?v=10.0"></script><script defer src="requirements-setup.js?v=2.0"></script>
+
+<style>
+.req-staff-config{padding:16px 0;margin-top:15px;border-top:1px solid #dce9f0}
+.req-staff-config .field{margin-bottom:12px}
+.req-editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.req-editor-grid>.field{min-width:0}
+.req-transactions{border:1px solid #d2e2eb;padding:11px 14px 13px;border-radius:10px;min-width:0}
+.req-transactions legend{font-size:12px;font-weight:800;color:#234e69;padding:0 6px}
+.req-transactions small{font-size:11px;color:#64869b;display:block;margin:8px 0 0}
+.req-tx-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:7px;margin-top:8px}
+.req-tx-option{display:flex;gap:8px;align-items:center;font-size:12px;font-weight:650;color:#234a5f}
+.req-tx-option input{width:17px;height:17px;accent-color:#0b87ab;flex:none}
+.req-select-all{padding-bottom:8px;border-bottom:1px solid #dce6ed}
+.req-keywords{display:block;margin:18px 0 10px}.req-actions{margin:13px 0;flex-wrap:wrap}
+#reqSetup #reqStatus{font-size:12px;min-height:18px;line-height:1.5}
+@media(max-width:700px){.req-editor-grid{grid-template-columns:1fr}}
+</style>
 </head><body>
 <header class="site-header"><div class="head">
   <div class="brand"><img class="tipon-logo" id="brandPhoto" src="assets/tipon-logo-hd.webp" alt="tipón Federation logo">
@@ -65,6 +82,11 @@
     <div class="card"><h2>Google Apps Script Connection</h2><p>The Apps Script backend supports attendance-independent queuing, member concerns, recruiter assignments, and transaction management.</p>
       <label class="field" for="api">Apps Script Web App URL (/exec)<input id="api" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec"></label>
       <div class="buttons" style="margin-top:13px"><button id="save" class="btn primary" type="button">Save Connection</button><button id="test" class="btn" type="button">Test Connection</button><button id="clear" class="btn ghost" type="button">Clear</button></div>
+      <div class="req-staff-config">
+        <label class="field">Recruiter Setup Connection (staff-only /exec)<input id="reqStaffUrl" type="url" autocomplete="off" placeholder="Staff-only Google Apps Script deployment URL"></label>
+        <div class="buttons"><button id="reqStaffSave" class="btn" type="button">Save Recruiter Connection</button><a id="reqStaffOpen" class="btn ghost" target="_blank" rel="noopener" href="#">Open Staff Deployment</a></div>
+        <p class="small-muted">Use a separate Google Apps Script deployment: execute as the accessing user and restrict access to authorized recruiters. No shared management key is required.</p>
+      </div>
       <div class="setup-guide"><b>How to fix “Unknown action”:</b> Open the deployed Apps Script project, replace Code.gs with the <a target="_blank" rel="noopener" href="https://github.com/jericknoelsabang-hue/tipon-queuing-system/blob/main/apps-script/Code.gs">latest GitHub Code.gs</a>, run <code>setupTiponQueueSystem</code>, then choose <b>Deploy → Manage deployments → Edit → New version → Deploy</b>. Keep the same /exec URL.</div>
     </div>
     <div class="card get-queue-setup"><div class="split"><div><h2>Get Queue Page</h2><p>Share this registration page with recruitment applicants and members, or open it to test the QR link.</p></div><a id="getQueueSetup" class="btn primary" href="join.html" target="_blank" rel="noopener">Open Get Queue Page</a></div></div>
@@ -92,19 +114,30 @@
       <div class="split" style="margin-top:13px"><small id="announcementCount" class="muted">0 / 2,500 characters</small><div class="buttons"><button class="btn ghost" id="announcementReset" type="button">Restore Default</button><button class="btn success" id="announcementSave" type="button">Save Announcement</button></div></div>
     </div>
     <div class="card"><div class="split"><div><h2>TV Controls</h2><p>Refresh queue data or unlock sound on this device.</p></div><div class="buttons"><button id="refresh" class="btn" type="button">Refresh Queue</button><button id="sound" class="btn primary" type="button">Enable / Test Sound</button></div></div></div>
-    <div class="card" id="reqSetup"><div class="split"><div><h2>Pre-Employment Requirements</h2><p>Configure applicant requirements for Recruitment. Empty by default. Add, edit, or delete entries without changing website code.</p></div></div>
-      <p class="helper">Requirements are used for all recruitment transactions when set to All Recruitment. Enter specific document terms and review them before saving.</p>
-      <div class="grid">
-        <label class="field">Requirement Name *<input id="reqName" maxlength="100" placeholder="e.g., NBI Clearance"></label>
-        <label class="field">Recruitment Transaction<select id="reqTx"><option value="ALL">All Recruitment Transactions</option></select></label>
-        <label class="field">Recruiter Management Key<input type="password" id="reqAdminKey" autocomplete="off" placeholder="Set via Apps Script properties"></label>
+    <div class="card" id="reqSetup">
+      <div class="split"><div><h2>Pre-Employment Requirements</h2>
+        <p>Create the requirements list for Recruitment. No requirements are added by default.</p></div>
       </div>
-      <label style="display:block;margin:12px 0"><input type="checkbox" id="reqRequired" checked> Required document</label>
-      <label class="field">Recognition Search Terms / Aliases<textarea id="reqKeywords" rows="2" placeholder="Comma-separated terms. Confirm and edit."></textarea></label>
-      <div class="buttons" style="margin:12px 0"><button class="btn" type="button" id="reqGenerate">Suggest Recognition Terms</button><button class="btn success" type="button" id="reqSave">Add Requirement</button><button class="btn ghost" type="button" id="reqCancel">Clear / Cancel</button></div>
-      <p class="small-muted" id="reqStatus" role="status">Loading requirements...</p>
-      <div class="table-wrap"><table><thead><tr><th>Requirement</th><th>Transaction</th><th>Required</th><th>Recognition Terms</th><th>Actions</th></tr></thead><tbody id="reqRows"><tr><td colspan="5">Loading…</td></tr></tbody></table></div>
-      <p class="small-muted"><b>Pilot limitation:</b> Recognition terms are suggestions, not official verification. Document photos remain on the applicant device in this version. AI API and secure image upload are disabled.</p>
+      <div class="grid req-editor-grid">
+        <label class="field">Requirement Name *<input id="reqName" maxlength="100" autocomplete="off" placeholder="e.g. NBI Clearance"></label>
+        <fieldset class="req-transactions">
+          <legend>Recruitment Transactions *</legend>
+          <label class="req-tx-option req-select-all"><input id="reqTxAll" type="checkbox"> <b>All Recruitment Transactions</b></label>
+          <div id="reqTxChecklist" class="req-tx-list" role="group" aria-label="Select applicable recruitment transactions"></div>
+          <small>Select any number of transactions.</small>
+        </fieldset>
+      </div>
+      <label class="field req-keywords">Recognition Search Terms
+        <textarea id="reqKeywords" rows="2" maxlength="500" placeholder="e.g. NBI Clearance, National Bureau of Investigation"></textarea>
+      </label>
+      <div class="buttons req-actions">
+        <button class="btn" type="button" id="reqGenerate">Suggest Recognition Terms</button>
+        <button class="btn success" type="button" id="reqSave">Add Requirement</button>
+        <button class="btn ghost" type="button" id="reqCancel">Clear / Cancel</button>
+      </div>
+      <p id="reqStatus" class="small-muted" role="status">Checking requirement configuration…</p>
+      <div class="table-wrap"><table><thead><tr><th>Requirement</th><th>Transactions</th><th>Recognition Terms</th><th>Actions</th></tr></thead><tbody id="reqRows"><tr><td colspan="4" class="empty">Loading requirements…</td></tr></tbody></table></div>
+      <p class="small-muted">Recognition terms are OCR search clues, not proof of authenticity. Only authorized recruiters can save changes to Google Sheets.</p>
     </div>
     <div class="card"><h2>Database &amp; Technical Notes</h2><p>Google Sheet: <a href="https://docs.google.com/spreadsheets/d/1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik/edit" target="_blank" rel="noopener">TIPON Queuing Database</a>. Tabs: QUEUE, WINDOWS, TRANSACTION_TYPES, SETTINGS (the historical PRECHECK tab is not used by registration).</p><p><b>Security:</b> Staff actions are currently PIN-free as requested. Access to the public Apps Script deployment is not authenticated. Do not use this configuration for sensitive production operations without server-side staff authorization.</p></div>
   </section>
