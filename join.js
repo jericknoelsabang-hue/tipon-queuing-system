@@ -1,6 +1,6 @@
-/* Standalone public TIPON Queue registration — no TV or staff navigation. */
+/* tipón TAWAG public recruitment/member registration; no staff navigation. */
 (()=>{'use strict';
-const $=id=>document.getElementById(id),C=window.TIPON_CONFIG||{},VERSION='federation-v9',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9']);
+const $=id=>document.getElementById(id),C=window.TIPON_CONFIG||{},VERSION='federation-v10',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9','federation-v10']);
 let service='recruitment',seq=0,memberAvailable=true;
 const apiUrl=()=>new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||'';
 function valid(url){try{const u=new URL(url);return u.origin==='https://script.google.com'&&u.pathname.endsWith('/exec')}catch{return false}}
