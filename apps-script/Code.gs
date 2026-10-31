@@ -221,8 +221,7 @@ function complete_(p){
     w.getRange(win+1,2,1,WH.length-1).clearContent();
     return{ok:true,window:win,ticket:{
       ...windowTicket_(r),status:'COMPLETED',
-      date:dayCell_(completedAt),completedAt:iso_(completedAt),
-      recruiter:txt_(settingValue_(ss,'WINDOW_RECRUITER_'+win),80)
+      completedAt:iso_(completedAt)
     }}
   }finally{lock.releaseLock()}
 }
