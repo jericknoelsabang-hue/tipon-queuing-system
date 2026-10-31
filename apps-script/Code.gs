@@ -8,13 +8,13 @@ const SH=['Setting','Value','Updated At'];
 const PH=['Precheck ID','Date','Precheck Reference','First Name','Last Name','Transaction Code','Position / Purpose','Applicant','Self-Checklist','Status','Submitted At','Reviewed At','Staff Note','Queue No'];
 // Recruitment requirements: blank by default. A staff-provided title drives an editable, rule-based OCR profile.
 const RH2=['Requirement ID','Requirement Name','Transaction Code','Required','Active','Recognition Keywords','Created At','Updated At'];
-const RSCAN=['Scan ID','Ticket ID','Queue No','Transaction Code','Requirement ID','Requirement Name','Scan Status','Photo Captured','Scan Method','Client Timestamp','Saved At','Recruiter Review','Notes'];
+const RSCAN=['Scan ID','Ticket ID','Queue No','Transaction Code','Requirement ID','Requirement Name','Scan Status','Photo Captured','Scan Method','Client Timestamp','Saved At','Recruiter Review','Notes','Drive File ID'];
 const RX=['Extraction ID','Ticket ID','Queue No','Requirement ID','Field','Value','Source','Recruiter Verified','Saved At'];
 
 function setupTiponQueueSystem(){
   const ss=SpreadsheetApp.openById(CFG.spreadsheetId);
   ensure_(ss,CFG.queue,QH);ensure_(ss,CFG.windows,WH);ensure_(ss,CFG.tx,TH);ensure_(ss,CFG.settings,SH);ensure_(ss,CFG.precheck,PH);
-  ensure_(ss,'REQUIREMENTS_CONFIG',RH2);ensure_(ss,'REQUIREMENT_SCANS',RSCAN);ensure_(ss,'APPLICANT_EXTRACTIONS',RX);
+  ensure_(ss,'REQUIREMENTS_CONFIG',RH2);ensure_(ss,'REQUIREMENT_SCANS',RSCAN);ensure_(ss,'APPLICANT_EXTRACTIONS',RX);ensure_(ss,'APPLICANT_INTAKES',TIH);
   const w=ss.getSheetByName(CFG.windows);
   if(w.getLastRow()<2)for(let i=1;i<=4;i++)w.getRange(i+1,1).setValue(i);
   const t=ss.getSheetByName(CFG.tx);
@@ -27,6 +27,13 @@ function setupTiponQueueSystem(){
 }
 function doGet(e){
   const p=e?.parameter||{},cb=String(p.callback||'callback').replace(/[^A-Za-z0-9_.$]/g,'');
+  // A separate HTMLService transport receives sensitive image data via
+  // google.script.run. Never send images, API keys, or recruiter secrets by JSONP.
+  if(p.mode==='bridge'){
+    return HtmlService.createHtmlOutputFromFile('ScanBridge')
+      .setTitle('TIPON TAWAG — secure document pre-screening bridge')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
   const action=String(p.action||'state');
   try{
     let r;switch(action){
@@ -34,9 +41,7 @@ function doGet(e){
       case'state':r={ok:true,state:state_(p)};break;
       case'publicConfig':r=publicConfig_();break;
       case'requirements':r=requirementsConfig_();break;
-      case'upsertRequirement':r=upsertRequirement_(p);break;
-      case'removeRequirement':r=removeRequirement_(p);break;
-      case'recordRequirementScan':r=recordRequirementScan_(p);break;
+      // Requirement updates and image scans are intentionally NOT exposed as GET actions.
       case'register':r=register_(p);break;
       case'setWindowTx':r=setWindowTx_(p);break;
       case'call':r=call_(p);break;
