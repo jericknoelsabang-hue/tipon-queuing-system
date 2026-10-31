@@ -556,3 +556,54 @@ header{background:#fff;border-top:4px solid var(--gold);border-bottom:1px solid 
   #display:fullscreen .qr-panel .qr-frame{padding:10px}
   #display:fullscreen .qr-panel p{font-size:16px;line-height:1.4}
 }
+
+
+/* tipón TAWAG: Member-centered visual language based on official tipón brand colors */
+:root{
+ --navy:#063e61;--deep:#083553;--blue:#087fad;--cyan:#0796b8;
+ --gold:#f8b53d;--red:#c52239;--ink:#103d58;--muted:#65839a;
+ --green:#158559;--bg:#edf6fa;--line:#d8e8f0;
+}
+body{background:radial-gradient(circle at 94% 0%,rgba(19,145,192,.095),transparent 34%),linear-gradient(180deg,#f3f9fc 0%,#edf6fa 100%)}
+header.site-header{border-top:0;position:relative;box-shadow:0 7px 28px rgba(9,65,95,.07)}
+header.site-header::before{
+ content:'';position:absolute;top:0;left:0;right:0;height:4px;
+ background:linear-gradient(90deg,#0784bd 0 26%,#c51e37 26% 50%,#f36c32 50% 74%,#f5b743 74% 100%);
+}
+.site-header .brand,.fullscreen-brand{gap:16px;min-width:0}
+.site-header .tipon-logo{width:clamp(174px,15vw,235px);height:auto;object-fit:contain;image-rendering:auto}
+.brand-copy.tawag-brand{display:flex;flex-direction:column;gap:1px;align-items:flex-start;justify-content:center;min-width:0}
+.tawag-brand .brand-name{
+ font:900 clamp(25px,2.4vw,38px)/1.08 Poppins,Manrope,sans-serif;
+ letter-spacing:.07em;color:#084369;white-space:nowrap;
+}
+.tawag-brand .brand-dot{color:#f6a737}
+.tawag-brand .brand-tagline{
+ display:block;font:800 clamp(11px,.95vw,15px)/1.35 Manrope,sans-serif;
+ color:#5e7e93;letter-spacing:.006em;white-space:nowrap;
+}
+#display:fullscreen .fullscreen-brand img{width:clamp(190px,17vw,275px);height:auto;max-height:92px;object-fit:contain;image-rendering:auto}
+#display:fullscreen .tawag-brand .brand-name{font-size:clamp(28px,2.6vw,43px)}
+#display:fullscreen .tawag-brand .brand-tagline{font-size:clamp(13px,1.15vw,18px)}
+.nav.nav-main .on,.nav button.on{background:#087fad;color:#fff;border-color:#087fad}
+.tv{background:radial-gradient(circle at 99% -8%,rgba(26,147,194,.8) 0,transparent 38%),linear-gradient(122deg,#083b5d,#085e84)}
+.qr-panel .eyebrow{color:#5da2c9}
+.qr-panel h2{color:#0a4564}
+#display:fullscreen .qr-panel p{color:#557e95}
+.now .window{box-shadow:0 9px 22px rgba(5,42,68,.13);border-bottom:4px solid #f8b53d}
+.page-head h1{letter-spacing:-.045em}
+.card{border:1px solid #d8e8f0;box-shadow:0 8px 27px rgba(12,74,107,.055)}
+.card h2{color:#103d58}
+.btn.primary,.nav button.on{box-shadow:0 7px 16px rgba(8,127,173,.17)}
+.btn.success{background:#18895c;border-color:#18895c}
+#setup .table-wrap th,#staff .table-wrap th{color:#255a77}
+@media(max-width:760px){
+ .brand-copy.tawag-brand .brand-name{font-size:clamp(19px,5vw,28px)}
+ .brand-copy.tawag-brand .brand-tagline{font-size:clamp(9px,2vw,12px);white-space:normal}
+ .site-header .brand{gap:10px}
+ .site-header .tipon-logo{width:clamp(120px,31vw,175px)}
+ #display:fullscreen .fullscreen-brand{gap:9px}
+ #display:fullscreen .fullscreen-brand img{width:clamp(145px,29vw,200px)}
+ #display:fullscreen .tawag-brand .brand-name{font-size:clamp(20px,4.7vw,29px)}
+ #display:fullscreen .tawag-brand .brand-tagline{font-size:clamp(10px,2.3vw,13px)}
+}
