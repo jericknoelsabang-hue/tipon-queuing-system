@@ -213,7 +213,7 @@ function init(){
    decision='yes';consent=$('privacyAgree').checked;reviewReady=false;updateSubmit();void refreshRequirements();
  });
  $('scanNo').addEventListener('change',()=>{
-   decision='no';clearPhotos();updateSubmit();
+   decision='no';clearPhotos();consent=false;$('privacyAgree').checked=false;updateSubmit();
  });
  $('privacyAgree').addEventListener('change',()=>{consent=$('privacyAgree').checked;if(!consent)invalidateReview();updateSubmit()});
  $('scanStart').addEventListener('click',openCamera);
