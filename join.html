@@ -1,9 +1,9 @@
 <!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#075477">
-<title>Get Queue Number | tipón Federation</title>
+<title>Get Your Number | tipón TAWAG</title><meta name="description" content="tipón TAWAG: Bawat tawag, may malasakit. Register for Recruitment or Member Concern."><link rel="icon" href="assets/tipon-mark.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=9.0">
+<link rel="stylesheet" href="styles.css?v=10.0">
 <style>
 body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-gradient(180deg,#f6fbfd,#edf5fa)}
 .join-top{height:6px;background:linear-gradient(90deg,#0a81b4 0 63%,#ffc258 63% 82%,#e2544f 82%)}
@@ -74,14 +74,35 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
  #queueForm .queue-fields{grid-template-columns:1fr}
  .progress-steps .step{font-size:10px}
 }
+
+/* tipón TAWAG registration brand */
+.join-top{height:6px;background:linear-gradient(90deg,#0e83b8 0 24%,#bf203e 24% 49%,#ef6a34 49% 73%,#ffb63f 73% 100%)}
+.join-head{box-shadow:0 6px 24px rgba(8,62,96,.055)}
+.join-wordmark{width:auto;gap:13px}
+.join-logo{width:clamp(205px,23vw,265px);max-height:76px;image-rendering:auto}
+.join-brand-label{font:800 clamp(23px,2.7vw,31px)/1 Poppins,Manrope,sans-serif;color:#075477;letter-spacing:.045em;border-left:2px solid #dae9f0;padding-left:13px}
+.join-brand-label span{color:#e0a13a}
+.join-hero{max-width:720px}
+.join-hero .eyebrow{color:#075477;font-size:clamp(11px,1vw,13px);font-weight:900;letter-spacing:.10em}
+.join-hero h1{color:#073952}
+.join-hero p{color:#557992;font-size:clamp(13px,1.1vw,15px)}
+.service-card.chosen{border-color:#067fad;background:#eaf7ff}
+.service-card b{color:#12405d}
+.receipt{background:linear-gradient(180deg,#fff,#f4fbff);border-color:#77bbdb}
+.receipt .code{color:#086e9d}
+@media(max-width:540px){
+ .join-wordmark{gap:9px}
+ .join-logo{width:min(55vw,205px)}
+ .join-brand-label{font-size:clamp(17px,5.5vw,24px);padding-left:10px}
+}
 </style>
-<script defer src="config.js"></script><script defer src="join.js?v=9.0"></script>
+<script defer src="config.js"></script><script defer src="join.js?v=10.0"></script>
 </head><body>
 <div class="join-top"></div><header class="join-head"><div class="join-head-inner">
-  <div class="join-wordmark"><img class="join-logo" src="assets/tipon-logo-hd.webp" alt="tipón Federation"></div>
+  <div class="join-wordmark"><img class="join-logo" src="assets/tipon-logo-hd.webp" alt="tipón Federation"><span class="join-brand-label">TAWAG<span>.</span></span></div>
 </div></header>
 <main class="join-shell">
-  <div class="join-hero"><div class="eyebrow">TIPON • APPLICANT &amp; MEMBER QUEUE</div><h1>Get your queue number.</h1><p>Fast registration. Choose your service and receive your queue number.</p>
+  <div class="join-hero"><div class="eyebrow">Bawat tawag, may malasakit.</div><h1>Get your queue number.</h1><p>For recruitment applicants and cooperative members — simple, fast, and organized.</p>
     <div class="progress-steps"><span id="step1" class="step on"><i>1</i>Choose service &amp; enter details</span><div class="step-line"></div><span id="step2" class="step"><i>2</i>Get confirmed</span></div>
   </div>
   <div id="message" class="message hide" role="alert"></div>
@@ -109,5 +130,5 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
     <div class="receipt-actions"><button id="another" class="btn ghost" type="button">Register Another Applicant / Member</button><button id="done" class="btn success" type="button">Done</button></div>
     <p id="finishedNotice" class="finished-notice hide" role="status">Registration finished. Please keep your queue number and close this page when you're ready.</p>
   </div>
-</main><footer class="join-foot">tipón Federation • WIN AS A TEAM</footer>
+</main><footer class="join-foot">tipón TAWAG • Bawat tawag, may malasakit. • WIN AS A TEAM</footer>
 </body></html>
