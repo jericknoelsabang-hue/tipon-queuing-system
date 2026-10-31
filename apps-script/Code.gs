@@ -318,7 +318,7 @@ function restoreTx_(p){
 function publicConfig_(){
   const ss=ss_();
   const transactions=txs_(ss);
-  return{ok:true,version:'federation-v9',transactions};
+  return{ok:true,version:'federation-v10',transactions};
 }
 function state_(p){
   const view=['display','staff','setup'].includes(String(p?.view||''))?String(p.view):'staff';
@@ -370,7 +370,7 @@ function state_(p){
   const result={windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,completed,
     transactions:activeTx,transactionTypes:txList,assignments,recruiters,
     announcement:settingMap.get('ANNOUNCEMENT')?.trim()||DEFAULT_ANNOUNCEMENT,
-    federationMode:true,version:'federation-v9'};
+    federationMode:true,version:'federation-v10'};
   try{
     const json=JSON.stringify(result);
     if(cache&&json.length<28000)cache.put(cacheKey,json,2);
