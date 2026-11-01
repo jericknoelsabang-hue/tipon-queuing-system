@@ -127,10 +127,10 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
 .scan-camera-shell{width:min(920px,100%);display:flex;flex-direction:column;gap:10px;color:#fff}
 .scan-camera-head,.scan-camera-actions{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
 .scan-camera-head{justify-content:space-between}.scan-camera-head strong{font:750 18px Poppins,sans-serif}
-.scan-camera video{width:100%;height:min(65vh,640px);object-fit:contain;background:#0a141a;border:2px solid #4b7c9b;border-radius:13px}
+.scan-camera video{width:100%;height:min(70vh,720px);object-fit:cover;object-position:center;background:#0a141a;border:2px solid #4b7c9b;border-radius:13px}
 .scan-camera-actions .btn{min-height:44px}.scan-shutter{font-weight:900;font-size:14px!important}
 #scanCameraStatus{text-align:center;font-size:12px;color:#dcebf6;line-height:1.6}
-@media(max-width:540px){.scan-choice{flex-direction:column}.scan-camera-actions{display:grid;grid-template-columns:1fr 1fr}.scan-camera-actions button:first-child{grid-column:1/-1}.scan-camera video{height:57vh}.scan-main-btn{width:100%;min-width:0}}
+@media(max-width:540px){.scan-choice{flex-direction:column}.scan-camera-actions{display:grid;grid-template-columns:1fr 1fr}.scan-camera-actions button:first-child{grid-column:1/-1}.scan-camera video{height:min(62dvh,680px);object-fit:cover}.scan-main-btn{width:100%;min-width:0}}
 
 
 /* Applicant progress gating, layout, and centered dynamic requirements. */
@@ -153,8 +153,9 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
  #scanBox .scan-expected-list{gap:7px}
  #scanBox .scan-expected-chip{font-size:10px;padding:7px 11px}
 }
+.scan-review-note{margin:11px auto 6px;max-width:650px;padding:12px 14px;text-align:center;border:1px solid #a8cddf;background:#f5fbff;border-radius:10px;color:#165270;font-size:12px;font-weight:750;line-height:1.5}
 </style>
-<script defer src="config.js"></script><script defer src="applicant-fields.js?v=1"></script><script defer src="join.js?v=11.0"></script><script defer src="requirements-client.js?v=5.0"></script>
+<script defer src="config.js"></script><script defer src="scan-sync.js?v=1"></script><script defer src="join.js?v=11.0"></script><script defer src="requirements-client.js?v=6.0"></script>
 <style>
 .applicant-fields-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:9px;margin:14px 0}
 .applicant-fields-grid label{font-size:11px;font-weight:700;color:#234e60}
