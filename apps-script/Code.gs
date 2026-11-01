@@ -389,6 +389,37 @@ function announcement_(ss){
   const value=rows.find(row=>String(row[0]).trim()==='ANNOUNCEMENT');
   return value&&String(value[1]||'').trim() ? String(value[1]).trim() : DEFAULT_ANNOUNCEMENT;
 }
+function setQueueGuide_(p){
+ const raw=String(p.message||'').trim();
+ if(!raw||raw.length>1300)throw Error('Queue guidance must contain 1 to 1,300 characters.');
+ const guide=txt_(raw,1300);
+ const lock=LockService.getScriptLock();lock.waitLock(30000);
+ try{
+   const sh=ss_().getSheetByName(CFG.settings);
+   const keys=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,1).getValues():[];
+   const position=keys.findIndex(r=>String(r[0])==='QUEUE_GUIDE');
+   const row=position>=0?position+2:sh.getLastRow()+1;
+   sh.getRange(row,1,1,3).setValues([['QUEUE_GUIDE',guide,new Date()]]);
+   return {ok:true,queueGuide:guide};
+ }finally{lock.releaseLock()}
+}
+function playQueueGuide_(){
+ // Rate limit broadcasts even if an unauthenticated legacy queue endpoint is called.
+ const lock=LockService.getScriptLock();lock.waitLock(30000);
+ try{
+   const settings=ss_().getSheetByName(CFG.settings);
+   const props=PropertiesService.getScriptProperties(),now=Date.now();
+   const last=Number(props.getProperty('QUEUE_GUIDE_LAST_PLAY')||0);
+   if(now-last<25000)throw Error('Please allow at least 25 seconds between queue instructions.');
+   props.setProperty('QUEUE_GUIDE_LAST_PLAY',String(now));
+   const cue=String(now)+'-'+Utilities.getUuid();
+   const values=settings.getLastRow()>1?settings.getRange(2,1,settings.getLastRow()-1,1).getValues():[];
+   const index=values.findIndex(r=>String(r[0])==='QUEUE_GUIDE_CUE');
+   settings.getRange(index>=0?index+2:settings.getLastRow()+1,1,1,3)
+      .setValues([['QUEUE_GUIDE_CUE',cue,new Date()]]);
+   return {ok:true,queueGuideCue:cue};
+ }finally{lock.releaseLock()}
+}
 function announcementChunk_(p){
   const batch=String(p.batch||'').replace(/[^A-Za-z0-9_-]/g,'').slice(0,64);
   const total=int_(p.total,1,40),index=int_(p.index,0,total-1);
