@@ -66,7 +66,8 @@ $('queueForm').onsubmit=async event=>{
   const firstName=$('firstName').value.trim(),lastName=$('lastName').value.trim();
   const transaction=service==='recruitment' ? $('transaction').value : 'MC';
   const position=service==='recruitment' ? $('position').value.trim() : $('concern').value.trim();
-  if(!firstName||!lastName||!position)throw Error('Please complete all required fields.');
+  if(!firstName||!lastName||!position||(service==='recruitment'&&!transaction))
+    throw Error('Complete your name, choose a recruitment transaction, and enter your position.');
   // One request instead of a health check plus registration. The backend validates and deduplicates applicants.
   const precheck=service==='recruitment'&&$('scanYes')?.checked&&$('privacyAgree')?.checked?'yes':'no';
   const res=await jp('register',{firstName,lastName,position,transaction,precheck});
@@ -94,9 +95,20 @@ async function loadTransactions(){
   $('chooseRecruitment').disabled=!tx.length;
   if(tx.length){
     const select=$('transaction'),previous=select.value;select.textContent='';
-    for(const item of tx){const o=document.createElement('option');o.value=item.code;o.textContent=item.code+' — '+item.name;select.appendChild(o)}
-    if(tx.some(t=>t.code===previous))select.value=previous;
-  }else{$('transaction').textContent=''}
+    const placeholder=document.createElement('option');
+    placeholder.value='';placeholder.textContent='Select recruitment transaction';placeholder.disabled=true;
+    select.appendChild(placeholder);
+    for(const item of tx){
+      const o=document.createElement('option');o.value=item.code;o.textContent=item.code+' — '+item.name;
+      select.appendChild(o);
+    }
+    select.value=previous&&tx.some(t=>t.code===previous)?previous:'';
+  }else{
+    const select=$('transaction');select.innerHTML='';
+    const placeholder=document.createElement('option');
+    placeholder.value='';placeholder.textContent='No recruitment transactions available';
+    placeholder.disabled=true;placeholder.selected=true;select.appendChild(placeholder);
+  }
   if(!tx.length&&!memberAvailable){$('submit').disabled=true;message('Recruitment and Member Concern registration are currently unavailable. Please ask staff.');return}
   $('submit').disabled=false;
   if(!tx.length&&memberAvailable)choose('member');
