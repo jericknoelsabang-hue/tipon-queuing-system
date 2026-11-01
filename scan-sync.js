@@ -79,7 +79,7 @@ window.addEventListener('tipon:ticket',async e=>{
      'The recruitment database did not confirm the save. Please show your documents to the recruiter.');
  }catch(error){
    display('error',
-     'Document-check results were not saved to Google Sheets. The recruiter must check your original documents.');
+     'Google Sheets did not confirm the document-check update. Ask the recruiter to check the REQUIREMENT_SCANS tab and inspect your original documents.');
  }
 });
 })();
