@@ -159,20 +159,29 @@ function termMatch(text,term){
  const t=norm(term);if(t.length<3)return false;
  return (' '+text+' ').includes(' '+t+' ');
 }
-function assess(textList,req){
- const terms=String(req.keywords||req.name||'').split(/[,;\n]/).map(s=>s.trim()).filter(Boolean);
- const special=[String(req.name||'')];
- const list=[...new Set([...special,...terms])];
- let best=0;
- for(const text of textList){
-   const normalized=norm(text);
-   let count=0;for(const term of list)if(termMatch(normalized,term))count++;
-   best=Math.max(best,count);
+function assess(readings,req){
+ // Match configured search terms against each captured photo independently.
+ // A possible match is NOT proof of document validity or authenticity.
+ const terms=[...new Set([String(req.name||''),...String(req.keywords||req.name||'').split(/[,;\n]/)].map(x=>x.trim()).filter(x=>norm(x).length>=3))];
+ if(!readings.length)return {status:'FOR_RECRUITER_REVIEW',detail:'No readable text. Retake the document or have a recruiter inspect it.',photo:0};
+ let best={hits:[],photo:0};
+ for(const entry of readings){
+   const normalized=norm(entry.text);
+   const found=terms.filter(term=>termMatch(normalized,term)).sort((a,b)=>norm(b).length-norm(a).length);
+   // Do not count 'NBI' and 'NBI Clearance' as two independent clues.
+   const independent=[];
+   for(const term of found){
+     if(!independent.some(other=>norm(other).includes(norm(term))))independent.push(term);
+   }
+   if(independent.length>best.hits.length)best={hits:independent,photo:entry.photo};
  }
- if(!textList.length)return {status:'FOR_RECRUITER_REVIEW',detail:'No readable document text was detected.'};
- if(best>=2)return {status:'POSSIBLE_MATCH',detail:'Matching document terms found. Recruiter must verify the original.'};
- if(best===1)return {status:'FOR_RECRUITER_REVIEW',detail:'Partial text match only. Recruiter review required.'};
- return {status:'NOT_DETECTED',detail:'No matching terms found in the captured text. Add or retake the correct document.'};
+ const evidence=best.hits.slice(0,3).join(', ');
+ const evidenceText=best.photo?'Photo '+best.photo+' — ':'';
+ if(best.hits.length>=2)
+   return {status:'POSSIBLE_MATCH',photo:best.photo,detail:evidenceText+'recognition clues: '+evidence+'. Original document still needs recruiter verification.'};
+ if(best.hits.length===1)
+   return {status:'FOR_RECRUITER_REVIEW',photo:best.photo,detail:evidenceText+'only one recognition clue found ('+evidence+'). Please verify with the recruiter.'};
+ return {status:'NOT_DETECTED',photo:0,detail:'No matching recognition terms detected. Retake the document or show the original to a recruiter.'};
 }
 function photoProgress(index,label,percent){
  const p=photos[index];if(!p)return;
@@ -190,20 +199,20 @@ async function review(){
  if(reviewBusy||!photos.length)return;
  reviewBusy=true;reviewReady=false;updateSubmit();
  const btn=$('scanReview');btn.disabled=true;btn.textContent='SCANNING DOCUMENTS…';
- let textList=[],scannerAvailable=true,scannerError='';
+ let readings=[],scannerAvailable=true,scannerError='';
  try{
    progress('Preparing on-device text recognition…',0,photos.length);
    const t=await loadTesseract();
    worker=await t.createWorker('eng');
    for(let i=0;i<photos.length;i++){
      progress('Reading document '+(i+1)+' of '+photos.length+'…',i,photos.length);photoProgress(i,'SCANNING',22);
-     try{const result=await worker.recognize(photos[i].blob);const text=String(result&&result.data&&result.data.text||'').trim();if(text)textList.push(text);photoProgress(i,text?'TEXT READ':'NO TEXT',100)}
+     try{const result=await worker.recognize(photos[i].blob);const text=String(result&&result.data&&result.data.text||'').trim();if(text)readings.push({text,photo:i+1});photoProgress(i,text?'TEXT READ':'NO TEXT',100)}
      catch(e){photoProgress(i,'REVIEW',100);scannerError='Some photos could not be read. Retake blurry pages if needed.'}
      progress('Processed '+(i+1)+' of '+photos.length+' photos.',i+1,photos.length);
    }
  }catch(e){scannerAvailable=false;scannerError=String(e.message||e);photos.forEach((p,i)=>photoProgress(i,'MANUAL REVIEW',0))}
  finally{if(worker){try{await worker.terminate()}catch{}worker=null}}
- const items=applicable();const reviewed=items.map(req=>({name:req.name,...(scannerAvailable?assess(textList,req):{status:'FOR_RECRUITER_REVIEW',detail:'Scanner unavailable; recruiter must check the originals.'})}));
+ const items=applicable();const reviewed=items.map(req=>({name:req.name,...(scannerAvailable?assess(readings,req):{status:'FOR_RECRUITER_REVIEW',detail:'Scanner unavailable; recruiter must check the originals.'})}));
  const pct=items.length?reviewed.filter(x=>x.status==='POSSIBLE_MATCH').length+'/'+items.length:'No configured list';
  $('scanReport').innerHTML='<h3>Document Pre-Screening Result</h3><p><strong>'+photos.length+' photo'+(photos.length===1?'':'s')+' reviewed</strong> · '+esc(pct)+' possible requirement matches.</p>'+
  (items.length?reviewed.map(r=>'<div class="scan-review-line"><b>'+esc(r.name)+'</b> — '+(r.status==='POSSIBLE_MATCH'?'Possible match':r.status==='NOT_DETECTED'?'Not detected':'Recruiter review needed')+'<br><span>'+esc(r.detail)+'</span></div>').join(''):
@@ -212,8 +221,8 @@ async function review(){
  (scannerError?'<p><b>Scanner note:</b> '+esc(scannerError)+'</p>':'')+
  '<p>You may now get your queue number.</p>';
  $('scanReport').classList.remove('hide');$('scanProgress').classList.add('hide');
- window.dispatchEvent(new CustomEvent('tipon:ocr-ready',{detail:{texts:textList.slice()}}));
- textList=[]; // Do not retain OCR text beyond this assessment.
+ window.dispatchEvent(new CustomEvent('tipon:ocr-ready',{detail:{texts:readings.map(item=>item.text)}}));
+ readings=[]; // Do not retain OCR text beyond this assessment.
  reviewReady=true;reviewBusy=false;btn.disabled=false;btn.textContent='CHECK CAPTURED DOCUMENTS';
  updateSubmit();
 }
@@ -246,11 +255,10 @@ async function refreshRequirements(){
    const edited=JSON.parse(localStorage.getItem('tqLocalReqDemoV1')||'null');
    if(Array.isArray(edited)){requirements=edited;source='LOCAL BROWSER DEMO'}
  }catch{}
- requirements=requirements.map(r=>({...r,keywords:(r.keywords===r.name&&DEMO_TERMS[String(r.name).toUpperCase()])||r.keywords||r.name}));
+ requirements=requirements.map(r=>({...r,keywords:(source==='PUBLIC TEST SNAPSHOT'&&r.keywords===r.name&&DEMO_TERMS[String(r.name).toUpperCase()])||r.keywords||r.name}));
  $('scanConfigMessage').textContent=requirements.length?
-   (source==='LIVE'?'Recruiter requirements loaded from the queue database: ':
-     'Demo requirements ('+source+') — Google Sheets sync requires backend configuration: ')+applicable().length+' applicable for this transaction.':
-   'No configured requirements available. You can still capture photos, but completeness cannot be determined.';
+   (source==='LIVE'?'Required documents for your selected transaction: ':'Document checklist for this transaction (trial): ')+applicable().length+' item(s). Photos are scanned on this device only.':
+   'The recruiter has not configured a checklist for this transaction. You can still capture photos for review.';
  renderExpected();
 }
 function init(){
