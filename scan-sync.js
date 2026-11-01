@@ -46,9 +46,15 @@ window.addEventListener('tipon:scan-reviewed',e=>{
  pending={results:r.results.map(x=>({id:String(x.id||''),name:String(x.name||''),status:String(x.status||'FOR_RECRUITER_REVIEW')})),
   photoCount:r.photoCount,scannerAvailable:r.scannerAvailable===true,scannedAt:new Date().toISOString()};
 });
-window.addEventListener('tipon:scan-reset',()=>{pending=null;epoch++});
+function clearSyncStatus(){
+ const target=$('scanSyncStatus');if(!target)return;
+ target.classList.add('hide');target.textContent='';
+ delete target.dataset.state;
+}
+window.addEventListener('tipon:scan-reset',()=>{pending=null;epoch++;clearSyncStatus()});
 window.addEventListener('tipon:ticket',async e=>{
  const {ticket,intakeToken}=e.detail||{};
+ clearSyncStatus();
  if(!ticket?.ticketId||!pending)return;
  const review=pending;pending=null;
  const ticketEpoch=epoch;
