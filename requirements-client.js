@@ -21,7 +21,16 @@ function jsonp(action,params={}){return new Promise((resolve,reject)=>{
 })}
 function renderExpected(){
  const active=applicable();
- $('scanExpectedList').innerHTML=active.map(r=>'<span class="scan-expected-chip">'+esc(r.name)+'</span>').join('');
+ $('scanExpectedList').innerHTML=active.map(r=>'<span class="scan-expected-chip" data-requirement-id="'+esc(r.id)+'">'+esc(r.name)+'</span>').join('');
+}
+function paintRequirementChips(reviews){
+ const results=new Map(reviews.map(r=>[String(r.id),r.status]));
+ for(const chip of $('scanExpectedList').querySelectorAll('[data-requirement-id]')){
+   const status=results.get(chip.dataset.requirementId);
+   chip.classList.toggle('scan-chip-match',status==='POSSIBLE_MATCH');
+   chip.classList.toggle('scan-chip-review',status==='FOR_RECRUITER_REVIEW');
+   chip.classList.toggle('scan-chip-missing',status==='NOT_DETECTED');
+ }
 }
 function matchesTx(r,tx){
  if(Array.isArray(r.transactions))return r.transactions.includes('ALL')||r.transactions.includes(tx);
@@ -58,6 +67,7 @@ function updateSubmit(){
 }
 function invalidateReview(){
  reviewReady=false;$('scanReport').classList.add('hide');$('scanProgress').classList.add('hide');
+ for(const chip of $('scanExpectedList').querySelectorAll('[data-requirement-id]'))chip.classList.remove('scan-chip-match','scan-chip-review','scan-chip-missing');
  if($('applicantFieldsConfirmed'))$('applicantFieldsConfirmed').checked=false;
  window.dispatchEvent(new CustomEvent('tipon:scan-reset'));
  updateSubmit();
@@ -212,12 +222,19 @@ async function review(){
    }
  }catch(e){scannerAvailable=false;scannerError=String(e.message||e);photos.forEach((p,i)=>photoProgress(i,'MANUAL REVIEW',0))}
  finally{if(worker){try{await worker.terminate()}catch{}worker=null}}
- const items=applicable();const reviewed=items.map(req=>({name:req.name,...(scannerAvailable?assess(readings,req):{status:'FOR_RECRUITER_REVIEW',detail:'Scanner unavailable; recruiter must check the originals.'})}));
+ const items=applicable();const reviewed=items.map(req=>({id:req.id,name:req.name,...(scannerAvailable?assess(readings,req):{status:'FOR_RECRUITER_REVIEW',photo:0,detail:'Scanner unavailable; recruiter must check the originals.'})}));
+ const byPhoto=new Map();
+ for(const r of reviewed.filter(r=>r.status==='POSSIBLE_MATCH'&&r.photo>0)){
+   const list=byPhoto.get(r.photo)||[];list.push(r.name);byPhoto.set(r.photo,list);
+ }
+ const overlapping=[...byPhoto.entries()].filter(([photo,list])=>list.length>1);
+ paintRequirementChips(reviewed);
  const pct=items.length?reviewed.filter(x=>x.status==='POSSIBLE_MATCH').length+'/'+items.length:'No configured list';
  $('scanReport').innerHTML='<h3>Document Pre-Screening Result</h3><p><strong>'+photos.length+' photo'+(photos.length===1?'':'s')+' reviewed</strong> · '+esc(pct)+' possible requirement matches.</p>'+
  (items.length?reviewed.map(r=>'<div class="scan-review-line"><b>'+esc(r.name)+'</b> — '+(r.status==='POSSIBLE_MATCH'?'Possible match':r.status==='NOT_DETECTED'?'Not detected':'Recruiter review needed')+'<br><span>'+esc(r.detail)+'</span></div>').join(''):
  '<p>No recruitment requirement list is available from the backend. Document count only; no completeness decision can be made.</p>')+
- '<p><strong>Important:</strong> This is only preliminary on-device OCR. It does not verify authenticity, expiration or applicant eligibility. Keep your documents for the recruiter. No document photo or extracted personal data was uploaded.</p>'+
+ (overlapping.length?'<p><strong>Check overlapping documents:</strong> '+esc(overlapping.map(([photo,names])=>'Photo '+photo+' may match '+names.join(' and ')).join('; '))+'. Only the recruiter can decide whether each separate requirement is satisfied.</p>':'')+
+ '<p><strong>Important:</strong> This is only preliminary on-device OCR. It does not verify authenticity, expiration or applicant eligibility. Keep your documents for the recruiter. Document photos are not uploaded.</p>'+
  (scannerError?'<p><b>Scanner note:</b> '+esc(scannerError)+'</p>':'')+
  '<p>You may now get your queue number.</p>';
  $('scanReport').classList.remove('hide');$('scanProgress').classList.add('hide');
