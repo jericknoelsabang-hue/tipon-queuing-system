@@ -21,7 +21,8 @@ function postScan(token,review){
    error?reject(error):resolve(data);
   }
   function onMessage(e){
-   if(e.source!==frame.contentWindow)return;
+   // Apps Script may sandbox the HTML response in a nested Google iframe.
+   // Verify trusted Google origin and unpredictable request ID below.
    let host='';try{host=new URL(e.origin).hostname}catch{}
    if(host!=='script.google.com'&&host!=='googleusercontent.com'&&!host.endsWith('.googleusercontent.com'))return;
    const d=e.data||{};
