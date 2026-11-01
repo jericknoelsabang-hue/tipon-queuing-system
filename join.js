@@ -117,5 +117,8 @@ async function loadTransactions(){
  }catch(e){message('Could not load available services: '+e.message)}
 }
 localStorage.removeItem('tqPendingPrecheck'); // clear legacy v4 state: no applicant verification is required
+// Start every new applicant entry with no transaction and no Yes/No preselection.
+$('transaction').value='';
+$('scanYes').checked=false;$('scanNo').checked=false;
 choose('recruitment');void loadTransactions();
 })();
