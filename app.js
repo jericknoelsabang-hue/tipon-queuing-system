@@ -76,39 +76,19 @@ function qr(){
  }
  let lastError=null;
  const errorCorrection=[
-   {level:QRCode.CorrectLevel.H,withLogo:true},
-   {level:QRCode.CorrectLevel.Q,withLogo:true},
-   {level:QRCode.CorrectLevel.M,withLogo:false}
+   QRCode.CorrectLevel.H,
+   QRCode.CorrectLevel.Q,
+   QRCode.CorrectLevel.M
  ];
- for(const option of errorCorrection){
+ for(const correctionLevel of errorCorrection){
    try{
      holder.replaceChildren();
      qrObj=new QRCode(holder,{
        text:link,width:640,height:640,colorDark:'#102f45',colorLight:'#ffffff',
-       correctLevel:option.level
+       correctLevel:correctionLevel
      });
      if(!holder.querySelector('canvas,img,svg,table'))
        throw Error('QR renderer produced no image');
-     if(option.withLogo){
-       // Use the original high-resolution TIPON brand asset, not a hand-drawn
-       // approximation of its mark. Crop only the leading brand emblem.
-       const mark=document.createElement('span');
-       mark.className='qr-logo-mark';
-       mark.setAttribute('aria-hidden','true');
-       const officialLogo=document.createElement('img');
-       officialLogo.className='qr-logo-official';
-       officialLogo.src='assets/tipon-logo-hd.webp';
-       officialLogo.alt='';
-       officialLogo.decoding='async';
-       officialLogo.draggable=false;
-       officialLogo.onerror=()=>{
-         // Keep a local fallback, so a missing logo never leaves QR empty.
-         officialLogo.onerror=null;
-         officialLogo.src='assets/tipon-mark.svg';
-       };
-       mark.appendChild(officialLogo);
-       holder.appendChild(mark);
-     }
      qrUrl=link;
      return;
    }catch(err){lastError=err;holder.replaceChildren()}
