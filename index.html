@@ -6,8 +6,8 @@
 <link rel="icon" href="assets/tipon-mark.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=13.0">
-<script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="app.js?v=13.0"></script><script defer src="requirements-setup.js?v=3.0"></script>
+<link rel="stylesheet" href="styles.css?v=14.0">
+<script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="app.js?v=14.0"></script><script defer src="requirements-setup.js?v=3.0"></script>
 
 <style>
 .req-staff-config{padding:16px 0;margin-top:15px;border-top:1px solid #dce9f0}
@@ -120,7 +120,24 @@
       <label class="field" for="announcementInput">Announcement message<textarea id="announcementInput" maxlength="2500" rows="5" placeholder="Type the announcement"></textarea></label>
       <div class="split" style="margin-top:13px"><small id="announcementCount" class="muted">0 / 2,500 characters</small><div class="buttons"><button class="btn ghost" id="announcementReset" type="button">Restore Default</button><button class="btn success" id="announcementSave" type="button">Save Announcement</button></div></div>
     </div>
-    <div class="card"><div class="split"><div><h2>TV Controls</h2><p>Refresh queue data or unlock sound on this device.</p></div><div class="buttons"><button id="refresh" class="btn" type="button">Refresh Queue</button><button id="sound" class="btn primary" type="button">Enable / Test Sound</button></div></div></div>
+    <div class="card" id="tvControls">
+      <div class="split">
+        <div><h2>TV Controls</h2><p>Refresh the queue, enable TV sound, or play instructions for new members.</p></div>
+        <div class="buttons">
+          <button id="refresh" class="btn" type="button">Refresh Queue</button>
+          <button id="sound" class="btn primary" type="button">Enable / Test Sound</button>
+          <button id="guidePlay" class="btn success" type="button">Play Queue Instructions on TV</button>
+          <button id="guideEdit" class="btn ghost" type="button">Edit Instructions</button>
+        </div>
+      </div>
+      <div id="guideEditor" class="inline-editor hide">
+        <h3>Queueing Instructions — Voice Announcement</h3>
+        <p class="small-muted">This message is spoken on the TV browser when sound is enabled. Editing it does not change the scrolling announcement.</p>
+        <label class="field" for="guideText">Instructions<textarea id="guideText" rows="6" maxlength="1300"></textarea></label>
+        <div class="buttons"><button id="guideSave" class="btn success" type="button">Save Instructions</button><button id="guideCancel" class="btn ghost" type="button">Cancel</button></div>
+      </div>
+      <p id="guideStatus" class="small-muted" role="status"></p>
+    </div>
     <div class="card" id="reqSetup">
       <div class="split"><div><h2>Pre-Employment Requirements</h2>
         <p>Create the requirements list for Recruitment. No requirements are added by default.</p></div>

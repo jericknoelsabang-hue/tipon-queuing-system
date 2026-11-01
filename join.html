@@ -127,10 +127,10 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
 .scan-camera-shell{width:min(920px,100%);display:flex;flex-direction:column;gap:10px;color:#fff}
 .scan-camera-head,.scan-camera-actions{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
 .scan-camera-head{justify-content:space-between}.scan-camera-head strong{font:750 18px Poppins,sans-serif}
-.scan-camera video{width:100%;height:min(65vh,640px);object-fit:contain;background:#0a141a;border:2px solid #4b7c9b;border-radius:13px}
+.scan-camera video{width:100%;height:min(70vh,720px);object-fit:cover;object-position:center;background:#0a141a;border:2px solid #4b7c9b;border-radius:13px}
 .scan-camera-actions .btn{min-height:44px}.scan-shutter{font-weight:900;font-size:14px!important}
 #scanCameraStatus{text-align:center;font-size:12px;color:#dcebf6;line-height:1.6}
-@media(max-width:540px){.scan-choice{flex-direction:column}.scan-camera-actions{display:grid;grid-template-columns:1fr 1fr}.scan-camera-actions button:first-child{grid-column:1/-1}.scan-camera video{height:57vh}.scan-main-btn{width:100%;min-width:0}}
+@media(max-width:540px){.scan-choice{flex-direction:column}.scan-camera-actions{display:grid;grid-template-columns:1fr 1fr}.scan-camera-actions button:first-child{grid-column:1/-1}.scan-camera video{height:min(62dvh,680px);object-fit:cover}.scan-main-btn{width:100%;min-width:0}}
 
 
 /* Applicant progress gating, layout, and centered dynamic requirements. */
@@ -153,15 +153,10 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
  #scanBox .scan-expected-list{gap:7px}
  #scanBox .scan-expected-chip{font-size:10px;padding:7px 11px}
 }
+.scan-review-note{margin:11px auto 6px;max-width:650px;padding:12px 14px;text-align:center;border:1px solid #a8cddf;background:#f5fbff;border-radius:10px;color:#165270;font-size:12px;font-weight:750;line-height:1.5}
 </style>
-<script defer src="config.js"></script><script defer src="applicant-fields.js?v=1"></script><script defer src="join.js?v=11.0"></script><script defer src="requirements-client.js?v=5.0"></script>
-<style>
-.applicant-fields-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:9px;margin:14px 0}
-.applicant-fields-grid label{font-size:11px;font-weight:700;color:#234e60}
-.applicant-fields-grid input{display:block;width:100%;min-height:39px;margin-top:5px;border:1px solid #b2d4e1;border-radius:7px;padding:8px;font-size:12px}
-.applicant-confirm{display:flex;gap:9px;align-items:center;font-size:12px;font-weight:800}
-.applicant-confirm input{width:18px;height:18px;accent-color:#168d69}
-</style></head><body>
+<script defer src="config.js"></script><script defer src="scan-sync.js?v=1"></script><script defer src="join.js?v=11.0"></script><script defer src="requirements-client.js?v=6.0"></script>
+</head><body>
 <div class="join-top"></div><header class="join-head"><div class="join-head-inner">
   <div class="join-wordmark"><img class="join-logo" src="assets/tipon-logo-hd.webp" alt="tipón Federation"><span class="join-brand-label">TAWAG<span>.</span></span></div>
 </div></header>
@@ -200,8 +195,8 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
       <p class="helper">Capture as many document photos as needed. Check all photos together after you finish.</p>
       <div class="scan-privacy">
         <strong>Data Privacy Notice</strong>
-        <p>Your document photos are processed locally in your browser for a preliminary text check and are not uploaded. If you confirm the extracted applicant information and the secure backend is enabled, those confirmed fields will be stored in TIPON's restricted recruitment Google Sheet together with your queue record. Only an authorized recruiter can verify original documents. You may choose No to skip this optional check.</p>
-        <label><input id="privacyAgree" type="checkbox"> I understand and consent to this optional on-device document check.</label>
+        <p>Your photos are checked on this device and are not uploaded or stored in Google Drive. After you receive a queue number, only preliminary document-check statuses and the number of photos captured may be saved to TIPON's recruitment Google Sheet for recruiter review. Full OCR text and details printed on your documents are not submitted. A recruiter must inspect original documents. You may choose No to skip this optional check.</p>
+        <label><input id="privacyAgree" type="checkbox"> I consent to the on-device document check and saving its preliminary checklist statuses with my queue record.</label>
       </div>
       <div id="scanControls" class="hide">
         <p id="scanConfigMessage" class="helper"></p><div id="scanExpectedList" class="scan-expected-list" aria-label="Recruiter required documents"></div>
@@ -213,13 +208,8 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
         <div id="scanGallery" class="scan-gallery" aria-live="polite"></div>
         <div class="scan-action-center"><button id="scanReview" type="button" class="btn success scan-main-btn hide">CHECK CAPTURED DOCUMENTS</button></div>
         <div id="scanProgress" class="scan-progress hide" role="status" aria-live="polite"></div>
-        <div id="scanReport" class="scan-report hide" aria-live="polite"></div><div id="applicantExtracted" class="scan-report hide">
-          <h3>Applicant Information Found in Documents</h3>
-          <p>Review and correct each field before continuing. Only clearly readable information is suggested; missing fields remain blank.</p>
-          <div id="applicantFields" class="applicant-fields-grid"></div>
-          <label class="applicant-confirm"><input id="applicantFieldsConfirmed" type="checkbox"> I reviewed and confirmed the information above.</label>
-          <p id="applicantSyncStatus" class="helper"></p>
-        </div>
+        <p id="scanReviewNote" class="scan-review-note hide" role="status" aria-live="polite"></p>
+      
       </div>
       <p id="scanNotice" class="helper" role="status"></p>
     </section>

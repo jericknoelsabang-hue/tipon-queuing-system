@@ -63,7 +63,7 @@ function syncEntryState(){
 function note(text){$('scanNotice').textContent=text}
 function updateSubmit(){
  const isRecruitment=service==='recruitment';
- const show=!isRecruitment||(detailsComplete()&&(decision==='no'||(decision==='yes'&&consent&&reviewReady&&$('applicantFieldsConfirmed')?.checked===true)));
+ const show=!isRecruitment||(detailsComplete()&&(decision==='no'||(decision==='yes'&&consent&&reviewReady)));
  $('submit').classList.toggle('hide',!show);
  if(show)$('submit').textContent='GET QUEUE NUMBER';
  $('scanDecision').classList.toggle('hide',!isRecruitment);
@@ -71,10 +71,9 @@ function updateSubmit(){
  $('scanControls').classList.toggle('hide',!consent);
 }
 function invalidateReview(){
- reviewReady=false;$('scanReport').classList.add('hide');$('scanProgress').classList.add('hide');
+ reviewReady=false;$('scanReviewNote').classList.add('hide');$('scanProgress').classList.add('hide');
  for(const chip of $('scanExpectedList').querySelectorAll('[data-requirement-id]'))chip.classList.remove('scan-chip-match','scan-chip-review','scan-chip-missing');
- if($('applicantFieldsConfirmed'))$('applicantFieldsConfirmed').checked=false;
- window.dispatchEvent(new CustomEvent('tipon:scan-reset'));
+window.dispatchEvent(new CustomEvent('tipon:scan-reset'));
  updateSubmit();
 }
 function setService(){
@@ -162,13 +161,47 @@ async function shutter(){
  }catch(e){$('scanCameraStatus').textContent='Capture failed: '+e.message}
  finally{btn.disabled=false}
 }
-function loadTesseract(){if(window.Tesseract)return Promise.resolve(window.Tesseract);
+function loadTesseract(){
+ if(window.Tesseract)return Promise.resolve(window.Tesseract);
  if(workerLoading)return workerLoading;
- workerLoading=new Promise((resolve,reject)=>{
-   const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js';
-   script.crossOrigin='anonymous';script.onload=()=>window.Tesseract?resolve(window.Tesseract):reject(Error('OCR library unavailable'));
-   script.onerror=()=>reject(Error('OCR could not download on this connection'));document.head.appendChild(script);
- }).catch(e=>{workerLoading=null;throw e});return workerLoading;
+ const sources=[
+   'https://unpkg.com/tesseract.js@7.0.0/dist/tesseract.min.js',
+   'https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js'
+ ];
+ async function insertSource(url){
+   await new Promise((resolve,reject)=>{
+     const script=document.createElement('script');
+     script.src=url;script.async=true;script.crossOrigin='anonymous';
+     script.onload=()=>window.Tesseract?resolve():reject(Error('OCR library unavailable'));
+     script.onerror=()=>reject(Error('OCR library download failed'));
+     document.head.appendChild(script);
+   });
+   return window.Tesseract;
+ }
+ workerLoading=(async()=>{
+   let last;
+   for(const url of sources){
+     try{return await insertSource(url)}catch(err){last=err}
+   }
+   throw last||Error('OCR library unavailable');
+ })().catch(err=>{workerLoading=null;throw err});
+ return workerLoading;
+}
+async function startOcrWorker(tesseract){
+ const sources=[
+   {workerPath:'https://unpkg.com/tesseract.js@7.0.0/dist/worker.min.js',
+     corePath:'https://unpkg.com/tesseract.js-core@7.0.0',
+     langPath:'https://tessdata.projectnaptha.com/4.0.0'},
+   {workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/worker.min.js',
+     corePath:'https://cdn.jsdelivr.net/npm/tesseract.js-core@7.0.0',
+     langPath:'https://tessdata.projectnaptha.com/4.0.0'}
+ ];
+ let lastError;
+ for(const source of sources){
+   try{return await tesseract.createWorker('eng',1,source)}
+   catch(err){lastError=err}
+ }
+ throw lastError||Error('The text scanner is unavailable. Please bring your documents for manual review.');
 }
 function termMatch(text,term){
  const t=norm(term);if(t.length<3)return false;
@@ -213,39 +246,52 @@ function progress(message,index,total){
 async function review(){
  if(reviewBusy||!photos.length)return;
  reviewBusy=true;reviewReady=false;updateSubmit();
- const btn=$('scanReview');btn.disabled=true;btn.textContent='SCANNING DOCUMENTS…';
+ const btn=$('scanReview');btn.disabled=true;btn.textContent='CHECKING DOCUMENTS…';
  let readings=[],scannerAvailable=true,scannerError='';
  try{
    progress('Preparing on-device text recognition…',0,photos.length);
    const t=await loadTesseract();
-   worker=await t.createWorker('eng');
+   worker=await startOcrWorker(t);
    for(let i=0;i<photos.length;i++){
-     progress('Reading document '+(i+1)+' of '+photos.length+'…',i,photos.length);photoProgress(i,'SCANNING',22);
-     try{const result=await worker.recognize(photos[i].blob);const text=String(result&&result.data&&result.data.text||'').trim();if(text)readings.push({text,photo:i+1});photoProgress(i,text?'TEXT READ':'NO TEXT',100)}
-     catch(e){photoProgress(i,'REVIEW',100);scannerError='Some photos could not be read. Retake blurry pages if needed.'}
+     progress('Reading document '+(i+1)+' of '+photos.length+'…',i,photos.length);
+     photoProgress(i,'SCANNING',22);
+     try{
+       const result=await worker.recognize(photos[i].blob);
+       const raw=String(result&&result.data&&result.data.text||'').trim();
+       if(raw)readings.push({text:raw,photo:i+1});
+       photoProgress(i,raw?'TEXT READ':'NO TEXT',100);
+     }catch(err){
+       photoProgress(i,'REVIEW',100);
+       scannerError='Some photos could not be read. Please show the original documents to the recruiter.';
+     }
      progress('Processed '+(i+1)+' of '+photos.length+' photos.',i+1,photos.length);
    }
- }catch(e){scannerAvailable=false;scannerError=String(e.message||e);photos.forEach((p,i)=>photoProgress(i,'MANUAL REVIEW',0))}
- finally{if(worker){try{await worker.terminate()}catch{}worker=null}}
- const items=applicable();const reviewed=items.map(req=>({id:req.id,name:req.name,...(scannerAvailable?assess(readings,req):{status:'FOR_RECRUITER_REVIEW',photo:0,detail:'Scanner unavailable; recruiter must check the originals.'})}));
- const byPhoto=new Map();
- for(const r of reviewed.filter(r=>r.status==='POSSIBLE_MATCH'&&r.photo>0)){
-   const list=byPhoto.get(r.photo)||[];list.push(r.name);byPhoto.set(r.photo,list);
+ }catch(err){
+   scannerAvailable=false;
+   scannerError='The on-device text scanner could not start. The recruiter must check your original documents.';
+   photos.forEach((p,i)=>photoProgress(i,'MANUAL REVIEW',0));
+ }finally{
+   if(worker){try{await worker.terminate()}catch{}worker=null}
  }
- const overlapping=[...byPhoto.entries()].filter(([photo,list])=>list.length>1);
- paintRequirementChips(reviewed);
- const pct=items.length?reviewed.filter(x=>x.status==='POSSIBLE_MATCH').length+'/'+items.length:'No configured list';
- $('scanReport').innerHTML='<h3>Document Pre-Screening Result</h3><p><strong>'+photos.length+' photo'+(photos.length===1?'':'s')+' reviewed</strong> · '+esc(pct)+' possible requirement matches.</p>'+
- (items.length?reviewed.map(r=>'<div class="scan-review-line"><b>'+esc(r.name)+'</b> — '+(r.status==='POSSIBLE_MATCH'?'Possible match':r.status==='NOT_DETECTED'?'Not detected':'Recruiter review needed')+'<br><span>'+esc(r.detail)+'</span></div>').join(''):
- '<p>No recruitment requirement list is available from the backend. Document count only; no completeness decision can be made.</p>')+
- (overlapping.length?'<p><strong>Check overlapping documents:</strong> '+esc(overlapping.map(([photo,names])=>'Photo '+photo+' may match '+names.join(' and ')).join('; '))+'. Only the recruiter can decide whether each separate requirement is satisfied.</p>':'')+
- '<p><strong>Important:</strong> This is only preliminary on-device OCR. It does not verify authenticity, expiration or applicant eligibility. Keep your documents for the recruiter. Document photos are not uploaded.</p>'+
- (scannerError?'<p><b>Scanner note:</b> '+esc(scannerError)+'</p>':'')+
- '<p>You may now get your queue number.</p>';
- $('scanReport').classList.remove('hide');$('scanProgress').classList.add('hide');
- window.dispatchEvent(new CustomEvent('tipon:ocr-ready',{detail:{texts:readings.map(item=>item.text)}}));
- readings=[]; // Do not retain OCR text beyond this assessment.
- reviewReady=true;reviewBusy=false;btn.disabled=false;btn.textContent='CHECK CAPTURED DOCUMENTS';
+ const captured=photos.length;
+ const reviewed=applicable().map(req=>({
+   id:req.id,name:req.name,
+   status:scannerAvailable?assess(readings,req).status:'SCANNER_UNAVAILABLE'
+ }));
+ // Save only document-status codes after a queue ticket exists. Raw images
+ // and OCR text must not be transmitted or retained in Sheets.
+ window.dispatchEvent(new CustomEvent('tipon:scan-reviewed',{
+   detail:{photoCount:captured,scannerAvailable,results:reviewed}
+ }));
+ readings.length=0;
+ const noteEl=$('scanReviewNote');
+ noteEl.textContent=scannerAvailable?
+   'Document check completed. Your preliminary checklist will be linked to your queue number. Bring the original documents for recruiter verification.':
+   scannerError+' You may continue to get your queue number.';
+ noteEl.classList.remove('hide');
+ $('scanProgress').classList.add('hide');
+ reviewReady=true;reviewBusy=false;
+ btn.disabled=false;btn.textContent='CHECK DOCUMENTS AGAIN';
  updateSubmit();
 }
 const DEMO_TERMS={
@@ -319,8 +365,7 @@ function init(){
    renderGallery();invalidateReview();
  });
  $('scanReview').addEventListener('click',review);
- $('applicantFieldsConfirmed').addEventListener('change',updateSubmit);
- // Any applicant identity, position, or transaction change invalidates a previous scan.
+// Any applicant identity, position, or transaction change invalidates a previous scan.
  for(const id of ['firstName','lastName','position']){
    $(id).addEventListener('input',()=>{
      if(decision==='yes'&&(consent||photos.length||reviewReady))reset();
@@ -341,7 +386,7 @@ function init(){
      $('scanDecision').scrollIntoView({behavior:'smooth',block:'center'});
      return;
    }
-   if(decision==='yes'&&(!reviewReady||!$('applicantFieldsConfirmed').checked)){
+   if(decision==='yes'&&!reviewReady){
      e.preventDefault();e.stopImmediatePropagation();
      note('Capture your documents and complete the document review before requesting your queue number.');
      $('scanBox').scrollIntoView({behavior:'smooth',block:'center'});
