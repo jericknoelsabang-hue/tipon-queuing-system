@@ -8,6 +8,30 @@ let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],transactions:[],tra
 let connectionHealthy=false;
  let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,pollTimer=null,refreshFailures=0,activeWindowActions=new Set(),tableSignature={wait:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
 let lastGuideCue=null,guideDirty=false;let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='';
+
+let localTvChannel=null,lastLocalTvSeen=0;
+try{
+ if(typeof BroadcastChannel!=='undefined'){
+  localTvChannel=new BroadcastChannel('tipon-tawag-queue-voice');
+  localTvChannel.onmessage=event=>{
+   const msg=event.data||{};
+   if(msg.type==='tv-present'){lastLocalTvSeen=Date.now();return}
+   if(msg.type==='tv-probe'&&page==='display'){
+     localTvChannel.postMessage({type:'tv-present'});return;
+   }
+   if(msg.type==='play-instructions'&&page==='display'&&armed&&
+      Number.isFinite(Number(msg.sentAt))&&Date.now()-Number(msg.sentAt)<30000){
+     speakQueueInstructions(String(msg.text||DEFAULT_GUIDE));
+   }
+  };
+  // Presence only: no personal queue data, images, or document fields cross tabs.
+  setInterval(()=>{
+   if(page==='display')localTvChannel.postMessage({type:'tv-present'});
+  },6000);
+  localTvChannel.postMessage({type:'tv-probe'});
+ }
+}catch{localTvChannel=null}
+
 function url(){return new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||''}
 function valid(u){try{const p=new URL(u);return p.origin==='https://script.google.com'&&p.pathname.endsWith('/exec')}catch{return false}}
 function status(t,k=''){
@@ -505,9 +529,14 @@ $('guidePlay').onclick=async()=>{
    return speakQueueInstructions(currentQueueGuide());
  };
  if(!connectionHealthy||S.queueGuideSupported!==true){
-   const played=preview(); // Starts in the user click so browsers permit speech.
+   if(localTvChannel&&Date.now()-lastLocalTvSeen<16000){
+     localTvChannel.postMessage({type:'play-instructions',text:currentQueueGuide(),sentAt:Date.now()});
+     $('guideStatus').textContent='Sent to an open TV Display tab on this browser. Enable/Test Sound must have been clicked on that TV tab. For a TV on a different device, deploy the updated Apps Script.';
+     return;
+   }
+   const played=preview(); // Starts inside the click so browser voice is allowed.
    $('guideStatus').textContent=played?
-     'Instructions are playing on THIS device. Playback on a separate TV is not available until the latest Apps Script is deployed and the TV sound is enabled.':
+     'Instructions are playing on THIS device. Playback on a separate TV requires the updated Apps Script deployment and enabled TV sound.':
      'Cannot play audio on this device. Enable browser speech/audio and deploy the updated Apps Script for remote TV playback.';
    return;
  }
