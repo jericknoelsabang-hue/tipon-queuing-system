@@ -8,6 +8,30 @@ let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],transactions:[],tra
 let connectionHealthy=false;
  let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,pollTimer=null,refreshFailures=0,activeWindowActions=new Set(),tableSignature={wait:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
 let lastGuideCue=null,guideDirty=false;let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='';
+
+let localTvChannel=null,lastLocalTvSeen=0;
+try{
+ if(typeof BroadcastChannel!=='undefined'){
+  localTvChannel=new BroadcastChannel('tipon-tawag-queue-voice');
+  localTvChannel.onmessage=event=>{
+   const msg=event.data||{};
+   if(msg.type==='tv-present'){lastLocalTvSeen=Date.now();return}
+   if(msg.type==='tv-probe'&&page==='display'){
+     localTvChannel.postMessage({type:'tv-present'});return;
+   }
+   if(msg.type==='play-instructions'&&page==='display'&&armed&&
+      Number.isFinite(Number(msg.sentAt))&&Date.now()-Number(msg.sentAt)<30000){
+     speakQueueInstructions(String(msg.text||DEFAULT_GUIDE));
+   }
+  };
+  // Presence only: no personal queue data, images, or document fields cross tabs.
+  setInterval(()=>{
+   if(page==='display')localTvChannel.postMessage({type:'tv-present'});
+  },6000);
+  localTvChannel.postMessage({type:'tv-probe'});
+ }
+}catch{localTvChannel=null}
+
 function url(){return new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||''}
 function valid(u){try{const p=new URL(u);return p.origin==='https://script.google.com'&&p.pathname.endsWith('/exec')}catch{return false}}
 function status(t,k=''){
@@ -138,7 +162,14 @@ function tv(){
   }
 }
 function announceEditor(){const e=$('announcementInput');if(!dirty&&document.activeElement!==e)e.value=S.announcement||DEFAULT;$('announcementCount').textContent=e.value.length.toLocaleString('en-US')+' / 2,500 characters'}
-function guideEditor(){if(!guideDirty&&document.activeElement!==$('guideText'))$('guideText').value=S.queueGuide||DEFAULT_GUIDE}
+function currentQueueGuide(){
+ if(S.queueGuideSupported===true)return String(S.queueGuide||DEFAULT_GUIDE);
+ try{return String(localStorage.getItem('tqQueueGuideLocalDraft')||S.queueGuide||DEFAULT_GUIDE)}
+ catch{return String(S.queueGuide||DEFAULT_GUIDE)}
+}
+function guideEditor(){
+ if(!guideDirty&&document.activeElement!==$('guideText'))$('guideText').value=currentQueueGuide();
+}
 function metrics(){
   $('metricWindows').textContent=connectionHealthy?String(S.windowCount||0):'—';
   $('metricWait').textContent=connectionHealthy?String((S.waiting||[]).length):'—';
@@ -297,7 +328,9 @@ async function refresh(silent=false){
     refreshFailures=0;connectionHealthy=true;
     S={...S,...response.state,
        transactions:Array.isArray(response.state?.transactions)?response.state.transactions:[],
-       transactionTypes:response.state?.transactionTypes||response.state?.transactions||[]};
+       transactionTypes:response.state?.transactionTypes||response.state?.transactions||[],
+       queueGuideSupported:response.state?.queueGuideSupported===true,
+       scanReportSupported:response.state?.scanReportSupported===true};
     hasLoaded=true;
     render();
     if(!COMPATIBLE.has(S.version))
@@ -321,15 +354,25 @@ async function refresh(silent=false){
 function ding(){try{const A=window.AudioContext||window.webkitAudioContext;audio=audio||new A();audio.resume?.();
  const t=audio.currentTime;[[660,0],[880,.18]].forEach(([f,offset])=>{const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=f;g.gain.setValueAtTime(.001,t+offset);g.gain.exponentialRampToValueAtTime(.2,t+offset+.03);g.gain.exponentialRampToValueAtTime(.001,t+offset+.25);o.connect(g);g.connect(audio.destination);o.start(t+offset);o.stop(t+offset+.27)})}catch{}}
 function speakQueueInstructions(message){
- if(!armed||!('speechSynthesis' in window))return false;
+ if(!armed||!('speechSynthesis' in window)||typeof SpeechSynthesisUtterance==='undefined')return false;
  try{
    speechSynthesis.cancel();
    ding();
-   const utterance=new SpeechSynthesisUtterance(String(message||DEFAULT_GUIDE));
-   utterance.lang='fil-PH';utterance.rate=.9;utterance.pitch=1;
-   const tagalogVoice=speechSynthesis.getVoices().find(v=>/^(fil|tl)(-|_)/i.test(v.lang));
-   if(tagalogVoice)utterance.voice=tagalogVoice;
-   speechSynthesis.speak(utterance);
+   const content=String(message||DEFAULT_GUIDE).trim();
+   if(!content)return false;
+   // Short utterances avoid browsers dropping long Taglish announcements.
+   const segments=content.match(/[^.!?]+[.!?]?/g)||[content];
+   const voices=speechSynthesis.getVoices?speechSynthesis.getVoices():[];
+   const filipino=voices.find(v=>/^(fil|tl)(-|_)/i.test(v.lang));
+   const fallback=voices.find(v=>/^en[-_]PH/i.test(v.lang));
+   for(const sentence of segments){
+     const text=sentence.trim();if(!text)continue;
+     const u=new SpeechSynthesisUtterance(text);
+     u.lang=filipino?.lang||fallback?.lang||'fil-PH';
+     if(filipino||fallback)u.voice=filipino||fallback;
+     u.rate=.91;u.pitch=1;
+     speechSynthesis.speak(u);
+   }
    return true;
  }catch(e){return false}
 }
@@ -458,7 +501,7 @@ async function saveAnnouncement(value){
 $('guideEdit').onclick=()=>{
  const showing=$('guideEditor').classList.contains('hide');
  $('guideEditor').classList.toggle('hide',!showing);
- if(showing){guideDirty=false;$('guideText').value=S.queueGuide||DEFAULT_GUIDE;$('guideText').focus()}
+ if(showing){guideDirty=false;$('guideText').value=currentQueueGuide();$('guideText').focus()}
 };
 $('guideCancel').onclick=()=>{guideDirty=false;$('guideEditor').classList.add('hide');guideEditor()};
 $('guideText').oninput=()=>{guideDirty=true};
@@ -467,28 +510,62 @@ $('guideSave').onclick=async()=>{
  if(!value||value.length>1300){
    $('guideStatus').textContent='Enter 1–1,300 characters for the instructions.';return;
  }
- if(!ready()){ $('guideStatus').textContent='Connect and deploy the latest Apps Script before saving instructions.';return }
  const btn=$('guideSave');btn.disabled=true;
  try{
+   if(!connectionHealthy||S.queueGuideSupported!==true){
+     try{localStorage.setItem('tqQueueGuideLocalDraft',value)}
+     catch{throw Error('Browser storage is disabled. The instructions could not be saved locally.')}
+     S.queueGuide=value;guideDirty=false;
+     $('guideEditor').classList.add('hide');
+     $('guideStatus').textContent='Saved on this device only. To synchronize instructions across TV devices, deploy the updated Apps Script Code.gs.';
+     return;
+   }
    const result=await jp('setQueueGuide',{message:value});
    if(!result.ok)throw Error(result.error||'Unable to save instructions.');
    S.queueGuide=result.queueGuide;guideDirty=false;
+   try{localStorage.removeItem('tqQueueGuideLocalDraft')}catch{}
    $('guideEditor').classList.add('hide');
-   $('guideStatus').textContent='Queue instructions saved for the TV.';
+   $('guideStatus').textContent='Queue instructions saved to the shared Google Sheet for TV playback.';
    await refresh(true);
- }catch(e){$('guideStatus').textContent=String(e.message||e)}
- finally{btn.disabled=false}
+ }catch(e){
+   $('guideStatus').textContent='Unable to synchronize instructions. '+String(e.message||e);
+ }finally{btn.disabled=false}
 };
 $('guidePlay').onclick=async()=>{
- if(!ready()){$('guideStatus').textContent='Apps Script needs to be connected for remote TV playback.';return}
- const btn=$('guidePlay');btn.disabled=true;btn.textContent='Sending to TV…';
+ const btn=$('guidePlay');
+ if(btn.disabled)return;
+ const preview=()=>{
+   if(!('speechSynthesis' in window)||typeof SpeechSynthesisUtterance==='undefined')return false;
+   armed=true;
+   try{localStorage.setItem('tqSound','1')}catch{}
+   return speakQueueInstructions(currentQueueGuide());
+ };
+ if(!connectionHealthy||S.queueGuideSupported!==true){
+   if(localTvChannel&&Date.now()-lastLocalTvSeen<16000){
+     localTvChannel.postMessage({type:'play-instructions',text:currentQueueGuide(),sentAt:Date.now()});
+     $('guideStatus').textContent='Sent to an open TV Display tab on this browser. Enable/Test Sound must have been clicked on that TV tab. For a TV on a different device, deploy the updated Apps Script.';
+     return;
+   }
+   const played=preview(); // Starts inside the click so browser voice is allowed.
+   $('guideStatus').textContent=played?
+     'Instructions are playing on THIS device. Playback on a separate TV requires the updated Apps Script deployment and enabled TV sound.':
+     'Cannot play audio on this device. Enable browser speech/audio and deploy the updated Apps Script for remote TV playback.';
+   return;
+ }
+ btn.disabled=true;btn.textContent='Sending to TV…';
  try{
    const result=await jp('playQueueGuide');
-   if(!result.ok)throw Error(result.error||'TV playback was not confirmed.');
-   $('guideStatus').textContent='Instructions sent. Make sure sound was enabled on the TV browser.';
+   if(!result.ok)throw Error(result.error||'TV playback could not be requested.');
+   $('guideStatus').textContent='Instruction broadcast sent to the TV. The TV browser must be open with sound enabled for speech to play.';
    await refresh(true);
- }catch(e){$('guideStatus').textContent=String(e.message||e)}
- finally{btn.disabled=false;btn.textContent='Play Queue Instructions on TV'}
+ }catch(e){
+   const played=preview();
+   $('guideStatus').textContent=played?
+     'Remote TV playback failed; playing the instructions on THIS device instead. Check the latest Apps Script deployment and the TV audio settings.':
+     'Remote TV playback failed and this browser cannot provide audio. Check the Apps Script deployment.';
+ }finally{
+   btn.disabled=false;btn.textContent='Play Queue Instructions on TV';
+ }
 };
 $('announcementSave').onclick=()=>saveAnnouncement($('announcementInput').value);
 $('announcementReset').onclick=()=>saveAnnouncement(DEFAULT);

@@ -42,7 +42,7 @@ function doGet(e){
         .setTitle('TIPON TAWAG - Manage Pre-Employment Requirements');
     }
     let r;switch(action){
-      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v10'};break;
+      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v10',queueGuideSupported:true,scanReportSupported:typeof saveScanReport_==='function'&&typeof doPost==='function'&&typeof issueApplicantToken_==='function'};break;
       case'state':r={ok:true,state:state_(p)};break;
       case'publicConfig':r=publicConfig_();break;
       case'requirements':r=requirementsConfig_();break;
@@ -375,6 +375,8 @@ function state_(p){
     announcement:settingMap.get('ANNOUNCEMENT')?.trim()||DEFAULT_ANNOUNCEMENT,
      queueGuide:settingMap.get('QUEUE_GUIDE')?.trim()||DEFAULT_QUEUE_GUIDE,
      queueGuideCue:settingMap.get('QUEUE_GUIDE_CUE')?.trim()||'',
+     queueGuideSupported:true,
+     scanReportSupported:typeof saveScanReport_==='function'&&typeof doPost==='function'&&typeof issueApplicantToken_==='function',
     federationMode:true,version:'federation-v10'};
   try{
     const json=JSON.stringify(result);
