@@ -50,7 +50,10 @@ function syncEntryState(){
  $('scanNo').disabled=!allowed;
  $('scanYesLabel').classList.toggle('scan-opt-disabled',!allowed);
  $('scanNoLabel').classList.toggle('scan-opt-disabled',!allowed);
- $('scanEntryHint').classList.toggle('hide',allowed||service!=='recruitment');
+ $('scanEntryHint').textContent=allowed?
+   'Select Yes to check your documents or No to get a queue number.':
+   'Complete your first name, last name, recruitment transaction, and position to choose an option.';
+ $('scanEntryHint').classList.toggle('hide',service!=='recruitment'||(allowed&&decision!==''));
  if(!allowed&&decision!==''){
    // Reset the selection and discard temporary documents if any required field is cleared.
    reset();
@@ -293,11 +296,11 @@ function init(){
      return;
    }
    decision='yes';consent=$('privacyAgree').checked;reviewReady=false;
-   updateSubmit();void refreshRequirements();
+   syncEntryState();void refreshRequirements();
  });
  $('scanNo').addEventListener('change',()=>{
    if(!detailsComplete()){reset();syncEntryState();return}
-   decision='no';clearPhotos();consent=false;$('privacyAgree').checked=false;updateSubmit();
+   decision='no';clearPhotos();consent=false;$('privacyAgree').checked=false;syncEntryState();
  });
  $('privacyAgree').addEventListener('change',()=>{consent=$('privacyAgree').checked;if(!consent)invalidateReview();updateSubmit()});
  $('scanStart').addEventListener('click',openCamera);
@@ -331,9 +334,16 @@ function init(){
  for(const btn of [$('chooseRecruitment'),$('chooseMember')])btn.addEventListener('click',setService);
  $('another').addEventListener('click',reset);
  $('queueForm').addEventListener('submit',e=>{
-   if(service==='recruitment'&&decision==='yes'&&(!detailsComplete()||!reviewReady||!$('applicantFieldsConfirmed').checked)){
+   if(service!=='recruitment')return;
+   if(!detailsComplete()||decision===''){
      e.preventDefault();e.stopImmediatePropagation();
-     note('Capture your documents and run the document check before requesting your queue number.');
+     syncEntryState();
+     $('scanDecision').scrollIntoView({behavior:'smooth',block:'center'});
+     return;
+   }
+   if(decision==='yes'&&(!reviewReady||!$('applicantFieldsConfirmed').checked)){
+     e.preventDefault();e.stopImmediatePropagation();
+     note('Capture your documents and complete the document review before requesting your queue number.');
      $('scanBox').scrollIntoView({behavior:'smooth',block:'center'});
    }
  },true);
