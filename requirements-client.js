@@ -3,7 +3,7 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
 const C=window.TIPON_CONFIG||{};
-let seq=0, service='recruitment',decision='no',consent=false;
+let seq=0, service='recruitment',decision='',consent=false;
 let photos=[],requirements=[],captureStream=null,reviewReady=false,reviewBusy=false;
 let configAvailable=false,worker=null,workerLoading=null;
 const api=()=>new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||'';
@@ -47,10 +47,15 @@ function detailsComplete(){
 function syncEntryState(){
  const allowed=detailsComplete();
  $('scanYes').disabled=!allowed;
+ $('scanNo').disabled=!allowed;
  $('scanYesLabel').classList.toggle('scan-opt-disabled',!allowed);
- $('scanEntryHint').classList.toggle('hide',allowed||service!=='recruitment');
- if(!allowed&&decision==='yes'){
-   // A previously consented capture must not be reused for a different applicant.
+ $('scanNoLabel').classList.toggle('scan-opt-disabled',!allowed);
+ $('scanEntryHint').textContent=allowed?
+   'Select Yes to check your documents or No to get a queue number.':
+   'Complete your first name, last name, recruitment transaction, and position to choose an option.';
+ $('scanEntryHint').classList.toggle('hide',service!=='recruitment'||(allowed&&decision!==''));
+ if(!allowed&&decision!==''){
+   // Reset the selection and discard temporary documents if any required field is cleared.
    reset();
  }
  updateSubmit();
@@ -58,7 +63,7 @@ function syncEntryState(){
 function note(text){$('scanNotice').textContent=text}
 function updateSubmit(){
  const isRecruitment=service==='recruitment';
- const show=!isRecruitment||decision==='no'||(decision==='yes'&&detailsComplete()&&consent&&reviewReady&&$('applicantFieldsConfirmed')?.checked===true);
+ const show=!isRecruitment||(detailsComplete()&&(decision==='no'||(decision==='yes'&&consent&&reviewReady&&$('applicantFieldsConfirmed')?.checked===true)));
  $('submit').classList.toggle('hide',!show);
  if(show)$('submit').textContent='GET QUEUE NUMBER';
  $('scanDecision').classList.toggle('hide',!isRecruitment);
@@ -77,7 +82,7 @@ function setService(){
  if(next!==service){
    closeCamera();
    photos.forEach(p=>URL.revokeObjectURL(p.url));photos=[];
-   decision='no';consent=false;$('scanNo').checked=true;$('scanYes').checked=false;
+   decision='';consent=false;$('scanNo').checked=false;$('scanYes').checked=false;
    $('privacyAgree').checked=false;invalidateReview();renderGallery();
  }
  service=next;syncEntryState();
@@ -87,8 +92,8 @@ function clearPhotos(){
  renderGallery();invalidateReview();note('');
 }
 function reset(){
- clearPhotos();decision='no';consent=false;$('scanNo').checked=true;$('scanYes').checked=false;
- $('privacyAgree').checked=false;window.dispatchEvent(new CustomEvent('tipon:scan-reset'));updateSubmit();
+ clearPhotos();decision='';consent=false;$('scanNo').checked=false;$('scanYes').checked=false;
+ $('privacyAgree').checked=false;window.dispatchEvent(new CustomEvent('tipon:scan-reset'));syncEntryState();
 }
 function renderGallery(){
  $('scanPhotoCount').textContent=photos.length+' photo'+(photos.length===1?'':'s')+' captured';
@@ -273,25 +278,29 @@ async function refreshRequirements(){
    if(Array.isArray(edited)){requirements=edited;source='LOCAL BROWSER DEMO'}
  }catch{}
  requirements=requirements.map(r=>({...r,keywords:(source==='PUBLIC TEST SNAPSHOT'&&r.keywords===r.name&&DEMO_TERMS[String(r.name).toUpperCase()])||r.keywords||r.name}));
- $('scanConfigMessage').textContent=requirements.length?
-   (source==='LIVE'?'Required documents for your selected transaction: ':'Document checklist for this transaction (trial): ')+applicable().length+' item(s). Photos are scanned on this device only.':
-   'The recruiter has not configured a checklist for this transaction. You can still capture photos for review.';
+ const count=applicable().length;
+ $('scanConfigMessage').textContent=count>0?
+   'Please capture clear photos of your '+count+' required document'+(count===1?'':'s')+'. Photos are scanned on this device only.':
+   requirements.length?
+   'No documents are required for this recruitment transaction. You may still capture supporting documents.':
+   'There are no configured requirements for this transaction. Please confirm with the recruiter.';
  renderExpected();
 }
 function init(){
  if(!$('scanDecision'))return;
  $('scanYes').addEventListener('change',()=>{
    if(!detailsComplete()){
-     $('scanYes').checked=false;$('scanNo').checked=true;decision='no';syncEntryState();
+     $('scanYes').checked=false;$('scanNo').checked=false;decision='';syncEntryState();
      const field=['firstName','lastName','position'].map(id=>$(id)).find(el=>!el.value.trim());
      (field||$('transaction')).focus();
      return;
    }
    decision='yes';consent=$('privacyAgree').checked;reviewReady=false;
-   updateSubmit();void refreshRequirements();
+   syncEntryState();void refreshRequirements();
  });
  $('scanNo').addEventListener('change',()=>{
-   decision='no';clearPhotos();consent=false;$('privacyAgree').checked=false;updateSubmit();
+   if(!detailsComplete()){reset();syncEntryState();return}
+   decision='no';clearPhotos();consent=false;$('privacyAgree').checked=false;syncEntryState();
  });
  $('privacyAgree').addEventListener('change',()=>{consent=$('privacyAgree').checked;if(!consent)invalidateReview();updateSubmit()});
  $('scanStart').addEventListener('click',openCamera);
@@ -325,9 +334,16 @@ function init(){
  for(const btn of [$('chooseRecruitment'),$('chooseMember')])btn.addEventListener('click',setService);
  $('another').addEventListener('click',reset);
  $('queueForm').addEventListener('submit',e=>{
-   if(service==='recruitment'&&decision==='yes'&&(!detailsComplete()||!reviewReady||!$('applicantFieldsConfirmed').checked)){
+   if(service!=='recruitment')return;
+   if(!detailsComplete()||decision===''){
      e.preventDefault();e.stopImmediatePropagation();
-     note('Capture your documents and run the document check before requesting your queue number.');
+     syncEntryState();
+     $('scanDecision').scrollIntoView({behavior:'smooth',block:'center'});
+     return;
+   }
+   if(decision==='yes'&&(!reviewReady||!$('applicantFieldsConfirmed').checked)){
+     e.preventDefault();e.stopImmediatePropagation();
+     note('Capture your documents and complete the document review before requesting your queue number.');
      $('scanBox').scrollIntoView({behavior:'smooth',block:'center'});
    }
  },true);

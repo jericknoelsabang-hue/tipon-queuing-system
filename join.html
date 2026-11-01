@@ -3,7 +3,7 @@
 <title>Get Your Number | tipón TAWAG</title><meta name="description" content="tipón TAWAG: Bawat tawag, may malasakit. Register for Recruitment or Member Concern."><link rel="icon" href="assets/tipon-mark.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=10.0">
+<link rel="stylesheet" href="styles.css?v=11.0">
 <style>
 body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-gradient(180deg,#f6fbfd,#edf5fa)}
 .join-top{height:6px;background:linear-gradient(90deg,#0a81b4 0 63%,#ffc258 63% 82%,#e2544f 82%)}
@@ -154,7 +154,7 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
  #scanBox .scan-expected-chip{font-size:10px;padding:7px 11px}
 }
 </style>
-<script defer src="config.js"></script><script defer src="applicant-fields.js?v=1"></script><script defer src="join.js?v=10.0"></script><script defer src="requirements-client.js?v=4.0"></script>
+<script defer src="config.js"></script><script defer src="applicant-fields.js?v=1"></script><script defer src="join.js?v=11.0"></script><script defer src="requirements-client.js?v=5.0"></script>
 <style>
 .applicant-fields-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:9px;margin:14px 0}
 .applicant-fields-grid label{font-size:11px;font-weight:700;color:#234e60}
@@ -179,7 +179,7 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
     <form id="queueForm"><div class="grid queue-fields">
       <label class="field" for="firstName">First Name *<input id="firstName" name="firstName" autocomplete="given-name" maxlength="50" required></label>
       <label class="field" for="lastName">Last Name *<input id="lastName" name="lastName" autocomplete="family-name" maxlength="50" required></label>
-      <label id="transactionField" class="field" for="transaction">Recruitment Transaction *<select id="transaction" name="transaction" required><option value="NH">NH - New Hire</option><option value="RH">RH - Rehire</option><option value="TR">TR - Transfer</option></select></label>
+      <label id="transactionField" class="field" for="transaction">Recruitment Transaction *<select id="transaction" name="transaction" required><option value="" selected disabled>Select recruitment transaction</option></select></label>
       <label class="field" id="positionField" for="position">Position *<input id="position" name="position" maxlength="80" placeholder="e.g. Production Worker" required></label>
     </div>
     <div id="concernOptions" class="field hide">
@@ -191,7 +191,7 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
       <p>Would you like to check your documents before getting a queue number?</p>
       <div class="scan-choice" role="group" aria-label="Choose whether to check your documents">
         <label id="scanYesLabel" class="scan-opt scan-opt-disabled"><input type="radio" name="scanChoice" id="scanYes" disabled> Yes, check my requirements</label>
-        <label class="scan-opt"><input type="radio" name="scanChoice" id="scanNo" checked> No, get my queue number</label>
+        <label id="scanNoLabel" class="scan-opt scan-opt-disabled"><input type="radio" name="scanChoice" id="scanNo" disabled> No, get my queue number</label>
       </div>
       <p id="scanEntryHint" class="scan-entry-hint" role="status">Complete your first name, last name, recruitment transaction, and position to enable document checking.</p>
     </section>
