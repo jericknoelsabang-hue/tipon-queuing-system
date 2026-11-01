@@ -455,6 +455,41 @@ async function saveAnnouncement(value){
     await refresh(true);
   }catch(e){error(e,true)}finally{btn.disabled=false;btn.textContent='Save Announcement'}
 }
+$('guideEdit').onclick=()=>{
+ const showing=$('guideEditor').classList.contains('hide');
+ $('guideEditor').classList.toggle('hide',!showing);
+ if(showing){guideDirty=false;$('guideText').value=S.queueGuide||DEFAULT_GUIDE;$('guideText').focus()}
+};
+$('guideCancel').onclick=()=>{guideDirty=false;$('guideEditor').classList.add('hide');guideEditor()};
+$('guideText').oninput=()=>{guideDirty=true};
+$('guideSave').onclick=async()=>{
+ const value=$('guideText').value.trim();
+ if(!value||value.length>1300){
+   $('guideStatus').textContent='Enter 1–1,300 characters for the instructions.';return;
+ }
+ if(!ready()){ $('guideStatus').textContent='Connect and deploy the latest Apps Script before saving instructions.';return }
+ const btn=$('guideSave');btn.disabled=true;
+ try{
+   const result=await jp('setQueueGuide',{message:value});
+   if(!result.ok)throw Error(result.error||'Unable to save instructions.');
+   S.queueGuide=result.queueGuide;guideDirty=false;
+   $('guideEditor').classList.add('hide');
+   $('guideStatus').textContent='Queue instructions saved for the TV.';
+   await refresh(true);
+ }catch(e){$('guideStatus').textContent=String(e.message||e)}
+ finally{btn.disabled=false}
+};
+$('guidePlay').onclick=async()=>{
+ if(!ready()){$('guideStatus').textContent='Apps Script needs to be connected for remote TV playback.';return}
+ const btn=$('guidePlay');btn.disabled=true;btn.textContent='Sending to TV…';
+ try{
+   const result=await jp('playQueueGuide');
+   if(!result.ok)throw Error(result.error||'TV playback was not confirmed.');
+   $('guideStatus').textContent='Instructions sent. Make sure sound was enabled on the TV browser.';
+   await refresh(true);
+ }catch(e){$('guideStatus').textContent=String(e.message||e)}
+ finally{btn.disabled=false;btn.textContent='Play Queue Instructions on TV'}
+};
 $('announcementSave').onclick=()=>saveAnnouncement($('announcementInput').value);
 $('announcementReset').onclick=()=>saveAnnouncement(DEFAULT);
 $('addWin').onclick=()=>operate('addWindow');
