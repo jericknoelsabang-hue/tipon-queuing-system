@@ -90,7 +90,7 @@ function clearPhotos(){
 }
 function reset(){
  clearPhotos();decision='';consent=false;$('scanNo').checked=false;$('scanYes').checked=false;
- $('privacyAgree').checked=false;window.dispatchEvent(new CustomEvent('tipon:scan-reset'));updateSubmit();
+ $('privacyAgree').checked=false;window.dispatchEvent(new CustomEvent('tipon:scan-reset'));syncEntryState();
 }
 function renderGallery(){
  $('scanPhotoCount').textContent=photos.length+' photo'+(photos.length===1?'':'s')+' captured';
