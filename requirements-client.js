@@ -275,7 +275,7 @@ async function review(){
  }
  const captured=photos.length;
  const reviewed=applicable().map(req=>({
-   id:req.id,
+   id:req.id,name:req.name,
    status:scannerAvailable?assess(readings,req).status:'SCANNER_UNAVAILABLE'
  }));
  // Save only document-status codes after a queue ticket exists. Raw images
