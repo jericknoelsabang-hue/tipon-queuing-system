@@ -48,25 +48,32 @@ window.addEventListener('tipon:scan-reviewed',e=>{
 });
 window.addEventListener('tipon:scan-reset',()=>{pending=null;epoch++});
 window.addEventListener('tipon:ticket',async e=>{
- const {ticket,duplicate,intakeToken}=e.detail||{};
+ const {ticket,intakeToken}=e.detail||{};
  if(!ticket?.ticketId||!pending)return;
- const current=pending;pending=null;const ticketEpoch=epoch;
- const target=$('receiptText');
- const setStatus=(message)=>{
-   if(epoch!==ticketEpoch||!target)return;
-   const existing=target.querySelector('.scan-receipt-note');if(existing)existing.remove();
-   const note=document.createElement('span');note.className='scan-receipt-note';note.textContent=' '+message;target.appendChild(note);
+ const review=pending;pending=null;
+ const ticketEpoch=epoch;
+ const display=(kind,message)=>{
+   if(epoch!==ticketEpoch)return;
+   const el=$('scanSyncStatus');if(!el)return;
+   el.dataset.state=kind;
+   el.textContent=message;
+   el.classList.remove('hide');
  };
  if(!intakeToken){
-   setStatus('Document checklist was not synchronized. The recruiter will review your documents.');
+   display('error',
+     'Not saved to Google Sheets. The Apps Script deployment does not yet support document-check synchronization. Please ask the recruiter to verify the originals.');
    return;
  }
- setStatus('Saving your document-check status…');
+ display('pending','Saving your preliminary document-check results to the recruitment database…');
  try{
-   const res=await postScan(intakeToken,current);
-   if(res.ok)setStatus('Document checklist saved for recruiter review. Bring the original documents.');
+   const res=await postScan(intakeToken,review);
+   if(res.ok)display('saved',
+     'Document-check results saved to Google Sheets for recruiter review. Bring the original documents.');
+   else display('error',
+     'The recruitment database did not confirm the save. Please show your documents to the recruiter.');
  }catch(error){
-   setStatus('Document checklist was not saved. Please ask the recruiter to review the original documents.');
+   display('error',
+     'Document-check results were not saved to Google Sheets. The recruiter must check your original documents.');
  }
 });
 })();
