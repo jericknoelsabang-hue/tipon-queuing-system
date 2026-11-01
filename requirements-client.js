@@ -30,18 +30,36 @@ function matchesTx(r,tx){
  return old.split(/[;,|]/).map(s=>s.trim()).includes(tx);
 }
 function applicable(){const tx=$('transaction').value;return requirements.filter(r=>matchesTx(r,tx))}
+function detailsComplete(){
+ return service==='recruitment'&&Boolean(
+   $('firstName').value.trim()&&$('lastName').value.trim()&&
+   $('transaction').value.trim()&&$('position').value.trim());
+}
+function syncEntryState(){
+ const allowed=detailsComplete();
+ $('scanYes').disabled=!allowed;
+ $('scanYesLabel').classList.toggle('scan-opt-disabled',!allowed);
+ $('scanEntryHint').classList.toggle('hide',allowed||service!=='recruitment');
+ if(!allowed&&decision==='yes'){
+   // A previously consented capture must not be reused for a different applicant.
+   reset();
+ }
+ updateSubmit();
+}
 function note(text){$('scanNotice').textContent=text}
 function updateSubmit(){
  const isRecruitment=service==='recruitment';
- const show=!isRecruitment||decision==='no'||(decision==='yes'&&consent&&reviewReady&&$('applicantFieldsConfirmed')?.checked===true);
+ const show=!isRecruitment||decision==='no'||(decision==='yes'&&detailsComplete()&&consent&&reviewReady&&$('applicantFieldsConfirmed')?.checked===true);
  $('submit').classList.toggle('hide',!show);
  if(show)$('submit').textContent='GET QUEUE NUMBER';
  $('scanDecision').classList.toggle('hide',!isRecruitment);
- $('scanBox').classList.toggle('hide',!isRecruitment||decision!=='yes');
+ $('scanBox').classList.toggle('hide',!isRecruitment||decision!=='yes'||!detailsComplete());
  $('scanControls').classList.toggle('hide',!consent);
 }
 function invalidateReview(){
  reviewReady=false;$('scanReport').classList.add('hide');$('scanProgress').classList.add('hide');
+ if($('applicantFieldsConfirmed'))$('applicantFieldsConfirmed').checked=false;
+ window.dispatchEvent(new CustomEvent('tipon:scan-reset'));
  updateSubmit();
 }
 function setService(){
@@ -52,7 +70,7 @@ function setService(){
    decision='no';consent=false;$('scanNo').checked=true;$('scanYes').checked=false;
    $('privacyAgree').checked=false;invalidateReview();renderGallery();
  }
- service=next;updateSubmit();
+ service=next;syncEntryState();
 }
 function clearPhotos(){
  closeCamera();photos.forEach(p=>URL.revokeObjectURL(p.url));photos=[];
@@ -60,7 +78,7 @@ function clearPhotos(){
 }
 function reset(){
  clearPhotos();decision='no';consent=false;$('scanNo').checked=true;$('scanYes').checked=false;
- $('privacyAgree').checked=false;updateSubmit();
+ $('privacyAgree').checked=false;window.dispatchEvent(new CustomEvent('tipon:scan-reset'));updateSubmit();
 }
 function renderGallery(){
  $('scanPhotoCount').textContent=photos.length+' photo'+(photos.length===1?'':'s')+' captured';
@@ -74,6 +92,7 @@ function closeCamera(){
  document.body.style.overflow='';
 }
 async function openCamera(){
+ if(!detailsComplete()){note('Complete your name, recruitment transaction and position before opening the document camera.');return}
  if(!consent){note('Please check the privacy consent box before opening the camera.');return}
  $('scanCamera').classList.remove('hide');document.body.style.overflow='hidden';
  $('scanCameraStatus').textContent='Opening your camera…';
@@ -237,7 +256,14 @@ async function refreshRequirements(){
 function init(){
  if(!$('scanDecision'))return;
  $('scanYes').addEventListener('change',()=>{
-   decision='yes';consent=$('privacyAgree').checked;reviewReady=false;updateSubmit();void refreshRequirements();
+   if(!detailsComplete()){
+     $('scanYes').checked=false;$('scanNo').checked=true;decision='no';syncEntryState();
+     const field=['firstName','lastName','position'].map(id=>$(id)).find(el=>!el.value.trim());
+     (field||$('transaction')).focus();
+     return;
+   }
+   decision='yes';consent=$('privacyAgree').checked;reviewReady=false;
+   updateSubmit();void refreshRequirements();
  });
  $('scanNo').addEventListener('change',()=>{
    decision='no';clearPhotos();consent=false;$('privacyAgree').checked=false;updateSubmit();
@@ -260,11 +286,21 @@ function init(){
  });
  $('scanReview').addEventListener('click',review);
  $('applicantFieldsConfirmed').addEventListener('change',updateSubmit);
- $('transaction').addEventListener('change',()=>{clearPhotos();void refreshRequirements()});
+ // Any applicant identity, position, or transaction change invalidates a previous scan.
+ for(const id of ['firstName','lastName','position']){
+   $(id).addEventListener('input',()=>{
+     if(decision==='yes'&&(consent||photos.length||reviewReady))reset();
+     syncEntryState();
+   });
+ }
+ $('transaction').addEventListener('change',()=>{
+   if(decision==='yes')reset();else clearPhotos();
+   syncEntryState();void refreshRequirements();
+ });
  for(const btn of [$('chooseRecruitment'),$('chooseMember')])btn.addEventListener('click',setService);
  $('another').addEventListener('click',reset);
  $('queueForm').addEventListener('submit',e=>{
-   if(service==='recruitment'&&decision==='yes'&&(!reviewReady||!$('applicantFieldsConfirmed').checked)){
+   if(service==='recruitment'&&decision==='yes'&&(!detailsComplete()||!reviewReady||!$('applicantFieldsConfirmed').checked)){
      e.preventDefault();e.stopImmediatePropagation();
      note('Capture your documents and run the document check before requesting your queue number.');
      $('scanBox').scrollIntoView({behavior:'smooth',block:'center'});
@@ -272,7 +308,7 @@ function init(){
  },true);
  document.addEventListener('visibilitychange',()=>{if(document.hidden)closeCamera()});
  window.addEventListener('pagehide',()=>{closeCamera();photos.forEach(p=>URL.revokeObjectURL(p.url))});
- renderGallery();updateSubmit();void refreshRequirements();
+ renderGallery();syncEntryState();void refreshRequirements();
 }
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init):init();
 })();
