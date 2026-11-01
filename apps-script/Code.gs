@@ -1,20 +1,19 @@
-const CFG={spreadsheetId:'1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik',queue:'QUEUE',windows:'WINDOWS',tx:'TRANSACTION_TYPES',mpc:'MPC_CONFIG',settings:'SETTINGS',precheck:'PRECHECK',maxWindows:20};
+const CFG={spreadsheetId:'1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik',queue:'QUEUE',windows:'WINDOWS',tx:'TRANSACTION_TYPES',mpc:'MPC_CONFIG',settings:'SETTINGS',maxWindows:20};
 const QH=['Ticket ID','Queue Date','Created At','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Status','Window','Called At','Completed At','Last Recalled At','First Name','Last Name','Recruiter'];
 const WH=['Window','Active Ticket ID','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Called At','Updated At','Queue Row'];
 const TH=['Code','Transaction Name','Active','Sort Order'];
 const MH=['MPC Code','MPC Name','Queue Prefix','Logo URL','Active','Sort Order'];
 const DEFAULT_ANNOUNCEMENT='Please keep your queue number until called.';
+const DEFAULT_QUEUE_GUIDE='Hello, mga ka-miyembro! Sa mga bagong dating na wala pang queuing number, i-scan ang QR code na nakikita sa screen. Piliin ang inyong service. Para sa Recruitment, ilagay ang First Name, Last Name, Recruitment Transaction, at Position, pagkatapos ay pindutin ang Get Queue Number. Para sa Member Concern, ilagay ang First Name, Last Name, at Type of Concern, pagkatapos ay pindutin ang Get Queue Number. Kapag mayroon na kayong queue number, please keep your queue number until called.';
 const SH=['Setting','Value','Updated At'];
-const PH=['Precheck ID','Date','Precheck Reference','First Name','Last Name','Transaction Code','Position / Purpose','Applicant','Self-Checklist','Status','Submitted At','Reviewed At','Staff Note','Queue No'];
 // Recruitment requirements: blank by default. A staff-provided title drives an editable, rule-based OCR profile.
 const RH2=['Requirement ID','Requirement Name','Transaction Code','Required','Active','Recognition Keywords','Created At','Updated At'];
 const RSCAN=['Scan ID','Ticket ID','Queue No','Transaction Code','Requirement ID','Requirement Name','Scan Status','Photo Captured','Scan Method','Client Timestamp','Saved At','Recruiter Review','Notes'];
-const RX=['Extraction ID','Ticket ID','Queue No','Requirement ID','Field','Value','Source','Recruiter Verified','Saved At'];
 
 function setupTiponQueueSystem(){
   const ss=SpreadsheetApp.openById(CFG.spreadsheetId);
-  ensure_(ss,CFG.queue,QH);ensure_(ss,CFG.windows,WH);ensure_(ss,CFG.tx,TH);ensure_(ss,CFG.settings,SH);ensure_(ss,CFG.precheck,PH);
-  ensure_(ss,'REQUIREMENTS_CONFIG',RH2);ensure_(ss,'REQUIREMENT_SCANS',RSCAN);ensure_(ss,'APPLICANT_EXTRACTIONS',RX);
+  ensure_(ss,CFG.queue,QH);ensure_(ss,CFG.windows,WH);ensure_(ss,CFG.tx,TH);ensure_(ss,CFG.settings,SH);
+  ensure_(ss,'REQUIREMENTS_CONFIG',RH2);ensure_(ss,'REQUIREMENT_SCANS',RSCAN);
   if(typeof initApplicantDb_==='function')initApplicantDb_();
   const w=ss.getSheetByName(CFG.windows);
   if(w.getLastRow()<2)for(let i=1;i<=4;i++)w.getRange(i+1,1).setValue(i);
@@ -62,6 +61,8 @@ function doGet(e){
       case'restoreTx':r=restoreTx_(p);break;
       case'addTx':r=addTx_(p);break;
       case'setAnnouncement':r=setAnnouncement_(p);break;
+       case'setQueueGuide':r=setQueueGuide_(p);break;
+       case'playQueueGuide':r=playQueueGuide_();break;
       case'announcementChunk':r=announcementChunk_(p);break;
       default:throw Error('Unknown action');
     }
@@ -122,56 +123,6 @@ function issueTicket_(ss,tx,first,last,pos){
   const row=[id,today,now,num,'TIPON','TIPON Federation',wantedCode,tx.name,name,pos,'WAITING','','','','',first,last,''];
   q.appendRow(row);
   return{ok:true,duplicate:false,ticket:ticket_(row)};
-}
-function submitPrecheck_(p){
-  const first=txt_(p.firstName,50),last=txt_(p.lastName,50),position=txt_(p.position,80),tx=code_(p.transaction,6);
-  if(!first||!last||!position||!tx||tx==='MC')throw Error('Complete recruitment applicant details.');
-  if(String(p.hasId)!=='true'||String(p.hasDocuments)!=='true')throw Error('Complete the document checklist before requesting pre-screening.');
-  const lock=LockService.getScriptLock();lock.waitLock(30000);
-  try{
-    const ss=ss_(),t=findTx_(ss,tx);if(!t)throw Error('Invalid recruitment transaction.');
-    const today=day_(),q=ss.getSheetByName(CFG.queue),active=findActive_(q,today,first,last);
-    if(active)return{ok:true,status:'APPROVED',duplicate:true,ticket:ticket_(active)};
-    const sheet=ss.getSheetByName(CFG.precheck),rows=sheet.getLastRow()>1?sheet.getRange(2,1,sheet.getLastRow()-1,PH.length).getValues():[];
-    const pending=rows.find(r=>dayCell_(r[1])===today&&String(r[9])==='PENDING'&&nameKey_(r[3],r[4])===nameKey_(first,last));
-    if(pending)return{ok:true,status:'PENDING',duplicate:true,precheckId:String(pending[0]),reference:String(pending[2])};
-    const n=rows.filter(r=>dayCell_(r[1])===today).length+1,precheckId=Utilities.getUuid(),reference='PC-'+String(n).padStart(3,'0'),now=new Date();
-    sheet.appendRow([precheckId,today,reference,first,last,tx,position,first+' '+last,'ID and required documents self-confirmed','PENDING',now,'','','']);
-    return{ok:true,status:'PENDING',precheckId,reference,duplicate:false};
-  }finally{lock.releaseLock()}
-}
-function checkPrecheck_(p){
-  const id=txt_(p.precheckId,100);if(!id)throw Error('Missing pre-screening reference.');
-  const sheet=ss_().getSheetByName(CFG.precheck);
-  if(!sheet)throw Error('Pre-screening is not initialized.');
-  const row=findId_(sheet,id);if(row<2)throw Error('Pre-screening reference not found.');
-  const r=sheet.getRange(row,1,1,PH.length).getValues()[0];
-  return{ok:true,status:String(r[9]),reference:String(r[2]),queueNo:String(r[13]||''),note:String(r[12]||'')};
-}
-function reviewPrecheck_(p,approved){
-  const id=txt_(p.precheckId,100),note=txt_(p.note,160);
-  if(!id)throw Error('Select a pre-screening request.');
-  const lock=LockService.getScriptLock();lock.waitLock(30000);
-  try{
-    const ss=ss_(),sheet=ss.getSheetByName(CFG.precheck),row=findId_(sheet,id);
-    if(row<2)throw Error('Pre-screening request not found.');
-    const r=sheet.getRange(row,1,1,PH.length).getValues()[0];
-    if(String(r[9])!=='PENDING')throw Error('This pre-screening request was already reviewed.');
-    if(approved){
-      const tx=findTx_(ss,String(r[5]));if(!tx)throw Error('Transaction is no longer available.');
-      const res=issueTicket_(ss,tx,String(r[3]),String(r[4]),String(r[6]));
-      sheet.getRange(row,10,1,5).setValues([['APPROVED',r[10],new Date(),note,res.ticket.queueNo]]);
-      return{ok:true,status:'APPROVED',ticket:res.ticket};
-    }
-    sheet.getRange(row,10,1,5).setValues([['INCOMPLETE',r[10],new Date(),note||'Please complete your requirements.','']]);
-    return{ok:true,status:'INCOMPLETE'};
-  }finally{lock.releaseLock()}
-}
-function pendingPrechecks_(ss){
-  const sh=ss.getSheetByName(CFG.precheck);if(!sh||sh.getLastRow()<2)return[];
-  const today=day_();return sh.getRange(2,1,sh.getLastRow()-1,PH.length).getValues()
-    .filter(r=>dayCell_(r[1])===today&&String(r[9])==='PENDING')
-    .map(r=>({precheckId:String(r[0]),reference:String(r[2]),name:String(r[7]),transaction:String(r[5]),position:String(r[6]),submittedAt:iso_(r[10])})).slice(0,100);
 }
 function settingValue_(ss,key){
   const sh=ss.getSheetByName(CFG.settings);if(!sh||sh.getLastRow()<2)return '';
@@ -422,6 +373,8 @@ function state_(p){
   const result={windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,completed,
     transactions:activeTx,transactionTypes:txList,assignments,recruiters,
     announcement:settingMap.get('ANNOUNCEMENT')?.trim()||DEFAULT_ANNOUNCEMENT,
+     queueGuide:settingMap.get('QUEUE_GUIDE')?.trim()||DEFAULT_QUEUE_GUIDE,
+     queueGuideCue:settingMap.get('QUEUE_GUIDE_CUE')?.trim()||'',
     federationMode:true,version:'federation-v10'};
   try{
     const json=JSON.stringify(result);
@@ -600,6 +553,3 @@ function removeRequirement_(p){
 // This old anonymous GET precheck summary endpoint is intentionally disabled.
 // Images, OCR text, personal data, and definitive "verified" claims must never
 // be submitted via a URL query string.
-function recordRequirementScan_(p){
-  throw Error('Document scan summaries require a secure authenticated backend.');
-}
