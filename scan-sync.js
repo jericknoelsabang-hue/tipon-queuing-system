@@ -42,7 +42,7 @@ function postScan(token,review){
 window.addEventListener('tipon:scan-reviewed',e=>{
  const r=e.detail||{};
  if(!Array.isArray(r.results)||!Number.isFinite(r.photoCount))return;
- pending={results:r.results.map(x=>({id:String(x.id||''),status:String(x.status||'FOR_RECRUITER_REVIEW')})),
+ pending={results:r.results.map(x=>({id:String(x.id||''),name:String(x.name||''),status:String(x.status||'FOR_RECRUITER_REVIEW')})),
   photoCount:r.photoCount,scannerAvailable:r.scannerAvailable===true,scannedAt:new Date().toISOString()};
 });
 window.addEventListener('tipon:scan-reset',()=>{pending=null;epoch++});
