@@ -100,7 +100,7 @@ function doPost(e){
  }catch(err){r={ok:false,error:String(err.message||err).slice(0,220)}}
  const body=JSON.stringify({channel:e?.parameter?.action==='scanReport'?'tipon-scan-report-v1':'tipon-intake-v1',requestId:id,ok:!!r.ok,
    reference:r.ok?String(r.reference||''):'',error:r.ok?'':String(r.error||'Save failed')}).replace(/</g,'\\u003c');
- return HtmlService.createHtmlOutput('<!doctype html><html><body><script>window.parent.postMessage('+
+ return HtmlService.createHtmlOutput('<!doctype html><html><body><script>window.top.postMessage('+
    body+',"https://jericknoelsabang-hue.github.io");</script></body></html>')
    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
