@@ -275,9 +275,12 @@ async function refreshRequirements(){
    if(Array.isArray(edited)){requirements=edited;source='LOCAL BROWSER DEMO'}
  }catch{}
  requirements=requirements.map(r=>({...r,keywords:(source==='PUBLIC TEST SNAPSHOT'&&r.keywords===r.name&&DEMO_TERMS[String(r.name).toUpperCase()])||r.keywords||r.name}));
- $('scanConfigMessage').textContent=requirements.length?
-   'Required documents for your selected recruitment transaction: '+applicable().length+'. Photos are scanned privately on this device.':
-   'The recruiter has not configured a checklist for this transaction. You can still capture photos for review.';
+ const count=applicable().length;
+ $('scanConfigMessage').textContent=count>0?
+   'Please capture clear photos of your '+count+' required document'+(count===1?'':'s')+'. Photos are scanned on this device only.':
+   requirements.length?
+   'No documents are required for this recruitment transaction. You may still capture supporting documents.':
+   'There are no configured requirements for this transaction. Please confirm with the recruiter.';
  renderExpected();
 }
 function init(){
