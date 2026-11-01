@@ -95,6 +95,13 @@ function submit(token,fields){
 }
 function init(){
  $('applicantFieldsConfirmed').addEventListener('change',e=>{confirmed=e.target.checked});
+ $('applicantFields').addEventListener('input',()=>{
+   if(confirmed){
+     confirmed=false;$('applicantFieldsConfirmed').checked=false;
+     $('applicantFieldsConfirmed').dispatchEvent(new Event('change',{bubbles:true}));
+   }
+ });
+ window.addEventListener('tipon:scan-reset',reset);
  window.addEventListener('tipon:ocr-ready',e=>{
   const texts=Array.isArray(e.detail?.texts)?e.detail.texts:[];
   discovered=extract(texts);scanOccurred=true;render();
