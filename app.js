@@ -138,7 +138,14 @@ function tv(){
   }
 }
 function announceEditor(){const e=$('announcementInput');if(!dirty&&document.activeElement!==e)e.value=S.announcement||DEFAULT;$('announcementCount').textContent=e.value.length.toLocaleString('en-US')+' / 2,500 characters'}
-function guideEditor(){if(!guideDirty&&document.activeElement!==$('guideText'))$('guideText').value=S.queueGuide||DEFAULT_GUIDE}
+function currentQueueGuide(){
+ if(S.queueGuideSupported===true)return String(S.queueGuide||DEFAULT_GUIDE);
+ try{return String(localStorage.getItem('tqQueueGuideLocalDraft')||S.queueGuide||DEFAULT_GUIDE)}
+ catch{return String(S.queueGuide||DEFAULT_GUIDE)}
+}
+function guideEditor(){
+ if(!guideDirty&&document.activeElement!==$('guideText'))$('guideText').value=currentQueueGuide();
+}
 function metrics(){
   $('metricWindows').textContent=connectionHealthy?String(S.windowCount||0):'—';
   $('metricWait').textContent=connectionHealthy?String((S.waiting||[]).length):'—';
@@ -458,7 +465,7 @@ async function saveAnnouncement(value){
 $('guideEdit').onclick=()=>{
  const showing=$('guideEditor').classList.contains('hide');
  $('guideEditor').classList.toggle('hide',!showing);
- if(showing){guideDirty=false;$('guideText').value=S.queueGuide||DEFAULT_GUIDE;$('guideText').focus()}
+ if(showing){guideDirty=false;$('guideText').value=currentQueueGuide();$('guideText').focus()}
 };
 $('guideCancel').onclick=()=>{guideDirty=false;$('guideEditor').classList.add('hide');guideEditor()};
 $('guideText').oninput=()=>{guideDirty=true};
