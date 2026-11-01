@@ -55,10 +55,13 @@ function jp(action,params={},endpoint=url()){return new Promise((resolve,reject)
 })}
 function ready(){if(connectionHealthy&&COMPATIBLE.has(S.version))return true;error(Error('Apps Script is disconnected or outdated. Restore connectivity before changing queues.'));return false}
 function joinURL(){
- // The published config.js already provides the public Apps Script endpoint.
- // Do not append its long /exec URL to every QR: large payloads caused some
- // browser QR generators to fail, leaving a blank screen.
- return new URL('join.html',C.pagesUrl||location.href).href;
+ const u=new URL('join.html',C.pagesUrl||location.href);
+ // Prefer the short, stable public QR URL. Preserve an explicitly changed
+ // backend URL only when it differs from the published site configuration.
+ // The QR renderer below falls back to Q/M for long URLs that overflow at H.
+ const configured=url();
+ if(valid(configured)&&configured!==String(C.backendUrl||''))u.searchParams.set('api',configured);
+ return u.href;
 }
 function qr(){
  const link=joinURL(),holder=$('qr'),setupLink=$('getQueueSetup');
@@ -74,7 +77,7 @@ function qr(){
  let lastError=null;
  const errorCorrection=[
    {level:QRCode.CorrectLevel.H,withLogo:true},
-   {level:QRCode.CorrectLevel.Q,withLogo:false},
+   {level:QRCode.CorrectLevel.Q,withLogo:true},
    {level:QRCode.CorrectLevel.M,withLogo:false}
  ];
  for(const option of errorCorrection){
