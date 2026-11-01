@@ -154,8 +154,22 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
  #scanBox .scan-expected-chip{font-size:10px;padding:7px 11px}
 }
 .scan-review-note{margin:11px auto 6px;max-width:650px;padding:12px 14px;text-align:center;border:1px solid #a8cddf;background:#f5fbff;border-radius:10px;color:#165270;font-size:12px;font-weight:750;line-height:1.5}
+/* Keep scan completion text visibly centered on mobile and desktop. */
+#scanBox #scanReviewNote.scan-review-note{
+  display:flex;justify-content:center;align-items:center;text-align:center;
+  width:100%;max-width:680px;min-height:62px;
+  margin:14px auto 6px;padding:14px 18px;box-sizing:border-box;
+  line-height:1.6;overflow-wrap:anywhere;
+}
+#scanBox #scanReviewNote.scan-review-note.hide{display:none!important}
+.scan-sync-state{margin:12px auto 6px;text-align:center;max-width:640px;padding:10px 13px;
+  background:#f2f9ff;border:1px solid #c5dfea;border-radius:10px;font-size:12px;line-height:1.6}
+.scan-sync-state[data-state="saved"]{background:#e8f8ed;border-color:#a1d8b6;color:#14633d}
+.scan-sync-state[data-state="error"]{background:#fff6e8;border-color:#e4cc97;color:#754c13}
+.scan-sync-state[data-state="pending"]{color:#1f5876}
+@media(max-width:600px){#scanBox #scanReviewNote.scan-review-note{max-width:100%;padding:13px 12px}}
 </style>
-<script defer src="config.js"></script><script defer src="scan-sync.js?v=1"></script><script defer src="join.js?v=11.0"></script><script defer src="requirements-client.js?v=6.0"></script>
+<script defer src="config.js"></script><script defer src="scan-sync.js?v=2"></script><script defer src="join.js?v=11.0"></script><script defer src="requirements-client.js?v=6.0"></script>
 </head><body>
 <div class="join-top"></div><header class="join-head"><div class="join-head-inner">
   <div class="join-wordmark"><img class="join-logo" src="assets/tipon-logo-hd.webp" alt="tipón Federation"><span class="join-brand-label">TAWAG<span>.</span></span></div>
@@ -232,6 +246,7 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
   <div id="receipt" class="receipt hide" aria-live="polite">
     <span id="receiptTag" class="pill">SUBMITTED</span><h2 id="receiptTitle">Your request was received</h2>
     <div id="receiptCode" class="code">PC-001</div><p id="receiptText">Please proceed to the pre-checking station.</p>
+    <p id="scanSyncStatus" class="scan-sync-state hide" role="status" aria-live="polite"></p>
     <div class="receipt-actions"><button id="another" class="btn ghost" type="button">Register Another Applicant / Member</button><button id="done" class="btn success" type="button">Done</button></div>
     <p id="finishedNotice" class="finished-notice hide" role="status">Registration finished. Please keep your queue number and close this page when you're ready.</p>
   </div>
