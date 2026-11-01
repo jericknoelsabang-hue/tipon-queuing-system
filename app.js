@@ -352,15 +352,25 @@ async function refresh(silent=false){
 function ding(){try{const A=window.AudioContext||window.webkitAudioContext;audio=audio||new A();audio.resume?.();
  const t=audio.currentTime;[[660,0],[880,.18]].forEach(([f,offset])=>{const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=f;g.gain.setValueAtTime(.001,t+offset);g.gain.exponentialRampToValueAtTime(.2,t+offset+.03);g.gain.exponentialRampToValueAtTime(.001,t+offset+.25);o.connect(g);g.connect(audio.destination);o.start(t+offset);o.stop(t+offset+.27)})}catch{}}
 function speakQueueInstructions(message){
- if(!armed||!('speechSynthesis' in window))return false;
+ if(!armed||!('speechSynthesis' in window)||typeof SpeechSynthesisUtterance==='undefined')return false;
  try{
    speechSynthesis.cancel();
    ding();
-   const utterance=new SpeechSynthesisUtterance(String(message||DEFAULT_GUIDE));
-   utterance.lang='fil-PH';utterance.rate=.9;utterance.pitch=1;
-   const tagalogVoice=speechSynthesis.getVoices().find(v=>/^(fil|tl)(-|_)/i.test(v.lang));
-   if(tagalogVoice)utterance.voice=tagalogVoice;
-   speechSynthesis.speak(utterance);
+   const content=String(message||DEFAULT_GUIDE).trim();
+   if(!content)return false;
+   // Short utterances avoid browsers dropping long Taglish announcements.
+   const segments=content.match(/[^.!?]+[.!?]?/g)||[content];
+   const voices=speechSynthesis.getVoices?speechSynthesis.getVoices():[];
+   const filipino=voices.find(v=>/^(fil|tl)(-|_)/i.test(v.lang));
+   const fallback=voices.find(v=>/^en[-_]PH/i.test(v.lang));
+   for(const sentence of segments){
+     const text=sentence.trim();if(!text)continue;
+     const u=new SpeechSynthesisUtterance(text);
+     u.lang=filipino?.lang||fallback?.lang||'fil-PH';
+     if(filipino||fallback)u.voice=filipino||fallback;
+     u.rate=.91;u.pitch=1;
+     speechSynthesis.speak(u);
+   }
    return true;
  }catch(e){return false}
 }
