@@ -53,3 +53,33 @@ The old scrolling announcement remains editable under **TV Announcement**. Voice
 The legacy staff-control API still uses anonymous GET/JSONP. New TV guidance actions are rate-limited but are not a substitute for proper staff authentication. The new scan-report POST requires a short-lived ticket-linked token and consent, but the entire app still requires a security review.
 
 The current code has been checked at source level, not end-to-end against the user's live Apps Script environment. Until Apps Script deployment, the new Google Sheets scan synchronization and remote TV speech features remain **pending activation**. The local OCR scan and UI changes can be tested immediately after GitHub Pages deploys.
+
+## Troubleshooting (TV Instructions / Scan Results)
+
+### TV Controls displays "Unknown action"
+
+The TV button was introduced in the frontend, but the deployed Apps Script may still use the **older** version of `Code.gs`. You must edit the **existing** web app deployment and select a **New version**. Saving `Code.gs` alone, or merging code into GitHub, does **not** update the public `/exec` version.
+
+Until deployment, Play Queue Instructions now offers a truthful fallback:
+- If a TV Display is open in another **tab of the same browser profile and origin**, the command can be sent between tabs. The TV tab must have enabled sound first.
+- Otherwise, the button starts a spoken preview on the device where it was clicked.
+- For a TV on a **different computer or browser profile**, `playQueueGuide` requires the updated Apps Script deployment and enabled audio on the TV browser.
+- `Edit Instructions` can save a temporary local draft when the backend is outdated. That is not shared Google Sheets storage. Save again after deployment to sync the approved text.
+
+The new backend advertises `queueGuideSupported:true` and `scanReportSupported:true` in its `state` response. Old deployments missing these flags will not receive unsupported TV actions.
+
+### Document check appears complete but REQUIREMENT_SCANS has no rows
+
+The scanner runs locally on the applicant's device. **The scan summary is not saved when the Check Documents button is pressed.** The applicant must then click **Get Queue Number**. The frontend receives a ticket-bound short-lived token from the updated `register` handler, POSTs only the status for each requirement and number of photos, then displays **Saved / Not synchronized / Not confirmed** on the queue receipt.
+
+To resolve:
+1. Deploy the latest `Code.gs`, `IntakeDatabase.gs`, and `ScanReports.gs` to the **same Apps Script project**.
+2. Reuse the existing public `/exec` deployment URL and enable required Sheets access.
+3. Use synthetic test documents. Complete *Yes → privacy consent → capture → Check Documents → Get Queue Number*.
+4. Verify the final receipt says **Document-check results saved to Google Sheets**. Then verify `REQUIREMENT_SCANS` contains one row per active requirement with that ticket's Queue No.
+5. If no token is issued (old backend), the receipt **must say Not saved**; no automatic backfill is possible because photos/OCR text are never uploaded or retained on the server.
+6. Do not use actual applicant identification data until recruiter authorization, privacy retention, and access controls are approved.
+
+### Previous GitHub "Compare & Pull Request" banners
+
+Older branch names may still be visible after squash merges; they are *not* necessarily unpushed updates. Check `main`, the completed PR history, and GitHub Pages deployment. Do not force-merge an old diverged branch over the latest `main` because that could revert newer fixes.
