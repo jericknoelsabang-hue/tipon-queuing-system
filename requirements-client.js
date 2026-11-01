@@ -3,7 +3,7 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
 const C=window.TIPON_CONFIG||{};
-let seq=0, service='recruitment',decision='no',consent=false;
+let seq=0, service='recruitment',decision='',consent=false;
 let photos=[],requirements=[],captureStream=null,reviewReady=false,reviewBusy=false;
 let configAvailable=false,worker=null,workerLoading=null;
 const api=()=>new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||'';
@@ -47,10 +47,12 @@ function detailsComplete(){
 function syncEntryState(){
  const allowed=detailsComplete();
  $('scanYes').disabled=!allowed;
+ $('scanNo').disabled=!allowed;
  $('scanYesLabel').classList.toggle('scan-opt-disabled',!allowed);
+ $('scanNoLabel').classList.toggle('scan-opt-disabled',!allowed);
  $('scanEntryHint').classList.toggle('hide',allowed||service!=='recruitment');
- if(!allowed&&decision==='yes'){
-   // A previously consented capture must not be reused for a different applicant.
+ if(!allowed&&decision!==''){
+   // Reset the selection and discard temporary documents if any required field is cleared.
    reset();
  }
  updateSubmit();
@@ -58,7 +60,7 @@ function syncEntryState(){
 function note(text){$('scanNotice').textContent=text}
 function updateSubmit(){
  const isRecruitment=service==='recruitment';
- const show=!isRecruitment||decision==='no'||(decision==='yes'&&detailsComplete()&&consent&&reviewReady&&$('applicantFieldsConfirmed')?.checked===true);
+ const show=!isRecruitment||(detailsComplete()&&(decision==='no'||(decision==='yes'&&consent&&reviewReady&&$('applicantFieldsConfirmed')?.checked===true)));
  $('submit').classList.toggle('hide',!show);
  if(show)$('submit').textContent='GET QUEUE NUMBER';
  $('scanDecision').classList.toggle('hide',!isRecruitment);
@@ -77,7 +79,7 @@ function setService(){
  if(next!==service){
    closeCamera();
    photos.forEach(p=>URL.revokeObjectURL(p.url));photos=[];
-   decision='no';consent=false;$('scanNo').checked=true;$('scanYes').checked=false;
+   decision='';consent=false;$('scanNo').checked=false;$('scanYes').checked=false;
    $('privacyAgree').checked=false;invalidateReview();renderGallery();
  }
  service=next;syncEntryState();
@@ -87,7 +89,7 @@ function clearPhotos(){
  renderGallery();invalidateReview();note('');
 }
 function reset(){
- clearPhotos();decision='no';consent=false;$('scanNo').checked=true;$('scanYes').checked=false;
+ clearPhotos();decision='';consent=false;$('scanNo').checked=false;$('scanYes').checked=false;
  $('privacyAgree').checked=false;window.dispatchEvent(new CustomEvent('tipon:scan-reset'));updateSubmit();
 }
 function renderGallery(){
@@ -274,7 +276,7 @@ async function refreshRequirements(){
  }catch{}
  requirements=requirements.map(r=>({...r,keywords:(source==='PUBLIC TEST SNAPSHOT'&&r.keywords===r.name&&DEMO_TERMS[String(r.name).toUpperCase()])||r.keywords||r.name}));
  $('scanConfigMessage').textContent=requirements.length?
-   (source==='LIVE'?'Required documents for your selected transaction: ':'Document checklist for this transaction (trial): ')+applicable().length+' item(s). Photos are scanned on this device only.':
+   'Required documents for your selected recruitment transaction: '+applicable().length+'. Photos are scanned privately on this device.':
    'The recruiter has not configured a checklist for this transaction. You can still capture photos for review.';
  renderExpected();
 }
@@ -282,7 +284,7 @@ function init(){
  if(!$('scanDecision'))return;
  $('scanYes').addEventListener('change',()=>{
    if(!detailsComplete()){
-     $('scanYes').checked=false;$('scanNo').checked=true;decision='no';syncEntryState();
+     $('scanYes').checked=false;$('scanNo').checked=false;decision='';syncEntryState();
      const field=['firstName','lastName','position'].map(id=>$(id)).find(el=>!el.value.trim());
      (field||$('transaction')).focus();
      return;
@@ -291,6 +293,7 @@ function init(){
    updateSubmit();void refreshRequirements();
  });
  $('scanNo').addEventListener('change',()=>{
+   if(!detailsComplete()){reset();syncEntryState();return}
    decision='no';clearPhotos();consent=false;$('privacyAgree').checked=false;updateSubmit();
  });
  $('privacyAgree').addEventListener('change',()=>{consent=$('privacyAgree').checked;if(!consent)invalidateReview();updateSubmit()});
