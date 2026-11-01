@@ -3,11 +3,11 @@
 (()=>{'use strict';
 const C=window.TIPON_CONFIG||{}, $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const REQUIRED='federation-v10',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9','federation-v10']),DEFAULT='Please keep your queue number until called.';
-let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],transactions:[],transactionTypes:[],assignments:{},announcement:DEFAULT,completed:[],recruiters:{}};
+const REQUIRED='federation-v10',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9','federation-v10']),DEFAULT='Please keep your queue number until called.',DEFAULT_GUIDE='Hello, mga ka-miyembro! Sa mga bagong dating na wala pang queuing number, i-scan ang QR code na nakikita sa screen. Piliin ang inyong service. Para sa Recruitment, ilagay ang First Name, Last Name, Recruitment Transaction at Position. Pagkatapos, pindutin ang Get Queue Number. Para sa Member Concern, ilagay ang First Name, Last Name at Type of Concern, pagkatapos ay pindutin ang Get Queue Number. Kapag may queue number na, please keep your queue number until called.';
+let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],transactions:[],transactionTypes:[],assignments:{},announcement:DEFAULT,queueGuide:DEFAULT_GUIDE,queueGuideCue:'',completed:[],recruiters:{}};
 let connectionHealthy=false;
  let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,pollTimer=null,refreshFailures=0,activeWindowActions=new Set(),tableSignature={wait:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
-let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='';
+let lastGuideCue=null,guideDirty=false;let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='';
 function url(){return new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||''}
 function valid(u){try{const p=new URL(u);return p.origin==='https://script.google.com'&&p.pathname.endsWith('/exec')}catch{return false}}
 function status(t,k=''){
@@ -120,6 +120,14 @@ function tv(){
     void ticker.offsetWidth;
     ticker.classList.add('announcement-ticker');
   }
+  const cue=String(S.queueGuideCue||'');
+  if(lastGuideCue===null)lastGuideCue=cue;
+  else if(cue&&cue!==lastGuideCue&&page==='display'){
+    lastGuideCue=cue;
+    const commandTime=Number(cue.split('-')[0]);
+    if(armed&&Number.isFinite(commandTime)&&Date.now()-commandTime<120000)
+      speakQueueInstructions(String(S.queueGuide||DEFAULT_GUIDE));
+  }
   if(initialized){
     for(const i of indexes){const t=win(i),key=t?t.ticketId+'|'+t.calledAt:'';
       if(key&&key!==last[i]&&page==='display')announce(t,i);
@@ -130,6 +138,7 @@ function tv(){
   }
 }
 function announceEditor(){const e=$('announcementInput');if(!dirty&&document.activeElement!==e)e.value=S.announcement||DEFAULT;$('announcementCount').textContent=e.value.length.toLocaleString('en-US')+' / 2,500 characters'}
+function guideEditor(){if(!guideDirty&&document.activeElement!==$('guideText'))$('guideText').value=S.queueGuide||DEFAULT_GUIDE}
 function metrics(){
   $('metricWindows').textContent=connectionHealthy?String(S.windowCount||0):'—';
   $('metricWait').textContent=connectionHealthy?String((S.waiting||[]).length):'—';
@@ -237,7 +246,7 @@ function openTxEditor(code){
   $('editTxName').value=(S.transactionTypes||S.transactions||[]).find(x=>x.code===code)?.name||'';
   $('txEditor').classList.remove('hide');$('txEditor').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
-function render(){tv();metrics();staff();queueTables();if(page==='setup')setupTables();announceEditor();qr()}
+function render(){tv();metrics();staff();queueTables();if(page==='setup')setupTables();announceEditor();guideEditor();qr()}
 /* 
  * Near-real-time updates via serialized, adaptive polling.
  * GitHub Pages + Google Apps Script cannot push updates to other devices,
@@ -311,6 +320,19 @@ async function refresh(silent=false){
 }
 function ding(){try{const A=window.AudioContext||window.webkitAudioContext;audio=audio||new A();audio.resume?.();
  const t=audio.currentTime;[[660,0],[880,.18]].forEach(([f,offset])=>{const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=f;g.gain.setValueAtTime(.001,t+offset);g.gain.exponentialRampToValueAtTime(.2,t+offset+.03);g.gain.exponentialRampToValueAtTime(.001,t+offset+.25);o.connect(g);g.connect(audio.destination);o.start(t+offset);o.stop(t+offset+.27)})}catch{}}
+function speakQueueInstructions(message){
+ if(!armed||!('speechSynthesis' in window))return false;
+ try{
+   speechSynthesis.cancel();
+   ding();
+   const utterance=new SpeechSynthesisUtterance(String(message||DEFAULT_GUIDE));
+   utterance.lang='fil-PH';utterance.rate=.9;utterance.pitch=1;
+   const tagalogVoice=speechSynthesis.getVoices().find(v=>/^(fil|tl)(-|_)/i.test(v.lang));
+   if(tagalogVoice)utterance.voice=tagalogVoice;
+   speechSynthesis.speak(utterance);
+   return true;
+ }catch(e){return false}
+}
 function announce(ticket,i){
  if(!armed)return;
  const number=String(ticket.queueNo||'').trim().replace(/-/g,' ').replace(/([0-9])/g,'$1 ');
