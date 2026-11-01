@@ -63,7 +63,7 @@ function syncEntryState(){
 function note(text){$('scanNotice').textContent=text}
 function updateSubmit(){
  const isRecruitment=service==='recruitment';
- const show=!isRecruitment||(detailsComplete()&&(decision==='no'||(decision==='yes'&&consent&&reviewReady&&$('applicantFieldsConfirmed')?.checked===true)));
+ const show=!isRecruitment||(detailsComplete()&&(decision==='no'||(decision==='yes'&&consent&&reviewReady)));
  $('submit').classList.toggle('hide',!show);
  if(show)$('submit').textContent='GET QUEUE NUMBER';
  $('scanDecision').classList.toggle('hide',!isRecruitment);
@@ -71,10 +71,9 @@ function updateSubmit(){
  $('scanControls').classList.toggle('hide',!consent);
 }
 function invalidateReview(){
- reviewReady=false;$('scanReport').classList.add('hide');$('scanProgress').classList.add('hide');
+ reviewReady=false;$('scanReviewNote').classList.add('hide');$('scanProgress').classList.add('hide');
  for(const chip of $('scanExpectedList').querySelectorAll('[data-requirement-id]'))chip.classList.remove('scan-chip-match','scan-chip-review','scan-chip-missing');
- if($('applicantFieldsConfirmed'))$('applicantFieldsConfirmed').checked=false;
- window.dispatchEvent(new CustomEvent('tipon:scan-reset'));
+window.dispatchEvent(new CustomEvent('tipon:scan-reset'));
  updateSubmit();
 }
 function setService(){
@@ -319,8 +318,7 @@ function init(){
    renderGallery();invalidateReview();
  });
  $('scanReview').addEventListener('click',review);
- $('applicantFieldsConfirmed').addEventListener('change',updateSubmit);
- // Any applicant identity, position, or transaction change invalidates a previous scan.
+// Any applicant identity, position, or transaction change invalidates a previous scan.
  for(const id of ['firstName','lastName','position']){
    $(id).addEventListener('input',()=>{
      if(decision==='yes'&&(consent||photos.length||reviewReady))reset();
@@ -341,7 +339,7 @@ function init(){
      $('scanDecision').scrollIntoView({behavior:'smooth',block:'center'});
      return;
    }
-   if(decision==='yes'&&(!reviewReady||!$('applicantFieldsConfirmed').checked)){
+   if(decision==='yes'&&!reviewReady){
      e.preventDefault();e.stopImmediatePropagation();
      note('Capture your documents and complete the document review before requesting your queue number.');
      $('scanBox').scrollIntoView({behavior:'smooth',block:'center'});
