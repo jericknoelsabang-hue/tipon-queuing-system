@@ -161,13 +161,47 @@ async function shutter(){
  }catch(e){$('scanCameraStatus').textContent='Capture failed: '+e.message}
  finally{btn.disabled=false}
 }
-function loadTesseract(){if(window.Tesseract)return Promise.resolve(window.Tesseract);
+function loadTesseract(){
+ if(window.Tesseract)return Promise.resolve(window.Tesseract);
  if(workerLoading)return workerLoading;
- workerLoading=new Promise((resolve,reject)=>{
-   const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js';
-   script.crossOrigin='anonymous';script.onload=()=>window.Tesseract?resolve(window.Tesseract):reject(Error('OCR library unavailable'));
-   script.onerror=()=>reject(Error('OCR could not download on this connection'));document.head.appendChild(script);
- }).catch(e=>{workerLoading=null;throw e});return workerLoading;
+ const sources=[
+   'https://unpkg.com/tesseract.js@7.0.0/dist/tesseract.min.js',
+   'https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js'
+ ];
+ async function insertSource(url){
+   await new Promise((resolve,reject)=>{
+     const script=document.createElement('script');
+     script.src=url;script.async=true;script.crossOrigin='anonymous';
+     script.onload=()=>window.Tesseract?resolve():reject(Error('OCR library unavailable'));
+     script.onerror=()=>reject(Error('OCR library download failed'));
+     document.head.appendChild(script);
+   });
+   return window.Tesseract;
+ }
+ workerLoading=(async()=>{
+   let last;
+   for(const url of sources){
+     try{return await insertSource(url)}catch(err){last=err}
+   }
+   throw last||Error('OCR library unavailable');
+ })().catch(err=>{workerLoading=null;throw err});
+ return workerLoading;
+}
+async function startOcrWorker(tesseract){
+ const sources=[
+   {workerPath:'https://unpkg.com/tesseract.js@7.0.0/dist/worker.min.js',
+     corePath:'https://unpkg.com/tesseract.js-core@7.0.0',
+     langPath:'https://tessdata.projectnaptha.com/4.0.0'},
+   {workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/worker.min.js',
+     corePath:'https://cdn.jsdelivr.net/npm/tesseract.js-core@7.0.0',
+     langPath:'https://tessdata.projectnaptha.com/4.0.0'}
+ ];
+ let lastError;
+ for(const source of sources){
+   try{return await tesseract.createWorker('eng',1,source)}
+   catch(err){lastError=err}
+ }
+ throw lastError||Error('The text scanner is unavailable. Please bring your documents for manual review.');
 }
 function termMatch(text,term){
  const t=norm(term);if(t.length<3)return false;
@@ -217,7 +251,7 @@ async function review(){
  try{
    progress('Preparing on-device text recognition…',0,photos.length);
    const t=await loadTesseract();
-   worker=await t.createWorker('eng');
+   worker=await startOcrWorker(t);
    for(let i=0;i<photos.length;i++){
      progress('Reading document '+(i+1)+' of '+photos.length+'…',i,photos.length);photoProgress(i,'SCANNING',22);
      try{const result=await worker.recognize(photos[i].blob);const text=String(result&&result.data&&result.data.text||'').trim();if(text)readings.push({text,photo:i+1});photoProgress(i,text?'TEXT READ':'NO TEXT',100)}
