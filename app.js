@@ -54,11 +54,51 @@ function jp(action,params={},endpoint=url()){return new Promise((resolve,reject)
  Object.entries(params).forEach(([k,v])=>q.searchParams.set(k,String(v??'')));tag.src=q.href;document.head.appendChild(tag);
 })}
 function ready(){if(connectionHealthy&&COMPATIBLE.has(S.version))return true;error(Error('Apps Script is disconnected or outdated. Restore connectivity before changing queues.'));return false}
-function joinURL(){const u=new URL('join.html',C.pagesUrl||location.href);if(valid(url()))u.searchParams.set('api',url());return u.href}
-function qr(){const link=joinURL();$('getQueueSetup').href=link;if(link===qrUrl)return;
- qrUrl=link;const holder=$('qr');holder.innerHTML='';if(typeof QRCode==='undefined'){holder.textContent='QR unavailable';status('QR generator failed to load. Use Open Get Queue link.','err');return}
- try{qrObj=new QRCode(holder,{text:link,width:640,height:640,colorDark:'#102f45',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H});const mark=document.createElement('span');mark.className='qr-logo-mark';mark.setAttribute('aria-hidden','true');holder.appendChild(mark)}
- catch(e){holder.textContent='Use Get Queue link';status('QR failed: '+e.message,'err')}
+function joinURL(){
+ // The published config.js already provides the public Apps Script endpoint.
+ // Do not append its long /exec URL to every QR: large payloads caused some
+ // browser QR generators to fail, leaving a blank screen.
+ return new URL('join.html',C.pagesUrl||location.href).href;
+}
+function qr(){
+ const link=joinURL(),holder=$('qr'),setupLink=$('getQueueSetup');
+ setupLink.href=link;
+ if(link===qrUrl&&holder.querySelector('canvas,img,svg,table'))return;
+ qrUrl='';
+ holder.replaceChildren();
+ if(typeof QRCode==='undefined'){
+   const a=document.createElement('a');a.href=link;a.textContent='Open Get Queue Page';holder.appendChild(a);
+   status('QR generator was not loaded. Reload this page to restore the QR code.','err');
+   return;
+ }
+ let lastError=null;
+ const errorCorrection=[
+   {level:QRCode.CorrectLevel.H,withLogo:true},
+   {level:QRCode.CorrectLevel.Q,withLogo:false},
+   {level:QRCode.CorrectLevel.M,withLogo:false}
+ ];
+ for(const option of errorCorrection){
+   try{
+     holder.replaceChildren();
+     qrObj=new QRCode(holder,{
+       text:link,width:640,height:640,colorDark:'#102f45',colorLight:'#ffffff',
+       correctLevel:option.level
+     });
+     if(!holder.querySelector('canvas,img,svg,table'))
+       throw Error('QR renderer produced no image');
+     if(option.withLogo){
+       const mark=document.createElement('span');
+       mark.className='qr-logo-mark';
+       mark.setAttribute('aria-hidden','true');
+       holder.appendChild(mark);
+     }
+     qrUrl=link;
+     return;
+   }catch(err){lastError=err;holder.replaceChildren()}
+ }
+ const fallback=document.createElement('a');
+ fallback.href=link;fallback.textContent='Open Get Queue Page';holder.appendChild(fallback);
+ status('QR generation failed: '+String(lastError?.message||'Unknown error'),'err');
 }
 function win(i){return S.windows?.[String(i)]||null}
 function tv(){
