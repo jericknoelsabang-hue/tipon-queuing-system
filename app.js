@@ -474,28 +474,57 @@ $('guideSave').onclick=async()=>{
  if(!value||value.length>1300){
    $('guideStatus').textContent='Enter 1–1,300 characters for the instructions.';return;
  }
- if(!ready()){ $('guideStatus').textContent='Connect and deploy the latest Apps Script before saving instructions.';return }
  const btn=$('guideSave');btn.disabled=true;
  try{
+   if(!connectionHealthy||S.queueGuideSupported!==true){
+     try{localStorage.setItem('tqQueueGuideLocalDraft',value)}
+     catch{throw Error('Browser storage is disabled. The instructions could not be saved locally.')}
+     S.queueGuide=value;guideDirty=false;
+     $('guideEditor').classList.add('hide');
+     $('guideStatus').textContent='Saved on this device only. To synchronize instructions across TV devices, deploy the updated Apps Script Code.gs.';
+     return;
+   }
    const result=await jp('setQueueGuide',{message:value});
    if(!result.ok)throw Error(result.error||'Unable to save instructions.');
    S.queueGuide=result.queueGuide;guideDirty=false;
+   try{localStorage.removeItem('tqQueueGuideLocalDraft')}catch{}
    $('guideEditor').classList.add('hide');
-   $('guideStatus').textContent='Queue instructions saved for the TV.';
+   $('guideStatus').textContent='Queue instructions saved to the shared Google Sheet for TV playback.';
    await refresh(true);
- }catch(e){$('guideStatus').textContent=String(e.message||e)}
- finally{btn.disabled=false}
+ }catch(e){
+   $('guideStatus').textContent='Unable to synchronize instructions. '+String(e.message||e);
+ }finally{btn.disabled=false}
 };
 $('guidePlay').onclick=async()=>{
- if(!ready()){$('guideStatus').textContent='Apps Script needs to be connected for remote TV playback.';return}
- const btn=$('guidePlay');btn.disabled=true;btn.textContent='Sending to TV…';
+ const btn=$('guidePlay');
+ if(btn.disabled)return;
+ const preview=()=>{
+   if(!('speechSynthesis' in window)||typeof SpeechSynthesisUtterance==='undefined')return false;
+   armed=true;
+   try{localStorage.setItem('tqSound','1')}catch{}
+   return speakQueueInstructions(currentQueueGuide());
+ };
+ if(!connectionHealthy||S.queueGuideSupported!==true){
+   const played=preview(); // Starts in the user click so browsers permit speech.
+   $('guideStatus').textContent=played?
+     'Instructions are playing on THIS device. Playback on a separate TV is not available until the latest Apps Script is deployed and the TV sound is enabled.':
+     'Cannot play audio on this device. Enable browser speech/audio and deploy the updated Apps Script for remote TV playback.';
+   return;
+ }
+ btn.disabled=true;btn.textContent='Sending to TV…';
  try{
    const result=await jp('playQueueGuide');
-   if(!result.ok)throw Error(result.error||'TV playback was not confirmed.');
-   $('guideStatus').textContent='Instructions sent. Make sure sound was enabled on the TV browser.';
+   if(!result.ok)throw Error(result.error||'TV playback could not be requested.');
+   $('guideStatus').textContent='Instruction broadcast sent to the TV. The TV browser must be open with sound enabled for speech to play.';
    await refresh(true);
- }catch(e){$('guideStatus').textContent=String(e.message||e)}
- finally{btn.disabled=false;btn.textContent='Play Queue Instructions on TV'}
+ }catch(e){
+   const played=preview();
+   $('guideStatus').textContent=played?
+     'Remote TV playback failed; playing the instructions on THIS device instead. Check the latest Apps Script deployment and the TV audio settings.':
+     'Remote TV playback failed and this browser cannot provide audio. Check the Apps Script deployment.';
+ }finally{
+   btn.disabled=false;btn.textContent='Play Queue Instructions on TV';
+ }
 };
 $('announcementSave').onclick=()=>saveAnnouncement($('announcementInput').value);
 $('announcementReset').onclick=()=>saveAnnouncement(DEFAULT);
