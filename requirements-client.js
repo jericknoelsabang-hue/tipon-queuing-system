@@ -21,7 +21,16 @@ function jsonp(action,params={}){return new Promise((resolve,reject)=>{
 })}
 function renderExpected(){
  const active=applicable();
- $('scanExpectedList').innerHTML=active.map(r=>'<span class="scan-expected-chip">'+esc(r.name)+'</span>').join('');
+ $('scanExpectedList').innerHTML=active.map(r=>'<span class="scan-expected-chip" data-requirement-id="'+esc(r.id)+'">'+esc(r.name)+'</span>').join('');
+}
+function paintRequirementChips(reviews){
+ const results=new Map(reviews.map(r=>[String(r.id),r.status]));
+ for(const chip of $('scanExpectedList').querySelectorAll('[data-requirement-id]')){
+   const status=results.get(chip.dataset.requirementId);
+   chip.classList.toggle('scan-chip-match',status==='POSSIBLE_MATCH');
+   chip.classList.toggle('scan-chip-review',status==='FOR_RECRUITER_REVIEW');
+   chip.classList.toggle('scan-chip-missing',status==='NOT_DETECTED');
+ }
 }
 function matchesTx(r,tx){
  if(Array.isArray(r.transactions))return r.transactions.includes('ALL')||r.transactions.includes(tx);
@@ -30,18 +39,37 @@ function matchesTx(r,tx){
  return old.split(/[;,|]/).map(s=>s.trim()).includes(tx);
 }
 function applicable(){const tx=$('transaction').value;return requirements.filter(r=>matchesTx(r,tx))}
+function detailsComplete(){
+ return service==='recruitment'&&Boolean(
+   $('firstName').value.trim()&&$('lastName').value.trim()&&
+   $('transaction').value.trim()&&$('position').value.trim());
+}
+function syncEntryState(){
+ const allowed=detailsComplete();
+ $('scanYes').disabled=!allowed;
+ $('scanYesLabel').classList.toggle('scan-opt-disabled',!allowed);
+ $('scanEntryHint').classList.toggle('hide',allowed||service!=='recruitment');
+ if(!allowed&&decision==='yes'){
+   // A previously consented capture must not be reused for a different applicant.
+   reset();
+ }
+ updateSubmit();
+}
 function note(text){$('scanNotice').textContent=text}
 function updateSubmit(){
  const isRecruitment=service==='recruitment';
- const show=!isRecruitment||decision==='no'||(decision==='yes'&&consent&&reviewReady&&$('applicantFieldsConfirmed')?.checked===true);
+ const show=!isRecruitment||decision==='no'||(decision==='yes'&&detailsComplete()&&consent&&reviewReady&&$('applicantFieldsConfirmed')?.checked===true);
  $('submit').classList.toggle('hide',!show);
  if(show)$('submit').textContent='GET QUEUE NUMBER';
  $('scanDecision').classList.toggle('hide',!isRecruitment);
- $('scanBox').classList.toggle('hide',!isRecruitment||decision!=='yes');
+ $('scanBox').classList.toggle('hide',!isRecruitment||decision!=='yes'||!detailsComplete());
  $('scanControls').classList.toggle('hide',!consent);
 }
 function invalidateReview(){
  reviewReady=false;$('scanReport').classList.add('hide');$('scanProgress').classList.add('hide');
+ for(const chip of $('scanExpectedList').querySelectorAll('[data-requirement-id]'))chip.classList.remove('scan-chip-match','scan-chip-review','scan-chip-missing');
+ if($('applicantFieldsConfirmed'))$('applicantFieldsConfirmed').checked=false;
+ window.dispatchEvent(new CustomEvent('tipon:scan-reset'));
  updateSubmit();
 }
 function setService(){
@@ -52,7 +80,7 @@ function setService(){
    decision='no';consent=false;$('scanNo').checked=true;$('scanYes').checked=false;
    $('privacyAgree').checked=false;invalidateReview();renderGallery();
  }
- service=next;updateSubmit();
+ service=next;syncEntryState();
 }
 function clearPhotos(){
  closeCamera();photos.forEach(p=>URL.revokeObjectURL(p.url));photos=[];
@@ -60,7 +88,7 @@ function clearPhotos(){
 }
 function reset(){
  clearPhotos();decision='no';consent=false;$('scanNo').checked=true;$('scanYes').checked=false;
- $('privacyAgree').checked=false;updateSubmit();
+ $('privacyAgree').checked=false;window.dispatchEvent(new CustomEvent('tipon:scan-reset'));updateSubmit();
 }
 function renderGallery(){
  $('scanPhotoCount').textContent=photos.length+' photo'+(photos.length===1?'':'s')+' captured';
@@ -74,6 +102,7 @@ function closeCamera(){
  document.body.style.overflow='';
 }
 async function openCamera(){
+ if(!detailsComplete()){note('Complete your name, recruitment transaction and position before opening the document camera.');return}
  if(!consent){note('Please check the privacy consent box before opening the camera.');return}
  $('scanCamera').classList.remove('hide');document.body.style.overflow='hidden';
  $('scanCameraStatus').textContent='Opening your camera…';
@@ -140,20 +169,29 @@ function termMatch(text,term){
  const t=norm(term);if(t.length<3)return false;
  return (' '+text+' ').includes(' '+t+' ');
 }
-function assess(textList,req){
- const terms=String(req.keywords||req.name||'').split(/[,;\n]/).map(s=>s.trim()).filter(Boolean);
- const special=[String(req.name||'')];
- const list=[...new Set([...special,...terms])];
- let best=0;
- for(const text of textList){
-   const normalized=norm(text);
-   let count=0;for(const term of list)if(termMatch(normalized,term))count++;
-   best=Math.max(best,count);
+function assess(readings,req){
+ // Match configured search terms against each captured photo independently.
+ // A possible match is NOT proof of document validity or authenticity.
+ const terms=[...new Set([String(req.name||''),...String(req.keywords||req.name||'').split(/[,;\n]/)].map(x=>x.trim()).filter(x=>norm(x).length>=3))];
+ if(!readings.length)return {status:'FOR_RECRUITER_REVIEW',detail:'No readable text. Retake the document or have a recruiter inspect it.',photo:0};
+ let best={hits:[],photo:0};
+ for(const entry of readings){
+   const normalized=norm(entry.text);
+   const found=terms.filter(term=>termMatch(normalized,term)).sort((a,b)=>norm(b).length-norm(a).length);
+   // Do not count 'NBI' and 'NBI Clearance' as two independent clues.
+   const independent=[];
+   for(const term of found){
+     if(!independent.some(other=>norm(other).includes(norm(term))))independent.push(term);
+   }
+   if(independent.length>best.hits.length)best={hits:independent,photo:entry.photo};
  }
- if(!textList.length)return {status:'FOR_RECRUITER_REVIEW',detail:'No readable document text was detected.'};
- if(best>=2)return {status:'POSSIBLE_MATCH',detail:'Matching document terms found. Recruiter must verify the original.'};
- if(best===1)return {status:'FOR_RECRUITER_REVIEW',detail:'Partial text match only. Recruiter review required.'};
- return {status:'NOT_DETECTED',detail:'No matching terms found in the captured text. Add or retake the correct document.'};
+ const evidence=best.hits.slice(0,3).join(', ');
+ const evidenceText=best.photo?'Photo '+best.photo+' — ':'';
+ if(best.hits.length>=2)
+   return {status:'POSSIBLE_MATCH',photo:best.photo,detail:evidenceText+'recognition clues: '+evidence+'. Original document still needs recruiter verification.'};
+ if(best.hits.length===1)
+   return {status:'FOR_RECRUITER_REVIEW',photo:best.photo,detail:evidenceText+'only one recognition clue found ('+evidence+'). Please verify with the recruiter.'};
+ return {status:'NOT_DETECTED',photo:0,detail:'No matching recognition terms detected. Retake the document or show the original to a recruiter.'};
 }
 function photoProgress(index,label,percent){
  const p=photos[index];if(!p)return;
@@ -171,30 +209,37 @@ async function review(){
  if(reviewBusy||!photos.length)return;
  reviewBusy=true;reviewReady=false;updateSubmit();
  const btn=$('scanReview');btn.disabled=true;btn.textContent='SCANNING DOCUMENTS…';
- let textList=[],scannerAvailable=true,scannerError='';
+ let readings=[],scannerAvailable=true,scannerError='';
  try{
    progress('Preparing on-device text recognition…',0,photos.length);
    const t=await loadTesseract();
    worker=await t.createWorker('eng');
    for(let i=0;i<photos.length;i++){
      progress('Reading document '+(i+1)+' of '+photos.length+'…',i,photos.length);photoProgress(i,'SCANNING',22);
-     try{const result=await worker.recognize(photos[i].blob);const text=String(result&&result.data&&result.data.text||'').trim();if(text)textList.push(text);photoProgress(i,text?'TEXT READ':'NO TEXT',100)}
+     try{const result=await worker.recognize(photos[i].blob);const text=String(result&&result.data&&result.data.text||'').trim();if(text)readings.push({text,photo:i+1});photoProgress(i,text?'TEXT READ':'NO TEXT',100)}
      catch(e){photoProgress(i,'REVIEW',100);scannerError='Some photos could not be read. Retake blurry pages if needed.'}
      progress('Processed '+(i+1)+' of '+photos.length+' photos.',i+1,photos.length);
    }
  }catch(e){scannerAvailable=false;scannerError=String(e.message||e);photos.forEach((p,i)=>photoProgress(i,'MANUAL REVIEW',0))}
  finally{if(worker){try{await worker.terminate()}catch{}worker=null}}
- const items=applicable();const reviewed=items.map(req=>({name:req.name,...(scannerAvailable?assess(textList,req):{status:'FOR_RECRUITER_REVIEW',detail:'Scanner unavailable; recruiter must check the originals.'})}));
+ const items=applicable();const reviewed=items.map(req=>({id:req.id,name:req.name,...(scannerAvailable?assess(readings,req):{status:'FOR_RECRUITER_REVIEW',photo:0,detail:'Scanner unavailable; recruiter must check the originals.'})}));
+ const byPhoto=new Map();
+ for(const r of reviewed.filter(r=>r.status==='POSSIBLE_MATCH'&&r.photo>0)){
+   const list=byPhoto.get(r.photo)||[];list.push(r.name);byPhoto.set(r.photo,list);
+ }
+ const overlapping=[...byPhoto.entries()].filter(([photo,list])=>list.length>1);
+ paintRequirementChips(reviewed);
  const pct=items.length?reviewed.filter(x=>x.status==='POSSIBLE_MATCH').length+'/'+items.length:'No configured list';
  $('scanReport').innerHTML='<h3>Document Pre-Screening Result</h3><p><strong>'+photos.length+' photo'+(photos.length===1?'':'s')+' reviewed</strong> · '+esc(pct)+' possible requirement matches.</p>'+
  (items.length?reviewed.map(r=>'<div class="scan-review-line"><b>'+esc(r.name)+'</b> — '+(r.status==='POSSIBLE_MATCH'?'Possible match':r.status==='NOT_DETECTED'?'Not detected':'Recruiter review needed')+'<br><span>'+esc(r.detail)+'</span></div>').join(''):
  '<p>No recruitment requirement list is available from the backend. Document count only; no completeness decision can be made.</p>')+
- '<p><strong>Important:</strong> This is only preliminary on-device OCR. It does not verify authenticity, expiration or applicant eligibility. Keep your documents for the recruiter. No document photo or extracted personal data was uploaded.</p>'+
+ (overlapping.length?'<p><strong>Check overlapping documents:</strong> '+esc(overlapping.map(([photo,names])=>'Photo '+photo+' may match '+names.join(' and ')).join('; '))+'. Only the recruiter can decide whether each separate requirement is satisfied.</p>':'')+
+ '<p><strong>Important:</strong> This is only preliminary on-device OCR. It does not verify authenticity, expiration or applicant eligibility. Keep your documents for the recruiter. Document photos are not uploaded.</p>'+
  (scannerError?'<p><b>Scanner note:</b> '+esc(scannerError)+'</p>':'')+
  '<p>You may now get your queue number.</p>';
  $('scanReport').classList.remove('hide');$('scanProgress').classList.add('hide');
- window.dispatchEvent(new CustomEvent('tipon:ocr-ready',{detail:{texts:textList.slice()}}));
- textList=[]; // Do not retain OCR text beyond this assessment.
+ window.dispatchEvent(new CustomEvent('tipon:ocr-ready',{detail:{texts:readings.map(item=>item.text)}}));
+ readings=[]; // Do not retain OCR text beyond this assessment.
  reviewReady=true;reviewBusy=false;btn.disabled=false;btn.textContent='CHECK CAPTURED DOCUMENTS';
  updateSubmit();
 }
@@ -227,17 +272,23 @@ async function refreshRequirements(){
    const edited=JSON.parse(localStorage.getItem('tqLocalReqDemoV1')||'null');
    if(Array.isArray(edited)){requirements=edited;source='LOCAL BROWSER DEMO'}
  }catch{}
- requirements=requirements.map(r=>({...r,keywords:(r.keywords===r.name&&DEMO_TERMS[String(r.name).toUpperCase()])||r.keywords||r.name}));
+ requirements=requirements.map(r=>({...r,keywords:(source==='PUBLIC TEST SNAPSHOT'&&r.keywords===r.name&&DEMO_TERMS[String(r.name).toUpperCase()])||r.keywords||r.name}));
  $('scanConfigMessage').textContent=requirements.length?
-   (source==='LIVE'?'Recruiter requirements loaded from the queue database: ':
-     'Demo requirements ('+source+') — Google Sheets sync requires backend configuration: ')+applicable().length+' applicable for this transaction.':
-   'No configured requirements available. You can still capture photos, but completeness cannot be determined.';
+   (source==='LIVE'?'Required documents for your selected transaction: ':'Document checklist for this transaction (trial): ')+applicable().length+' item(s). Photos are scanned on this device only.':
+   'The recruiter has not configured a checklist for this transaction. You can still capture photos for review.';
  renderExpected();
 }
 function init(){
  if(!$('scanDecision'))return;
  $('scanYes').addEventListener('change',()=>{
-   decision='yes';consent=$('privacyAgree').checked;reviewReady=false;updateSubmit();void refreshRequirements();
+   if(!detailsComplete()){
+     $('scanYes').checked=false;$('scanNo').checked=true;decision='no';syncEntryState();
+     const field=['firstName','lastName','position'].map(id=>$(id)).find(el=>!el.value.trim());
+     (field||$('transaction')).focus();
+     return;
+   }
+   decision='yes';consent=$('privacyAgree').checked;reviewReady=false;
+   updateSubmit();void refreshRequirements();
  });
  $('scanNo').addEventListener('change',()=>{
    decision='no';clearPhotos();consent=false;$('privacyAgree').checked=false;updateSubmit();
@@ -260,11 +311,21 @@ function init(){
  });
  $('scanReview').addEventListener('click',review);
  $('applicantFieldsConfirmed').addEventListener('change',updateSubmit);
- $('transaction').addEventListener('change',()=>{clearPhotos();void refreshRequirements()});
+ // Any applicant identity, position, or transaction change invalidates a previous scan.
+ for(const id of ['firstName','lastName','position']){
+   $(id).addEventListener('input',()=>{
+     if(decision==='yes'&&(consent||photos.length||reviewReady))reset();
+     syncEntryState();
+   });
+ }
+ $('transaction').addEventListener('change',()=>{
+   if(decision==='yes')reset();else clearPhotos();
+   syncEntryState();void refreshRequirements();
+ });
  for(const btn of [$('chooseRecruitment'),$('chooseMember')])btn.addEventListener('click',setService);
  $('another').addEventListener('click',reset);
  $('queueForm').addEventListener('submit',e=>{
-   if(service==='recruitment'&&decision==='yes'&&(!reviewReady||!$('applicantFieldsConfirmed').checked)){
+   if(service==='recruitment'&&decision==='yes'&&(!detailsComplete()||!reviewReady||!$('applicantFieldsConfirmed').checked)){
      e.preventDefault();e.stopImmediatePropagation();
      note('Capture your documents and run the document check before requesting your queue number.');
      $('scanBox').scrollIntoView({behavior:'smooth',block:'center'});
@@ -272,7 +333,7 @@ function init(){
  },true);
  document.addEventListener('visibilitychange',()=>{if(document.hidden)closeCamera()});
  window.addEventListener('pagehide',()=>{closeCamera();photos.forEach(p=>URL.revokeObjectURL(p.url))});
- renderGallery();updateSubmit();void refreshRequirements();
+ renderGallery();syncEntryState();void refreshRequirements();
 }
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init):init();
 })();

@@ -57,7 +57,7 @@ function ready(){if(connectionHealthy&&COMPATIBLE.has(S.version))return true;err
 function joinURL(){const u=new URL('join.html',C.pagesUrl||location.href);if(valid(url()))u.searchParams.set('api',url());return u.href}
 function qr(){const link=joinURL();$('getQueueSetup').href=link;if(link===qrUrl)return;
  qrUrl=link;const holder=$('qr');holder.innerHTML='';if(typeof QRCode==='undefined'){holder.textContent='QR unavailable';status('QR generator failed to load. Use Open Get Queue link.','err');return}
- try{qrObj=new QRCode(holder,{text:link,width:640,height:640,colorDark:'#102f45',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}
+ try{qrObj=new QRCode(holder,{text:link,width:640,height:640,colorDark:'#102f45',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H});const mark=document.createElement('span');mark.className='qr-logo-mark';mark.setAttribute('aria-hidden','true');holder.appendChild(mark)}
  catch(e){holder.textContent='Use Get Queue link';status('QR failed: '+e.message,'err')}
 }
 function win(i){return S.windows?.[String(i)]||null}

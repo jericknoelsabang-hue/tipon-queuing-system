@@ -132,8 +132,29 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
 #scanCameraStatus{text-align:center;font-size:12px;color:#dcebf6;line-height:1.6}
 @media(max-width:540px){.scan-choice{flex-direction:column}.scan-camera-actions{display:grid;grid-template-columns:1fr 1fr}.scan-camera-actions button:first-child{grid-column:1/-1}.scan-camera video{height:57vh}.scan-main-btn{width:100%;min-width:0}}
 
+
+/* Applicant progress gating, layout, and centered dynamic requirements. */
+#scanDecision .scan-choice{justify-content:center;align-items:center;gap:12px 16px;margin:17px auto 10px}
+#scanDecision .scan-opt{display:inline-flex;justify-content:center;align-items:center;gap:10px;background:#fff;border:1px solid #c8deeb;border-radius:12px;min-height:48px;padding:11px 18px;color:#184762;cursor:pointer;transition:background-color .15s,border-color .15s}
+#scanDecision .scan-opt:has(input:checked){background:#e2f5ff;border-color:#1c91c0;box-shadow:0 3px 11px rgba(6,98,141,.09)}
+#scanDecision .scan-opt-disabled{opacity:.55;cursor:not-allowed}
+#scanDecision .scan-opt input{margin:0;flex:none}
+#scanDecision .scan-entry-hint{font-size:11px;color:#547992;text-align:center;line-height:1.6;margin:10px auto 2px;max-width:620px}
+#scanBox .scan-expected-list{justify-content:center;align-items:center;gap:9px;margin:13px auto 19px;max-width:660px}
+#scanBox .scan-expected-chip{padding:8px 13px;border-radius:999px;background:#fff;box-shadow:0 2px 9px rgba(14,92,130,.05);letter-spacing:.01em}
+#scanBox .scan-expected-chip.scan-chip-match{background:#e3f7ed;border-color:#78c9a5;color:#166743}
+#scanBox .scan-expected-chip.scan-chip-review{background:#fff7e5;border-color:#e1c27d;color:#83601a}
+#scanBox .scan-expected-chip.scan-chip-missing{background:#f3f6f8;border-color:#c8d9e2;color:#536a79}
+#scanBox #scanConfigMessage{text-align:center;max-width:650px;margin:9px auto 4px;color:#2d6684;font-weight:700}
+#scanBox .scan-privacy{border-radius:13px}
+@media(max-width:540px){
+ #scanDecision .scan-choice{flex-direction:column;gap:9px}
+ #scanDecision .scan-opt{width:100%;max-width:400px;padding:12px 10px}
+ #scanBox .scan-expected-list{gap:7px}
+ #scanBox .scan-expected-chip{font-size:10px;padding:7px 11px}
+}
 </style>
-<script defer src="config.js"></script><script defer src="applicant-fields.js?v=1"></script><script defer src="join.js?v=10.0"></script><script defer src="requirements-client.js?v=3.0"></script>
+<script defer src="config.js"></script><script defer src="applicant-fields.js?v=1"></script><script defer src="join.js?v=10.0"></script><script defer src="requirements-client.js?v=4.0"></script>
 <style>
 .applicant-fields-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:9px;margin:14px 0}
 .applicant-fields-grid label{font-size:11px;font-weight:700;color:#234e60}
@@ -168,10 +189,11 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
     <section id="scanDecision" class="scan-decision">
       <h3>Pre-Employment Requirements</h3>
       <p>Would you like to check your documents before getting a queue number?</p>
-      <div class="scan-choice">
-        <label><input type="radio" name="scanChoice" id="scanNo" checked> No, get my queue number</label>
-        <label><input type="radio" name="scanChoice" id="scanYes"> Yes, check my requirements</label>
+      <div class="scan-choice" role="group" aria-label="Choose whether to check your documents">
+        <label id="scanYesLabel" class="scan-opt scan-opt-disabled"><input type="radio" name="scanChoice" id="scanYes" disabled> Yes, check my requirements</label>
+        <label class="scan-opt"><input type="radio" name="scanChoice" id="scanNo" checked> No, get my queue number</label>
       </div>
+      <p id="scanEntryHint" class="scan-entry-hint" role="status">Complete your first name, last name, recruitment transaction, and position to enable document checking.</p>
     </section>
     <section id="scanBox" class="scan-box hide" aria-labelledby="scanTitle">
       <h3 id="scanTitle">Pre-Employment Document Check</h3>
