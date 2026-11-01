@@ -268,7 +268,7 @@ async function review(){
    }
  }catch(err){
    scannerAvailable=false;
-   scannerError='The on-device text scanner could not start. The recruiter must check your original documents.';
+   scannerError='The on-device scanner could not start. Please continue to get a queue number and bring the originals for recruiter review.';
    photos.forEach((p,i)=>photoProgress(i,'MANUAL REVIEW',0));
  }finally{
    if(worker){try{await worker.terminate()}catch{}worker=null}
@@ -286,7 +286,7 @@ async function review(){
  readings.length=0;
  const noteEl=$('scanReviewNote');
  noteEl.textContent=scannerAvailable?
-   'Document check completed. Your preliminary checklist will be linked to your queue number. Bring the original documents for recruiter verification.':
+   'Document check completed. Tap Get Queue Number to submit the preliminary results to the recruitment database. Bring the original documents for recruiter verification.':
    scannerError+' You may continue to get your queue number.';
  noteEl.classList.remove('hide');
  $('scanProgress').classList.add('hide');
