@@ -92,10 +92,13 @@ function doPost(e){
  try{
    const p=e?.parameter||{};id=String(p.requestId||'').replace(/[^A-Za-z0-9_-]/g,'').slice(0,70);
    const raw=String(p.payload||'');
-   if(p.action!=='applicantIntake'||raw.length>18000)throw Error('Invalid applicant POST request.');
-   r=saveApplicant_(JSON.parse(raw));
+   if(raw.length>18000)throw Error('Invalid POST request.');
+   const payload=JSON.parse(raw);
+   if(p.action==='scanReport')r=saveScanReport_(payload);
+   else if(p.action==='applicantIntake')r=saveApplicant_(payload);
+   else throw Error('Unsupported POST action.');
  }catch(err){r={ok:false,error:String(err.message||err).slice(0,220)}}
- const body=JSON.stringify({channel:'tipon-intake-v1',requestId:id,ok:!!r.ok,
+ const body=JSON.stringify({channel:e?.parameter?.action==='scanReport'?'tipon-scan-report-v1':'tipon-intake-v1',requestId:id,ok:!!r.ok,
    reference:r.ok?String(r.reference||''):'',error:r.ok?'':String(r.error||'Save failed')}).replace(/</g,'\\u003c');
  return HtmlService.createHtmlOutput('<!doctype html><html><body><script>window.parent.postMessage('+
    body+',"https://jericknoelsabang-hue.github.io");</script></body></html>')
