@@ -660,3 +660,21 @@ header.site-header::before{
   object-fit:contain;
   flex:none;
 }
+
+
+/* Legible TV service-window instruction and guided voice announcement editor. */
+.now-title p,
+#display:fullscreen .now-title p{
+ font-size:clamp(15px,1.2vw,22px);
+ font-weight:800;
+ line-height:1.4;
+ color:#e4f5fc;
+}
+#guideEditor{margin-top:14px;max-width:970px}
+#guideEditor textarea{min-height:155px;line-height:1.65;font-size:14px}
+#tvControls .buttons{gap:10px;flex-wrap:wrap}
+#tvControls #guideStatus{min-height:18px;line-height:1.5}
+@media(max-width:700px){
+ .now-title p,#display:fullscreen .now-title p{font-size:clamp(14px,3vw,17px)}
+ #tvControls .buttons{width:100%;justify-content:flex-start}
+}
