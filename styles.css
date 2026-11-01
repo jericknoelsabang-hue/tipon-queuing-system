@@ -610,7 +610,27 @@ header.site-header::before{
 
 /* QR brand insert, centered above the rendered modules. High ECC is configured in app.js. */
 #qr{position:relative;flex:none}
-#qr .qr-logo-mark{position:absolute;z-index:2;top:50%;left:50%;transform:translate(-50%,-50%);box-sizing:border-box;width:15%;min-width:31px;max-width:66px;aspect-ratio:1/1;border:4px solid #fff;border-radius:12px;background:#fff url('assets/tipon-mark.svg') center/contain no-repeat;box-shadow:0 1px 7px rgba(7,47,76,.2);pointer-events:none}
+#qr .qr-logo-mark{
+  position:absolute;
+  z-index:2;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  box-sizing:border-box;
+  width:22%;
+  min-width:42px;
+  max-width:78px;
+  aspect-ratio:1/1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  border:4px solid #fff;
+  border-radius:13px;
+  background:#fff;
+  box-shadow:0 1px 7px rgba(7,47,76,.22);
+  pointer-events:none;
+}
 @media(max-width:460px){#qr .qr-logo-mark{border-width:3px;border-radius:10px}}
 
 
@@ -664,5 +684,23 @@ header.site-header::before{
 .qr-frame #qr img,
 .qr-frame #qr canvas{
   object-fit:contain;
+  flex:none;
+}
+
+
+/* Official TIPON HD source. Crop the authentic multicolor leading emblem
+   rather than redrawing it; preserve antialiasing on 4K TV displays.
+   Specificity and !important override the QR image's global 272/360px rules. */
+#qr .qr-logo-mark .qr-logo-official,
+#display:fullscreen .qr-frame #qr .qr-logo-mark .qr-logo-official{
+  display:block;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  object-fit:cover!important;
+  object-position:left center!important;
+  image-rendering:auto!important;
+  border-radius:8px;
   flex:none;
 }
