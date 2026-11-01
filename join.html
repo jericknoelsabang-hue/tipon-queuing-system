@@ -213,13 +213,8 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
         <div id="scanGallery" class="scan-gallery" aria-live="polite"></div>
         <div class="scan-action-center"><button id="scanReview" type="button" class="btn success scan-main-btn hide">CHECK CAPTURED DOCUMENTS</button></div>
         <div id="scanProgress" class="scan-progress hide" role="status" aria-live="polite"></div>
-        <div id="scanReport" class="scan-report hide" aria-live="polite"></div><div id="applicantExtracted" class="scan-report hide">
-          <h3>Applicant Information Found in Documents</h3>
-          <p>Review and correct each field before continuing. Only clearly readable information is suggested; missing fields remain blank.</p>
-          <div id="applicantFields" class="applicant-fields-grid"></div>
-          <label class="applicant-confirm"><input id="applicantFieldsConfirmed" type="checkbox"> I reviewed and confirmed the information above.</label>
-          <p id="applicantSyncStatus" class="helper"></p>
-        </div>
+        <p id="scanReviewNote" class="scan-review-note hide" role="status" aria-live="polite"></p>
+      
       </div>
       <p id="scanNotice" class="helper" role="status"></p>
     </section>
