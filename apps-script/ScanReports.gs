@@ -4,7 +4,7 @@ function saveScanReport_(request){
  if(request.consent!==true)throw Error('Document checking requires applicant consent.');
  const token=String(request.token||'');
  if(!/^[0-9a-f-]{65,75}$/i.test(token))throw Error('Invalid scan submission token.');
- const cache=CacheService.getScriptCache(),raw=cache.get('INTAKE_TOKEN_'+token);
+ const cache=CacheService.getScriptCache(),raw=cache.get('SCAN_REPORT_TOKEN_'+token);
  if(!raw)throw Error('Scan session expired. The recruiter must review the documents.');
  const grant=JSON.parse(raw);
  if(Date.now()-grant.issued>30*60*1000||grant.transaction==='MC')throw Error('Scan session expired or ineligible.');
@@ -61,7 +61,7 @@ function saveScanReport_(request){
        sh.insertRowsAfter(sh.getMaxRows(),Math.max(100,additions.length));
      sh.getRange(from,1,additions.length,13).setValues(additions);
    }
-   cache.remove('INTAKE_TOKEN_'+token);
+   cache.remove('SCAN_REPORT_TOKEN_'+token);
    return {ok:true,saved:official.length,queueNo:String(ticket[3])};
  }finally{lock.releaseLock()}
 }

@@ -4,17 +4,17 @@
 
 - GitHub frontend: editable source on `main` after merge.
 - Google Sheets: the existing **TIPON Queuing System Database** is updated in place:
-  https://docs.google.com/spreadsheets/d/1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik/edit
+  the existing TIPON TAWAG database configured in the Apps Script project
 - The `REQUIREMENT_SCANS` tab is the new destination for provisional document-check results (one row per configured requirement, linked to a QUEUE ticket).
 - `PRECHECK` and `APPLICANT_EXTRACTIONS` were verified header-only/empty and deleted. The updated backend no longer recreates them.
 - `QUEUE`, `WINDOWS`, `TRANSACTION_TYPES`, `SETTINGS`, `REQUIREMENTS_CONFIG`, `REQUIREMENT_SCANS`, `APPLICANT DATABASE`, and `APPLICANT_INTAKE_INDEX` are retained and formatted.
-- **No applicant document photo is uploaded to Google Drive or Google Sheets.** Only preliminary scan statuses and photo count may be stored after a queue ticket is issued.
-- The old 145-field applicant database is preserved, but document OCR no longer displays a lengthy personal-information review form or fills those 145 fields automatically.
+- **No applicant document photo or full OCR text is uploaded to Google Drive or Google Sheets.** After the applicant reviews and confirms the fields, the app saves only supported structured details and preliminary scan statuses.
+- The existing 150-column `APPLICANT DATABASE` headers are preserved. Queue name, position, transaction and generated reference number are combined with confirmed fields that match existing headers (for example, date/place of birth, nationality, contact, address and government ID numbers). Unreadable or unavailable fields stay blank. The intake index maintains one database row across repeat tickets when a stable identity key matches; only HMAC-SHA-256 hashes, never the underlying identifiers, are stored in that index.
 
 ## Required deployment in existing Google Apps Script
 
 Project:
-https://script.google.com/u/0/home/projects/1140JUpc5DcZ8I5zgFhXWyX-Pje0wGcde1zWEEo1Ervm0uVVCjzkwgrt5/edit
+the existing TIPON Apps Script project in the authorized Google account
 
 1. Back up the current Apps Script project and Google Sheet.
 2. Replace **Code.gs** using `apps-script/Code.gs` from GitHub `main`.
@@ -23,7 +23,7 @@ https://script.google.com/u/0/home/projects/1140JUpc5DcZ8I5zgFhXWyX-Pje0wGcde1zW
 5. Save the project and run `setupTiponQueueSystem()` once. Authorize access to the existing Google Sheet.
 6. Go to **Deploy → Manage deployments → Edit existing web app → New version → Deploy**. Reuse its current `/exec` link.
 7. In TIPON TAWAG **Setup**, click **Reconnect Using Default**, then **Test Connection**.
-8. With fabricated sample documents and an approved test account, generate a Recruitment queue number after choosing Yes, accepting consent, capturing images and completing OCR. Confirm the new `REQUIREMENT_SCANS` rows have matching Ticket ID, Queue No, Requirement Name, Scan Status, photo count note, and Recruiter Review = PENDING. **No photo URLs or raw OCR text should appear.**
+8. With fabricated sample documents and an approved test account, generate a Recruitment queue number after choosing Yes, accepting consent, capturing images, completing OCR, reviewing the detected applicant fields and confirming them. Confirm `REQUIREMENT_SCANS` has one row per configured requirement, linked to the Ticket ID and Queue No, with Scan Status and Recruiter Review = PENDING. Confirm `APPLICANT DATABASE` has one row for the applicant, mapped only to existing headers. **No photo URLs or raw OCR text should appear.**
 9. Test OCR success, OCR-network failure, No/skip, Member Concern, duplicate same-day names, expired tokens, multiple pictures and iPhone camera. Confirm no sheet row is inserted when the backend did not acknowledge the POST.
 10. **Do not process actual applicant identification documents until appropriate privacy, access controls and retention policies are approved.**
 
@@ -31,7 +31,7 @@ If a QR ticket is issued but the scan results are not stored, the receipt will t
 
 ## Document scanning technology
 
-The browser uses **Tesseract.js OCR**, with a second CDN/worker option for cases where the first worker is blocked. This reads visible text **on the applicant's device** and compares it to the recruiter-defined Recognition Search Terms.
+The browser uses **Tesseract.js OCR**, with a second CDN/worker option for cases where the first worker is blocked. The OCR worker is warmed after consent and reused for all pictures in that page session. This reads visible text **on the applicant's device** and compares it to the recruiter-defined Recognition Search Terms.
 
 This does **not** use Be My Eyes or Be My AI: there is no confirmed, generally available consumer Be My AI document-scanning API for direct embedding in this project. Be My Eyes business integration would require a separate commercial agreement and approved integration. Browser OCR is not an authenticity test; results are only preliminary and always require recruiter verification.
 
@@ -70,13 +70,13 @@ The new backend advertises `queueGuideSupported:true` and `scanReportSupported:t
 
 ### Document check appears complete but REQUIREMENT_SCANS has no rows
 
-The scanner runs locally on the applicant's device. **The scan summary is not saved when the Check Documents button is pressed.** The applicant must then click **Get Queue Number**. The frontend receives a ticket-bound short-lived token from the updated `register` handler, POSTs only the status for each requirement and number of photos, then displays **Saved / Not synchronized / Not confirmed** on the queue receipt.
+The scanner runs locally on the applicant's device. **The scan summary is not saved when the Check Documents button is pressed.** The applicant must then click **Get Queue Number**. The frontend receives a ticket-bound short-lived token from the updated `register` handler. It POSTs requirement statuses and applicant-reviewed structured fields, but never the photos or raw OCR text. The receipt displays whether both Google Sheets writes were confirmed.
 
 To resolve:
 1. Deploy the latest `Code.gs`, `IntakeDatabase.gs`, and `ScanReports.gs` to the **same Apps Script project**.
 2. Reuse the existing public `/exec` deployment URL and enable required Sheets access.
 3. Use synthetic test documents. Complete *Yes → privacy consent → capture → Check Documents → Get Queue Number*.
-4. Verify the final receipt says **Document-check results saved to Google Sheets**. Then verify `REQUIREMENT_SCANS` contains one row per active requirement with that ticket's Queue No.
+4. Verify the final receipt confirms both updates. Then verify `REQUIREMENT_SCANS` contains one row per active requirement and `APPLICANT DATABASE` contains one matching applicant row. Repeat with the same synthetic applicant on another queue ticket and verify the row updates rather than appending a duplicate.
 5. If no token is issued (old backend), the receipt **must say Not saved**; no automatic backfill is possible because photos/OCR text are never uploaded or retained on the server.
 6. Do not use actual applicant identification data until recruiter authorization, privacy retention, and access controls are approved.
 

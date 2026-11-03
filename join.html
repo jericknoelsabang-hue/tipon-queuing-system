@@ -3,7 +3,7 @@
 <title>Get Your Number | tipón TAWAG</title><meta name="description" content="tipón TAWAG: Bawat tawag, may malasakit. Register for Recruitment or Member Concern."><link rel="icon" href="assets/tipon-mark.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=11.0">
+<link rel="stylesheet" href="styles.css?v=11.1">
 <style>
 body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-gradient(180deg,#f6fbfd,#edf5fa)}
 .join-top{height:6px;background:linear-gradient(90deg,#0a81b4 0 63%,#ffc258 63% 82%,#e2544f 82%)}
@@ -121,8 +121,8 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
 .scan-progress{background:#e6f3fc;border:1px solid #a6d2ea;border-radius:11px;padding:12px;color:#12475f;margin:12px 0;font-weight:650;font-size:12px}
 .scan-progress progress{width:100%;margin-top:8px;accent-color:#168eb9}
 .scan-report{background:#eef8f1;border:1px solid #a7dabc;border-radius:11px;padding:14px;color:#19513d;margin:14px 0;font-size:12px}
-.scan-report p{margin:7px 0}.scan-report .scan-review-line{border-bottom:1px solid #d1e9d7;padding:8px 0}
-.scan-report .scan-review-line:last-child{border:0}
+.scan-report p{margin:7px 0}.scan-report h3{margin:2px 0 8px;color:#165c42;font-size:17px}.scan-report .scan-review-line{border-bottom:1px solid #d1e9d7;padding:8px 0;line-height:1.55}
+.scan-report .scan-review-line:last-child{border:0}.scan-review-line strong{font-weight:850}.scan-applicant-result{margin-top:12px;padding-top:12px;border-top:1px solid #c9e4d2}.scan-applicant-result h4{margin:0 0 5px;color:#165c42}.scan-applicant-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px;margin:10px 0}.scan-applicant-field{display:grid;gap:4px;font-size:11px;font-weight:800;color:#315d4b}.scan-applicant-field input{width:100%;min-width:0;box-sizing:border-box;border:1px solid #b6d4c2;border-radius:7px;padding:9px 10px;font:600 12px Manrope,sans-serif;color:#173b2c;background:#fff}.scan-confirm-label{display:flex;align-items:flex-start;gap:8px;color:#19513d;font-weight:750;line-height:1.5}.scan-confirm-label input{margin-top:2px;accent-color:#148556}
 .scan-camera{position:fixed;z-index:9999;inset:0;background:rgba(2,20,35,.96);display:flex;justify-content:center;align-items:center;padding:14px;overflow-y:auto}
 .scan-camera-shell{width:min(920px,100%);display:flex;flex-direction:column;gap:10px;color:#fff}
 .scan-camera-head,.scan-camera-actions{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
@@ -169,7 +169,7 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
 .scan-sync-state[data-state="pending"]{color:#1f5876}
 @media(max-width:600px){#scanBox #scanReviewNote.scan-review-note{max-width:100%;padding:13px 12px}}
 </style>
-<script defer src="config.js"></script><script defer src="scan-sync.js?v=2"></script><script defer src="join.js?v=11.0"></script><script defer src="requirements-client.js?v=7.0"></script>
+<script defer src="config.js"></script><script defer src="scan-sync.js?v=3.0"></script><script defer src="join.js?v=11.1"></script><script defer src="requirements-client.js?v=8.0"></script>
 </head><body>
 <div class="join-top"></div><header class="join-head"><div class="join-head-inner">
   <div class="join-wordmark"><img class="join-logo" src="assets/tipon-logo-hd.webp" alt="tipón Federation"><span class="join-brand-label">TAWAG<span>.</span></span></div>
@@ -209,8 +209,8 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
       <p class="helper">Capture as many document photos as needed. Check all photos together after you finish.</p>
       <div class="scan-privacy">
         <strong>Data Privacy Notice</strong>
-        <p>Your photos are checked on this device and are not uploaded or stored in Google Drive. After you receive a queue number, only preliminary document-check statuses and the number of photos captured may be saved to TIPON's recruitment Google Sheet for recruiter review. Full OCR text and details printed on your documents are not submitted. A recruiter must inspect original documents. You may choose No to skip this optional check.</p>
-        <label><input id="privacyAgree" type="checkbox"> I consent to the on-device document check and saving its preliminary checklist statuses with my queue record.</label>
+        <p>Your photos and full OCR text stay on this device. After you review and confirm the applicant details shown below, those selected details and preliminary document-check statuses may be saved to TIPON's recruitment database with your queue record. Photos are not uploaded or stored in Google Drive. A recruiter must inspect original documents. You may choose No to skip this optional check.</p>
+        <label><input id="privacyAgree" type="checkbox"> I consent to the on-device document check and saving the applicant details I review, along with preliminary checklist statuses, to the recruitment database.</label>
       </div>
       <div id="scanControls" class="hide">
         <p id="scanConfigMessage" class="helper"></p><div id="scanExpectedList" class="scan-expected-list" aria-label="Recruiter required documents"></div>
@@ -223,6 +223,17 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
         <div class="scan-action-center"><button id="scanReview" type="button" class="btn success scan-main-btn hide">CHECK CAPTURED DOCUMENTS</button></div>
         <div id="scanProgress" class="scan-progress hide" role="status" aria-live="polite"></div>
         <p id="scanReviewNote" class="scan-review-note hide" role="status" aria-live="polite"></p>
+        <section id="scanResultCard" class="scan-report hide" aria-labelledby="scanResultTitle">
+          <h3 id="scanResultTitle">Document Pre-Screening Result</h3>
+          <p id="scanResultSummary"></p>
+          <div id="scanResultRows" aria-live="polite"></div>
+          <div class="scan-applicant-result">
+            <h4>Applicant Details Found</h4>
+            <p class="helper">Review or correct the details detected from your documents. Only the details shown here are submitted; the photo and full OCR text stay on your device.</p>
+            <div id="scanApplicantFields" class="scan-applicant-grid"></div>
+            <label class="scan-confirm-label"><input id="applicantDataConfirm" type="checkbox"> I reviewed these details and confirm they are correct.</label>
+          </div>
+        </section>
       
       </div>
       <p id="scanNotice" class="helper" role="status"></p>

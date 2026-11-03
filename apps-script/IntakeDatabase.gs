@@ -1,9 +1,8 @@
-/* TIPON TAWAG: consent-based applicant data intake, POST only (no photos/OCR text).
-   Install alongside Code.gs and deploy a new Apps Script version.
-   One-time capability token is bound to a registered queue ticket. */
+/* TIPON TAWAG: consent-based applicant data intake, POST only (no photos or raw OCR text).
+   Structured fields are applicant-reviewed before saving. One database row is maintained per applicant identity. */
 const DB_TAB='APPLICANT DATABASE';
 const DB_INDEX='APPLICANT_INTAKE_INDEX';
-const DB_INDEX_HEADERS=['Ticket ID','Applicant Reference No.','Database Row','Updated At'];
+const DB_INDEX_HEADERS=['Ticket ID','Applicant Reference No.','Database Row','Updated At','Applicant Match Key Hashes'];
 const INTAKE_FIELDS=['Middle Name','Suffix','Date of Birth','Place of Birth (City/Province)',
 'Nationality','Gender','Civil Status','Present House No. / Street / Subdivision',
 'Present Barangay','Present Municipality / City','Present Province','Present Country*',
@@ -14,16 +13,41 @@ function initApplicantDb_(){
  const ss=ss_(),db=ss.getSheetByName(DB_TAB);
  if(!db||db.getRange(1,1).getValue()!=='Timestamp')throw Error('Applicant database header not initialized.');
  const idx=ss.getSheetByName(DB_INDEX)||ss.insertSheet(DB_INDEX);
- if(idx.getLastRow()===0)idx.getRange(1,1,1,4).setValues([DB_INDEX_HEADERS]);
+ if(idx.getLastRow()===0)idx.getRange(1,1,1,DB_INDEX_HEADERS.length).setValues([DB_INDEX_HEADERS]);
+ else if(!String(idx.getRange(1,5).getValue()||''))idx.getRange(1,5).setValue(DB_INDEX_HEADERS[4]);
  idx.setFrozenRows(1);return {ok:true};
 }
 function issueApplicantToken_(ticket){
  if(!ticket||ticket.transaction==='MC'||!ticket.ticketId)return '';
  const token=Utilities.getUuid()+'-'+Utilities.getUuid();
- CacheService.getScriptCache().put('INTAKE_TOKEN_'+token,JSON.stringify({
-   ticketId:ticket.ticketId,transaction:ticket.transaction,issued:Date.now()
- }),1800);
+ const grant=JSON.stringify({ticketId:ticket.ticketId,transaction:ticket.transaction,issued:Date.now()});
+ const cache=CacheService.getScriptCache();
+ cache.put('INTAKE_TOKEN_'+token,grant,1800);
+ cache.put('SCAN_REPORT_TOKEN_'+token,grant,1800);
  return token;
+}
+function applicantMatchKeys_(ticket,fields){
+ const normalize=v=>String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+ const props=PropertiesService.getScriptProperties();
+ let secret=props.getProperty('TIPON_INTAKE_MATCH_SECRET');
+ if(!secret){secret=Utilities.getUuid()+Utilities.getUuid();props.setProperty('TIPON_INTAKE_MATCH_SECRET',secret)}
+ const hash=(kind,value)=>{
+  const digest=Utilities.computeHmacSha256Signature(kind+':'+value,secret);
+  return kind+':'+digest.map(b=>(b&255).toString(16).padStart(2,'0')).join('');
+ };
+ const pairs=[['SSS','SSS No.'],['PHILHEALTH','PhilHealth No.'],['PAGIBIG','Pag-IBIG No.'],['TIN','TIN']];
+ const keys=[];
+ for(const [kind,name] of pairs){const value=normalize(fields[name]);if(value.length>=8)keys.push(hash(kind,value))}
+ const person=normalize(String(ticket[15]||'')+' '+String(ticket[16]||''));
+ const email=normalize(fields['Email / Gmail Address']);
+ const phone=normalize(fields['Phone Number']).replace(/[^0-9]/g,'');
+ const dob=normalize(fields['Date of Birth']);
+ // Avoid merging applicants who share a family phone or email: contact keys are paired with the ticket name.
+ if(person&&email.length>=6)keys.push(hash('EMAIL_PERSON',person+'|'+email));
+ if(person&&phone.length>=10)keys.push(hash('PHONE_PERSON',person+'|'+phone));
+ if(person&&dob)keys.push(hash('NAME_DOB',person+'|'+dob));
+ if(!keys.length)keys.push(hash('TICKET',String(ticket[0]||'')));
+ return [...new Set(keys)];
 }
 function cleanDb_(v,max=180){
  const t=String(v===undefined||v===null?'':v).replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,max);
@@ -58,8 +82,12 @@ function saveApplicant_(request){
    const required=['Timestamp','Applicant Reference No.*','Applicant Type*','Position*',
      'Application Date','Last Name','First Name','General Data Privacy Consent'];
    for(const name of required)if(!names.has(name))throw Error('Database header mismatch: '+name);
-   const indexed=idx.getLastRow()>1?idx.getRange(2,1,idx.getLastRow()-1,4).getValues():[];
-   const existing=indexed.findIndex(row=>String(row[0])===grant.ticketId);
+   if(!String(idx.getRange(1,5).getValue()||''))idx.getRange(1,5).setValue(DB_INDEX_HEADERS[4]);
+   const indexed=idx.getLastRow()>1?idx.getRange(2,1,idx.getLastRow()-1,5).getValues():[];
+   const matchKeys=applicantMatchKeys_(ticket,fields),matchSet=new Set(matchKeys);
+   const existing=indexed.findIndex(row=>
+     String(row[0]||'').split('|').includes(grant.ticketId)||
+     String(row[4]||'').split('|').some(key=>matchSet.has(key)));
    let ref,rowNo;
    if(existing>=0){ref=String(indexed[existing][1]);rowNo=Number(indexed[existing][2]);}
    else{
@@ -81,8 +109,12 @@ function saveApplicant_(request){
    put('General Data Privacy Consent','YES - '+Utilities.formatDate(now,'Asia/Manila','yyyy-MM-dd HH:mm:ss'));
    for(const [key,value] of Object.entries(fields)){const v=cleanDb_(value);if(v)put(key,v)}
    db.getRange(rowNo,1,1,headers.length).setValues([record]);
-   if(existing>=0)idx.getRange(existing+2,4).setValue(now);
-   else idx.appendRow([grant.ticketId,ref,rowNo,now]);
+   const oldTickets=existing>=0?String(indexed[existing][0]||'').split('|').filter(Boolean):[];
+   const oldKeys=existing>=0?String(indexed[existing][4]||'').split('|').filter(Boolean):[];
+   const ticketIds=[...new Set(oldTickets.concat([grant.ticketId]))].join('|');
+   const hashes=[...new Set(oldKeys.concat(matchKeys))].join('|');
+   if(existing>=0)idx.getRange(existing+2,1,1,5).setValues([[ticketIds,ref,rowNo,now,hashes]]);
+   else idx.appendRow([ticketIds,ref,rowNo,now,hashes]);
    cache.remove('INTAKE_TOKEN_'+token);
    return {ok:true,reference:ref};
  }finally{lock.releaseLock()}
