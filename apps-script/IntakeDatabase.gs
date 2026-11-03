@@ -54,7 +54,7 @@ function cleanDb_(v,max=180){
  return /^[=+\-@]/.test(t)?"'"+t:t; // Escape spreadsheet formulas.
 }
 function saveApplicant_(request){
- if(request.consent!==true||request.confirmed!==true)throw Error('Consent and applicant confirmation required.');
+ if(request.consent!==true)throw Error('Applicant consent is required.');
  const token=String(request.token||'');
  if(!/^[0-9a-f-]{65,75}$/i.test(token))throw Error('Invalid intake session.');
  const cache=CacheService.getScriptCache(),saved=cache.get('INTAKE_TOKEN_'+token);

@@ -38,7 +38,7 @@ window.addEventListener('tipon:scan-reviewed',e=>{
  const r=e.detail||{};
  if(!Array.isArray(r.results)||!Number.isFinite(r.photoCount))return;
  pending={results:r.results.map(x=>({id:String(x.id||''),name:String(x.name||''),status:String(x.status||'FOR_RECRUITER_REVIEW')})),
-  photoCount:r.photoCount,scannerAvailable:r.scannerAvailable===true,scannedAt:new Date().toISOString()};
+  photoCount:r.photoCount,scannerAvailable:r.scannerAvailable===true,applicantFields:r.applicantFields&&typeof r.applicantFields==='object'?r.applicantFields:{},scannedAt:new Date().toISOString()};
 });
 function clearSyncStatus(){
  const target=$('scanSyncStatus');if(!target)return;
@@ -56,17 +56,11 @@ window.addEventListener('tipon:ticket',async e=>{
   el.dataset.state=kind;el.textContent=message;el.classList.remove('hide');
  };
  if(!intakeToken){display('error','Not saved. Apps Script needs the latest scan and applicant-intake deployment. Please ask the recruiter to verify your documents.');return}
- const confirmed=$('applicantDataConfirm')?.checked===true;
- if(!confirmed){display('error','Applicant details were not confirmed. Please ask the recruiter to check your documents.');return}
- const fields={};
- document.querySelectorAll('[data-applicant-field]').forEach(input=>{
-  const key=String(input.dataset.applicantField||''),value=String(input.value||'').trim();
-  if(key&&value)fields[key]=value.slice(0,220);
- });
+ const fields=review.applicantFields;
  display('pending','Saving document-check results and applicant details…');
  const scanPayload={token:intakeToken,consent:true,photoCount:review.photoCount,scannerAvailable:review.scannerAvailable,
   scannedAt:review.scannedAt,results:review.results};
- const intakePayload={token:intakeToken,consent:true,confirmed:true,fields};
+ const intakePayload={token:intakeToken,consent:true,fields};
  const results=await Promise.allSettled([
   post('scanReport',intakeToken,scanPayload),
   post('applicantIntake',intakeToken,intakePayload)

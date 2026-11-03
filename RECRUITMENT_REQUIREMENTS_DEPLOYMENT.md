@@ -8,7 +8,7 @@
 - The `REQUIREMENT_SCANS` tab is the new destination for provisional document-check results (one row per configured requirement, linked to a QUEUE ticket).
 - `PRECHECK` and `APPLICANT_EXTRACTIONS` were verified header-only/empty and deleted. The updated backend no longer recreates them.
 - `QUEUE`, `WINDOWS`, `TRANSACTION_TYPES`, `SETTINGS`, `REQUIREMENTS_CONFIG`, `REQUIREMENT_SCANS`, `APPLICANT DATABASE`, and `APPLICANT_INTAKE_INDEX` are retained and formatted.
-- **No applicant document photo or full OCR text is uploaded to Google Drive or Google Sheets.** After the applicant reviews and confirms the fields, the app saves only supported structured details and preliminary scan statuses.
+- **No applicant document photo or full OCR text is uploaded to Google Drive or Google Sheets.** After the applicant consents to the scan, the app saves supported structured details detected from OCR and preliminary scan statuses.
 - The existing 150-column `APPLICANT DATABASE` headers are preserved. Queue name, position, transaction and generated reference number are combined with confirmed fields that match existing headers (for example, date/place of birth, nationality, contact, address and government ID numbers). Unreadable or unavailable fields stay blank. The intake index maintains one database row across repeat tickets when a stable identity key matches; only HMAC-SHA-256 hashes, never the underlying identifiers, are stored in that index.
 
 ## Required deployment in existing Google Apps Script
@@ -23,7 +23,7 @@ the existing TIPON Apps Script project in the authorized Google account
 5. Save the project and run `setupTiponQueueSystem()` once. Authorize access to the existing Google Sheet.
 6. Go to **Deploy → Manage deployments → Edit existing web app → New version → Deploy**. Reuse its current `/exec` link.
 7. In TIPON TAWAG **Setup**, click **Reconnect Using Default**, then **Test Connection**.
-8. With fabricated sample documents and an approved test account, generate a Recruitment queue number after choosing Yes, accepting consent, capturing images, completing OCR, reviewing the detected applicant fields and confirming them. Confirm `REQUIREMENT_SCANS` has one row per configured requirement, linked to the Ticket ID and Queue No, with Scan Status and Recruiter Review = PENDING. Confirm `APPLICANT DATABASE` has one row for the applicant, mapped only to existing headers. **No photo URLs or raw OCR text should appear.**
+8. With fabricated sample documents and an approved test account, generate a Recruitment queue number after choosing Yes, accepting consent, capturing images, completing OCR, consenting to the on-device scan and confirming the scan. Confirm `REQUIREMENT_SCANS` has one row per configured requirement, linked to the Ticket ID and Queue No, with Scan Status and Recruiter Review = PENDING. Confirm `APPLICANT DATABASE` has one row for the applicant, mapped only to existing headers. **No photo URLs or raw OCR text should appear.**
 9. Test OCR success, OCR-network failure, No/skip, Member Concern, duplicate same-day names, expired tokens, multiple pictures and iPhone camera. Confirm no sheet row is inserted when the backend did not acknowledge the POST.
 10. **Do not process actual applicant identification documents until appropriate privacy, access controls and retention policies are approved.**
 
@@ -70,7 +70,7 @@ The new backend advertises `queueGuideSupported:true` and `scanReportSupported:t
 
 ### Document check appears complete but REQUIREMENT_SCANS has no rows
 
-The scanner runs locally on the applicant's device. **The scan summary is not saved when the Check Documents button is pressed.** The applicant must then click **Get Queue Number**. The frontend receives a ticket-bound short-lived token from the updated `register` handler. It POSTs requirement statuses and applicant-reviewed structured fields, but never the photos or raw OCR text. The receipt displays whether both Google Sheets writes were confirmed.
+The scanner runs locally on the applicant's device. **The scan summary is not saved when the Check Documents button is pressed.** The applicant must then click **Get Queue Number**. The frontend receives a ticket-bound short-lived token from the updated `register` handler. It POSTs requirement statuses and consented structured details detected from the applicant's documents, but never the photos or raw OCR text. The receipt displays whether both Google Sheets writes were confirmed.
 
 To resolve:
 1. Deploy the latest `Code.gs`, `IntakeDatabase.gs`, and `ScanReports.gs` to the **same Apps Script project**.
