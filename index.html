@@ -98,10 +98,13 @@
     </div>
     <div class="card get-queue-setup"><div class="split"><div><h2>Get Queue Page</h2><p>Share this registration page with recruitment applicants and members, or open it to test the QR link.</p></div><a id="getQueueSetup" class="btn primary" href="join.html" target="_blank" rel="noopener">Open Get Queue Page</a></div></div>
     <p id="setupListHint" class="small-muted" role="status">Loading saved windows and transaction types from the backend…</p>
-    <div class="card"><div class="split"><div><h2>Service Windows</h2><p>Edit the assigned transaction and recruiter for each window. Only windows without active downstream sessions can be removed safely.</p></div><div class="buttons"><span class="pill" id="setupWc">4 WINDOWS</span><button id="addWin" class="btn success" type="button">+ Add Window</button></div></div>
+    <div class="card"><div class="split"><div><h2>Service Windows</h2><p>Edit assigned transactions and recruiter for each window. Only windows without active downstream sessions can be removed safely.</p></div><div class="buttons"><span class="pill" id="setupWc">4 WINDOWS</span><button id="addWin" class="btn success" type="button">+ Add Window</button></div></div>
       <div class="table-wrap"><table><thead><tr><th>Window</th><th>Assigned transaction</th><th>Recruiter</th><th>Status</th><th>Actions</th></tr></thead><tbody id="setupWins"></tbody></table></div>
       <div class="inline-editor hide" id="windowEditor"><h3 id="windowEditorTitle">Edit Window</h3><div class="grid">
-        <label class="field" for="editWindowTx">Assigned transaction<select id="editWindowTx"></select></label>
+        <div class="field"><label for="editWindowTxToggle">Assigned transaction</label><div class="assignment-dropdown" id="editWindowTx">
+          <button id="editWindowTxToggle" class="assignment-toggle" type="button" aria-haspopup="true" aria-expanded="false"><span id="editWindowTxLabel">Select transactions</span><span aria-hidden="true">▾</span></button>
+          <div id="editWindowTxMenu" class="assignment-menu hide" role="group" aria-label="Assigned transactions"></div>
+        </div><small>Select one or more transactions. Any transaction applies to every queue type.</small></div>
         <label class="field" for="editRecruiter">Recruiter name<input id="editRecruiter" maxlength="80" placeholder="Full name of recruiter" autocomplete="off"></label>
       </div><div class="buttons"><button id="saveWindow" class="btn success" type="button">Save Changes</button><button id="cancelWindow" class="btn ghost" type="button">Cancel</button></div></div>
     </div>

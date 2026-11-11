@@ -678,3 +678,20 @@ header.site-header::before{
  .now-title p,#display:fullscreen .now-title p{font-size:clamp(14px,3vw,17px)}
  #tvControls .buttons{width:100%;justify-content:flex-start}
 }
+
+
+/* Multi-transaction assignment dropdown for service windows. */
+#setup .assignment-dropdown{position:relative;width:100%}
+#setup .assignment-toggle{width:100%;min-height:45px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border:1px solid var(--line,#cfe0e9);border-radius:9px;background:#fff;color:var(--ink,#12364d);font:inherit;font-size:14px;font-weight:600;text-align:left;cursor:pointer}
+#setup .assignment-toggle:hover{border-color:#83b9d0}
+#setup .assignment-menu{position:absolute;z-index:50;top:calc(100% + 5px);left:0;right:0;max-height:260px;overflow:auto;padding:7px;background:#fff;border:1px solid #cfe0e9;border-radius:10px;box-shadow:0 12px 26px #16364a24}
+#setup .assignment-option{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:7px;color:#234a5f;font-size:13px;font-weight:650;cursor:pointer}
+#setup .assignment-option:hover{background:#eef7fb}
+#setup .assignment-option input{width:17px;height:17px;margin:0;accent-color:#0b87ab;flex:none}
+#setup .assignment-option:first-child{border-bottom:1px solid #e2edf2;border-radius:0;margin-bottom:4px}
+#staff .precheck-transfer{margin-top:12px;padding:12px;background:#f1f8fb;border:1px solid #d5e7ef;border-radius:10px}
+#staff .precheck-transfer>label{display:block;margin:0 0 7px;color:#234e69;font-size:12px;font-weight:800}
+#staff .transfer-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+#staff .transfer-select{min-width:0;width:100%;min-height:40px;padding:8px 10px;border:1px solid #cfe0e9;border-radius:8px;background:#fff;color:#12364d;font:600 12px inherit}
+#staff .transfer-hint{display:block;margin-top:7px;color:#668394;font-size:11px;line-height:1.4}
+@media(max-width:560px){#staff .transfer-row{grid-template-columns:1fr}#staff .transfer-row .btn{width:100%}}

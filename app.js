@@ -3,11 +3,11 @@
 (()=>{'use strict';
 const C=window.TIPON_CONFIG||{}, $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const REQUIRED='federation-v10',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9','federation-v10']),DEFAULT='Please keep your queue number until called.',DEFAULT_GUIDE='Hello, mga ka-miyembro! Sa mga bagong dating na wala pang queuing number, i-scan ang QR code na nakikita sa screen. Piliin ang inyong service. Para sa Recruitment, ilagay ang First Name, Last Name, Recruitment Transaction at Position. Pagkatapos, pindutin ang Get Queue Number. Para sa Member Concern, ilagay ang First Name, Last Name at Type of Concern, pagkatapos ay pindutin ang Get Queue Number. Kapag may queue number na, please keep your queue number until called.';
+const REQUIRED='federation-v11',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9','federation-v10','federation-v11']),DEFAULT='Please keep your queue number until called.',DEFAULT_GUIDE='Hello, mga ka-miyembro! Sa mga bagong dating na wala pang queuing number, i-scan ang QR code na nakikita sa screen. Piliin ang inyong service. Para sa Recruitment, ilagay ang First Name, Last Name, Recruitment Transaction at Position. Pagkatapos, pindutin ang Get Queue Number. Para sa Member Concern, ilagay ang First Name, Last Name at Type of Concern, pagkatapos ay pindutin ang Get Queue Number. Kapag may queue number na, please keep your queue number until called.';
 let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],transactions:[],transactionTypes:[],assignments:{},announcement:DEFAULT,queueGuide:DEFAULT_GUIDE,queueGuideCue:'',completed:[],recruiters:{}};
 let connectionHealthy=false;
  let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,pollTimer=null,refreshFailures=0,activeWindowActions=new Set(),tableSignature={wait:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
-let lastGuideCue=null,guideDirty=false;let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='';
+let lastGuideCue=null,guideDirty=false;let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='',editWindowTxs=[];
 
 let localTvChannel=null,lastLocalTvSeen=0;
 try{
@@ -34,6 +34,43 @@ try{
 
 function url(){return new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||''}
 function valid(u){try{const p=new URL(u);return p.origin==='https://script.google.com'&&p.pathname.endsWith('/exec')}catch{return false}}
+function normalizeAssignment(value){
+ if(value===undefined||value===null||value==='')return 'ALL';
+ let entries=value;
+ if(typeof entries==='string'){
+  const raw=entries.trim();
+  if(!raw||raw.toUpperCase()==='ALL')return 'ALL';
+  if(raw[0]==='['){try{entries=JSON.parse(raw)}catch{entries=raw.split(/[;,|]/)}}
+  else entries=raw.split(/[;,|]/);
+ }
+ if(!Array.isArray(entries))entries=[entries];
+ const codes=[...new Set(entries.map(x=>String(x||'').trim().toUpperCase()).filter(Boolean))];
+ if(!codes.length||codes.includes('ALL'))return 'ALL';
+ return codes.length===1?codes[0]:codes;
+}
+function assignmentList(value){const normalized=normalizeAssignment(value);return normalized==='ALL'?'ALL':Array.isArray(normalized)?normalized:[normalized]}
+function assignmentIncludes(value,code){const list=assignmentList(value);return list==='ALL'||list.includes(String(code||'').toUpperCase())}
+function assignmentLabel(value){
+ const list=assignmentList(value);
+ return list==='ALL'?'Any transaction':list.map(code=>(S.transactions||[]).find(x=>x.code===code)?.name||code).join(', ');
+}
+function isPrecheckingCode(code){
+ const tx=(S.transactions||[]).find(x=>x.code===code);
+ return code==='PC'||/pre[\s-]*checking/i.test(tx?.name||'');
+}
+function isPrecheckingWindow(i){
+ const list=assignmentList(S.assignments?.[String(i)]||'ALL');
+ return list!=='ALL'&&list.some(isPrecheckingCode);
+}
+function transferDestinations(source){
+ const allowed=(S.transactions||[]).filter(tx=>['MC','NH','RH','TR'].includes(String(tx.code||'').toUpperCase()));
+ const targets=[];
+ for(let i=1;i<=Number(S.windowCount||0);i++){
+  if(i===source||win(i)||isPrecheckingWindow(i))continue;
+  for(const tx of allowed)if(assignmentIncludes(S.assignments?.[String(i)]||'ALL',tx.code))targets.push({window:i,transaction:tx});
+ }
+ return targets;
+}
 function status(t,k=''){
  const e=$('setupAlert');e.textContent=t;e.className='status '+k;
  if(k==='err'&&page==='staff')staffMessage(t,'err');
@@ -183,15 +220,23 @@ function staff(){
   staffSignature=signature;
   $('staffWins').innerHTML=Array.from({length:n},(_,idx)=>{
     const i=idx+1,t=win(i),selected=S.assignments?.[String(i)]||'ALL',
-      txName=(S.transactions||[]).find(x=>x.code===selected)?.name||selected, recruiter=S.recruiters?.[String(i)]||'Unassigned';
-    return '<div class="window-card"><div class="split"><h3>Window '+i+'</h3><span class="pill">'+esc(txName==='ALL'?'Any transaction':txName)+'</span></div>'+
+      txName=assignmentLabel(selected), recruiter=S.recruiters?.[String(i)]||'Unassigned',prechecking=isPrecheckingWindow(i);
+    const destinations=prechecking&&t?transferDestinations(i):[];
+    const transferOptions=destinations.length?destinations.map(x=>'<option value="'+x.window+'|'+esc(x.transaction.code)+'">'+esc(x.transaction.code+' · '+x.transaction.name+' → Window '+x.window)+'</option>').join(''):'<option value="">No matching idle window available</option>';
+    const transferHint=!t?'Call a queue to begin pre-checking.':S.version!==REQUIRED?'Deploy Federation v11 Apps Script to enable transfers.':destinations.length?'Only idle windows assigned to the selected transaction are listed.':'No matching window is idle right now.';
+    const transferPanel=prechecking?'<div class="precheck-transfer"><label for="transferTarget'+i+'">Transfer checked ticket</label><div class="transfer-row"><select id="transferTarget'+i+'" class="transfer-select"'+(!t||!connectionHealthy||S.version!==REQUIRED||!destinations.length?' disabled':'')+'>'+transferOptions+'</select><button class="btn success" data-transfer-from="'+i+'" type="button"'+(!t||!connectionHealthy||S.version!==REQUIRED||!destinations.length?' disabled':'')+'>Transfer</button></div><small class="transfer-hint">'+esc(transferHint)+'</small></div>':'';
+    return '<div class="window-card"><div class="split"><h3>Window '+i+'</h3><span class="pill">'+esc(txName)+'</span></div>'+
       '<div class="current">'+(t?'<b class="current-no">'+esc(t.queueNo)+'</b><strong>'+esc(t.name)+'</strong><small>'+esc(t.transactionName)+'</small>':'<small class="muted">No active applicant or member</small>')+'</div>'+
       '<p class="recruiter-label"><b>Recruiter:</b> '+esc(recruiter)+'</p>'+
       '<div class="window-actions"><button class="btn primary" data-action="call" data-win="'+i+'" type="button"'+(t||!connectionHealthy?' disabled':'')+'>Call Next</button>'+
       '<button class="btn ghost" data-action="recall" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Recall</button>'+
-      '<button class="btn success wide" data-action="complete" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Complete</button></div></div>';
+      (prechecking?'':'<button class="btn success wide" data-action="complete" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Complete</button>')+'</div>'+transferPanel+'</div>';
   }).join('');
   document.querySelectorAll('[data-action]').forEach(e=>e.onclick=()=>queueAction(e.dataset.action,+e.dataset.win));
+  document.querySelectorAll('[data-transfer-from]').forEach(button=>button.onclick=()=>{
+    const source=Number(button.dataset.transferFrom),select=$('transferTarget'+source),parts=String(select?.value||'').split('|');
+    if(parts.length===2&&parts[0]&&parts[1])void transferTicket(source,Number(parts[0]),parts[1]);
+  });
 }
 function dateDisplay(x){
   const raw=String(x.date||x.createdAt||'').slice(0,10);
@@ -227,12 +272,12 @@ function setupTables(){
   $('openAddTx').disabled=!writable;
   $('setupListHint').textContent=!valid(url())?'No Apps Script connection configured. Add a valid /exec URL above.':
     !connected?'Connecting to Apps Script… Existing windows and transactions appear when the backend responds.':
-    !writable?'Read-only backend '+S.version+'. Deploy the latest Federation v10 Apps Script to enable edits.':
-    'Connected to '+S.version+'. Saved windows and transactions are available for management.';
+    !writable?'Read-only backend '+S.version+'. Deploy Federation v11 Code.gs to enable edits.':
+    S.version!==REQUIRED?'Connected to '+S.version+'. Deploy Federation v11 Code.gs for multi-select assignments and Pre Checking transfers.':'Connected to '+S.version+'. Saved windows and transactions are available for management.';
   const trxName=code=>activeTx.find(x=>x.code===code)?.name||list.find(x=>x.code===code)?.name||(code==='ALL'?'Any transaction':code);
   $('setupWins').innerHTML=n?Array.from({length:n},(_,idx)=>{
     const i=idx+1,t=windows[String(i)]||null,tx=assigns[String(i)]||'ALL',name=recruiters[String(i)]||'—';
-    return '<tr><td><b>Window '+i+'</b></td><td>'+esc(trxName(tx))+'</td><td>'+esc(name)+'</td><td>'+(t?'Serving '+esc(t.queueNo):'Available')+'</td><td class="actions-cell">'+
+    return '<tr><td><b>Window '+i+'</b></td><td>'+esc(assignmentLabel(tx))+'</td><td>'+esc(name)+'</td><td>'+(t?'Serving '+esc(t.queueNo):'Available')+'</td><td class="actions-cell">'+
       '<button class="btn sm" data-edit-win="'+i+'" type="button"'+(!writable?' disabled':'')+'>Edit</button>'+
       '<button class="btn sm danger" data-delete-win="'+i+'" type="button"'+(!writable||!canDeleteWindow(i)||n<=1?' disabled':'')+' title="'+(!canDeleteWindow(i)?'Complete this or later active windows first':'Delete window immediately')+'">Delete</button></td></tr>';
   }).join(''):'<tr><td colspan="5" class="empty">'+(connected?'No windows available. Add a window in Setup.':'Waiting for saved service windows from Apps Script.')+'</td></tr>';
@@ -265,11 +310,32 @@ function setupTables(){
     else status('Transaction '+code+' removed from active services. Previous queue records remain preserved.','ok');
   });
 }
+function updateWindowAssignmentDropdown(){
+  const menu=$('editWindowTxMenu');
+  if(!menu)return;
+  menu.querySelectorAll('[data-window-tx]').forEach(input=>input.checked=editWindowTxs.includes(input.value));
+  const label=editWindowTxs.includes('ALL')?'Any transaction':editWindowTxs.length?editWindowTxs.map(code=>(S.transactions||[]).find(x=>x.code===code)?.name||code).join(', '):'Select transactions';
+  $('editWindowTxLabel').textContent=label;
+}
+function toggleWindowAssignment(code){
+  if(code==='ALL')editWindowTxs=editWindowTxs.includes('ALL')?[]:['ALL'];
+  else{
+    const selected=editWindowTxs.includes(code);
+    editWindowTxs=editWindowTxs.filter(x=>x!=='ALL');
+    editWindowTxs=selected?editWindowTxs.filter(x=>x!==code):[...editWindowTxs,code];
+  }
+  updateWindowAssignmentDropdown();
+}
 function openWindowEditor(i){
   editWindow=i;$('windowEditorTitle').textContent='Edit Window '+i;
-  $('editWindowTx').innerHTML='<option value="ALL">Any transaction</option>'+(S.transactions||[]).map(x=>'<option value="'+esc(x.code)+'">'+esc(x.code)+' · '+esc(x.name)+'</option>').join('');
-  $('editWindowTx').value=S.assignments?.[String(i)]||'ALL';
+  const selected=assignmentList(S.assignments?.[String(i)]||'ALL');
+  editWindowTxs=selected==='ALL'?['ALL']:selected.slice();
+  $('editWindowTxMenu').innerHTML='<label class="assignment-option"><input type="checkbox" data-window-tx="ALL" value="ALL"> Any transaction</label>'+
+    (S.transactions||[]).map(x=>'<label class="assignment-option"><input type="checkbox" data-window-tx="'+esc(x.code)+'" value="'+esc(x.code)+'"> '+esc(x.code+' · '+x.name)+'</label>').join('');
+  $('editWindowTxMenu').querySelectorAll('[data-window-tx]').forEach(input=>input.onchange=()=>toggleWindowAssignment(input.value));
+  updateWindowAssignmentDropdown();
   $('editRecruiter').value=S.recruiters?.[String(i)]||'';
+  $('editWindowTxMenu').classList.add('hide');$('editWindowTxToggle').setAttribute('aria-expanded','false');
   $('windowEditor').classList.remove('hide');$('windowEditor').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function openTxEditor(code){
@@ -336,7 +402,7 @@ async function refresh(silent=false){
     if(!COMPATIBLE.has(S.version))
       status('Backend version is outdated. Check the Apps Script deployment.','err');
     else if(S.version!==REQUIRED)
-      status('Connected to '+S.version+'. Deploy Federation v10 Code.gs to activate the new daily ticket-number and Complete rules.','err');
+      status('Connected to '+S.version+'. Deploy Federation v11 Code.gs for multi-select assignments and Pre Checking transfers.','err');
     else status('Connected to tipón TAWAG • '+S.version+' • Synced '+new Date().toLocaleTimeString('en-PH',{timeZone:'Asia/Manila'}),'ok');
   }catch(e){
     connectionHealthy=false;
@@ -412,6 +478,7 @@ async function operate(action,params={},after){
  }
 }
 async function queueAction(action,i){
+ if(action==='complete'&&isPrecheckingWindow(i)){staffMessage('Pre Checking tickets must be transferred to an available service window.','err');return}
  const key=String(i);
  if(activeWindowActions.has(key))return;
  activeWindowActions.add(key);clearStaffMessage();
@@ -452,12 +519,36 @@ async function queueAction(action,i){
   staffSignature='';staff();
  }
 }
+async function transferTicket(source,target,transaction){
+ if(!ready())return;
+ if(S.version!==REQUIRED){staffMessage('Deploy Federation v11 Apps Script to enable Pre Checking transfers.','err');return}
+ if(!source||!target||source===target)return;
+ const keys=[String(source),String(target)];
+ if(keys.some(key=>activeWindowActions.has(key)))return;
+ keys.forEach(key=>activeWindowActions.add(key));
+ const button=document.querySelector('[data-transfer-from="'+source+'"]');
+ if(button){button.disabled=true;button.textContent='Transferring…'}
+ try{
+  const result=await operate('transfer',{window:source,targetWindow:target,transaction},reply=>{
+   const ticket=reply.ticket;
+   if(!ticket)return;
+   S.windows={...(S.windows||{}),[String(source)]:null,[String(target)]:ticket};
+   last[source]='';last[target]='';
+   staffSignature='';windowSignature='';render();
+  });
+  if(result)staffMessage('Transferred '+(result.ticket?.queueNo||'the ticket')+' to Window '+target+'.','ok');
+ }finally{
+  keys.forEach(key=>activeWindowActions.delete(key));
+  staffSignature='';staff();
+ }
+}
 async function assignTx(i,transaction){
   if(!ready())return;
   const old=S.assignments?.[String(i)]||'ALL';
   // Preserve the current queue and sessions while only the assignment changes.
   if(old===transaction)return;
-  const result=await operate('setWindowTx',{window:i,transaction});
+  const payload=Array.isArray(transaction)?{window:i,transactions:transaction}:{window:i,transaction};
+ const result=await operate('setWindowTx',payload);
   if(!result){staffSignature='';staff();return}
   S.assignments={...(S.assignments||{}),[String(i)]:transaction};
   staffSignature='';staff();
@@ -570,18 +661,27 @@ $('guidePlay').onclick=async()=>{
 $('announcementSave').onclick=()=>saveAnnouncement($('announcementInput').value);
 $('announcementReset').onclick=()=>saveAnnouncement(DEFAULT);
 $('addWin').onclick=()=>operate('addWindow');
-$('cancelWindow').onclick=()=>{$('windowEditor').classList.add('hide');editWindow=0};
+$('cancelWindow').onclick=()=>{$('windowEditor').classList.add('hide');$('editWindowTxMenu').classList.add('hide');$('editWindowTxToggle').setAttribute('aria-expanded','false');editWindow=0};
+$('editWindowTxToggle').onclick=()=>{const menu=$('editWindowTxMenu'),open=menu.classList.contains('hide');menu.classList.toggle('hide');$('editWindowTxToggle').setAttribute('aria-expanded',String(open))};
+document.addEventListener('click',event=>{if(!event.target.closest('#editWindowTx')){$('editWindowTxMenu').classList.add('hide');$('editWindowTxToggle').setAttribute('aria-expanded','false')}});
 $('saveWindow').onclick=async()=>{
-  const i=editWindow,transaction=$('editWindowTx').value,recruiter=$('editRecruiter').value.trim();
+  const i=editWindow,selected=editWindowTxs.slice(),recruiter=$('editRecruiter').value.trim();
   if(!i)return;
+  if(!selected.length){status('Select at least one assigned transaction.','err');return}
+  if(selected.length>1&&S.version!==REQUIRED){status('Deploy Federation v11 Apps Script before saving multiple assigned transactions.','err');return}
+  const assignment=selected.includes('ALL')?'ALL':selected.length===1?selected[0]:selected;
+  const payload={window:i,recruiter};
+  if(assignment==='ALL')payload.transaction='ALL';
+  else if(Array.isArray(assignment))payload.transactions=assignment;
+  else payload.transaction=assignment;
   const save=$('saveWindow');save.disabled=true;save.textContent='Saving…';
   try{
-    const result=await operate('saveWindow',{window:i,transaction,recruiter},()=>{
-      S.assignments={...(S.assignments||{}),[String(i)]:transaction};
+    const result=await operate('saveWindow',payload,()=>{
+      S.assignments={...(S.assignments||{}),[String(i)]:assignment};
       S.recruiters={...(S.recruiters||{}),[String(i)]:recruiter};
       staffSignature='';render();
     });
-    if(result){$('windowEditor').classList.add('hide');editWindow=0;status('Window '+i+' saved to Google Sheets.','ok')}
+    if(result){$('windowEditor').classList.add('hide');$('editWindowTxMenu').classList.add('hide');$('editWindowTxToggle').setAttribute('aria-expanded','false');editWindow=0;status('Window '+i+' saved to Google Sheets.','ok')}
   }finally{save.disabled=false;save.textContent='Save Changes'}
 };
 $('cancelTx').onclick=()=>{$('txEditor').classList.add('hide');editTxCode=''};
@@ -658,7 +758,7 @@ $('reconnect').onclick=()=>{
   status('Rechecking the official Apps Script deployment. If the connection still fails, redeploy Code.gs in Google Apps Script.','');
   void refresh(false);
 };
-$('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(!COMPATIBLE.has(r.version))throw Error('Backend is '+(r.version||'outdated')+'. Deploy the latest Code.gs.');status('Backend verified • '+r.version+' • '+r.windows+' service windows.'+(r.version!==REQUIRED?' Update to v10 for new daily ticket rules and Complete fixes.':''),'ok');await refresh(true)}catch(e){error(e)}};
+$('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(!COMPATIBLE.has(r.version))throw Error('Backend is '+(r.version||'outdated')+'. Deploy the latest Code.gs.');status('Backend verified • '+r.version+' • '+r.windows+' service windows.'+(r.version!==REQUIRED?' Update to v11 for multi-select assignments and Pre Checking transfers.':''),'ok');await refresh(true)}catch(e){error(e)}};
 $('clear').onclick=()=>{localStorage.removeItem('tqApi');$('api').value='';S.version='';qrUrl='';status('Connection cleared.','err');qr()};
 const full=$('fullscreen');
 function reflect(){full.setAttribute('aria-pressed',document.fullscreenElement===$('display')?'true':'false')}

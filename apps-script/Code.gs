@@ -1,5 +1,5 @@
 const CFG={spreadsheetId:'1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik',queue:'QUEUE',windows:'WINDOWS',tx:'TRANSACTION_TYPES',mpc:'MPC_CONFIG',settings:'SETTINGS',maxWindows:20};
-const QH=['Ticket ID','Queue Date','Created At','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Status','Window','Called At','Completed At','Last Recalled At','First Name','Last Name','Recruiter'];
+const QH=['Ticket ID','Queue Date','Created At','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Status','Window','Called At','Completed At','Last Recalled At','First Name','Last Name','Recruiter','Prechecked','Service Transaction Code','Service Transaction'];
 const WH=['Window','Active Ticket ID','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Called At','Updated At','Queue Row'];
 const TH=['Code','Transaction Name','Active','Sort Order'];
 const MH=['MPC Code','MPC Name','Queue Prefix','Logo URL','Active','Sort Order'];
@@ -19,11 +19,11 @@ function setupTiponQueueSystem(){
   if(w.getLastRow()<2)for(let i=1;i<=4;i++)w.getRange(i+1,1).setValue(i);
   const t=ss.getSheetByName(CFG.tx);
   if(t.getLastRow()<2)t.getRange(2,1,3,4).setValues([['NH','New Hire',true,1],['RH','Rehire',true,2],['TR','Transfer',true,3]]);
-  const q=ss.getSheetByName(CFG.queue);if(q.getLastColumn()<QH.length)q.getRange(1,QH.length).setValue('Recruiter');
+  const q=ss.getSheetByName(CFG.queue);if(q.getLastColumn()<QH.length)q.getRange(1,QH.length).setValue('Prechecked');
   const all=allTxs_(ss);
   if(!all.some(t=>t.code==='MC'))ss.getSheetByName(CFG.tx).appendRow(['MC','Member Concerns',true,all.length+1]);
   // A disabled transaction remains disabled after setup.
-  return {ok:true,federationMode:true,version:'federation-v10'};
+  return {ok:true,federationMode:true,version:'federation-v11'};
 }
 function doGet(e){
   const p=e?.parameter||{},cb=String(p.callback||'callback').replace(/[^A-Za-z0-9_.$]/g,'');
@@ -42,7 +42,7 @@ function doGet(e){
         .setTitle('TIPON TAWAG - Manage Pre-Employment Requirements');
     }
     let r;switch(action){
-      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v10',queueGuideSupported:true,scanReportSupported:typeof saveScanReport_==='function'&&typeof doPost==='function'&&typeof issueApplicantToken_==='function'};break;
+      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v11',queueGuideSupported:true,scanReportSupported:typeof saveScanReport_==='function'&&typeof doPost==='function'&&typeof issueApplicantToken_==='function'};break;
       case'state':r={ok:true,state:state_(p)};break;
       case'publicConfig':r=publicConfig_();break;
       case'requirements':r=requirementsConfig_();break;
@@ -51,6 +51,7 @@ function doGet(e){
       case'register':r=register_(p);break;
       case'setWindowTx':r=setWindowTx_(p);break;
       case'call':r=call_(p);break;
+      case'transfer':r=transfer_(p);break;
       case'recall':r=recall_(p);break;
       case'complete':r=complete_(p);break;
       case'addWindow':r=addWindow_();break;
@@ -120,7 +121,7 @@ function issueTicket_(ss,tx,first,last,pos){
     message:'This applicant/member already has a queue number for this transaction today.'};
   const num=wantedCode+'-'+String(max+1).padStart(4,'0');
   const now=new Date(),id=Utilities.getUuid(),name=first+' '+last;
-  const row=[id,today,now,num,'TIPON','TIPON Federation',wantedCode,tx.name,name,pos,'WAITING','','','','',first,last,''];
+  const row=[id,today,now,num,'TIPON','TIPON Federation',wantedCode,tx.name,name,pos,'WAITING','','','','',first,last,'','','',''];
   q.appendRow(row);
   return{ok:true,duplicate:false,ticket:ticket_(row)};
 }
@@ -129,24 +130,81 @@ function settingValue_(ss,key){
   const row=sh.getRange(2,1,sh.getLastRow()-1,2).getValues().find(r=>String(r[0])===key);
   return row?String(row[1]||''):'';
 }
+function normalizeWindowAssignment_(value){
+  if(value===undefined||value===null||value==='')return 'ALL';
+  let entries=value;
+  if(typeof entries==='string'){
+    const raw=entries.trim();
+    if(!raw||raw.toUpperCase()==='ALL')return 'ALL';
+    if(raw[0]==='['){try{entries=JSON.parse(raw)}catch(e){entries=raw.split(/[;,|]/)}}
+    else entries=raw.split(/[;,|]/);
+  }
+  if(!Array.isArray(entries))entries=[entries];
+  const codes=[...new Set(entries.map(v=>code_(v,6)).filter(Boolean))];
+  if(!codes.length||codes.includes('ALL'))return 'ALL';
+  return codes.length===1?codes[0]:codes;
+}
+function windowAssignmentCodes_(assignment){
+  if(assignment==='ALL'||assignment===undefined||assignment===null)return [];
+  const values=Array.isArray(assignment)?assignment:[assignment];
+  return [...new Set(values.map(v=>code_(v,6)).filter(v=>v&&v!=='ALL'))];
+}
+function assignmentAllows_(assignment,transaction){
+  return assignment==='ALL'||windowAssignmentCodes_(assignment).includes(code_(transaction,6));
+}
+function assignmentStorage_(assignment){
+  if(assignment==='ALL')return 'ALL';
+  const codes=windowAssignmentCodes_(assignment);
+  if(!codes.length)throw Error('Choose at least one assigned transaction.');
+  return codes.length===1?codes[0]:JSON.stringify(codes);
+}
+function requestedWindowAssignment_(p){
+  const raw=p&&p.transactions!==undefined?p.transactions:p?.transaction;
+  if(Array.isArray(raw)&&!raw.length)throw Error('Choose at least one assigned transaction.');
+  return normalizeWindowAssignment_(raw===undefined?'ALL':raw);
+}
+function validateWindowAssignment_(ss,assignment){
+  if(assignment==='ALL')return 'ALL';
+  const codes=windowAssignmentCodes_(assignment);
+  if(!codes.length)throw Error('Choose at least one assigned transaction.');
+  if(codes.some(code=>!findTx_(ss,code)))throw Error('Invalid or inactive transaction assignment.');
+  return codes.length===1?codes[0]:codes;
+}
+function isPrecheckingAssignment_(ss,assignment){
+  return windowAssignmentCodes_(assignment).some(code=>code==='PC'||/pre\s*-?\s*checking/i.test(findTx_(ss,code)?.name||''));
+}
+function isPrecheckingWindow_(ss,window){return isPrecheckingAssignment_(ss,windowTx_(ss,window))}
+function hasPrecheckingWindow_(ss){
+  const count=windowCount_(),sheet=ss.getSheetByName(CFG.settings),
+    rows=sheet&&sheet.getLastRow()>1?sheet.getRange(2,1,sheet.getLastRow()-1,2).getValues():[],
+    values=new Map(rows.map(row=>[String(row[0]).trim(),String(row[1]||'')]));
+  for(let i=1;i<=count;i++){
+    const stored=values.get('WINDOW_TX_'+i);
+    if(stored&&isPrecheckingAssignment_(ss,normalizeWindowAssignment_(stored)))return true;
+  }
+  return false;
+}
 function windowTx_(ss,window){
-  const stored=code_(settingValue_(ss,'WINDOW_TX_'+window),6);
-  if(stored==='ALL')return 'ALL';
-  if(stored&&findTx_(ss,stored))return stored;
+  const stored=settingValue_(ss,'WINDOW_TX_'+window);
+  if(stored){
+    const selected=normalizeWindowAssignment_(stored);
+    if(selected==='ALL')return 'ALL';
+    const valid=windowAssignmentCodes_(selected).filter(code=>Boolean(findTx_(ss,code)));
+    if(valid.length)return valid.length===1?valid[0]:valid;
+  }
   const defaults={1:'NH',2:'RH',3:'TR',4:'MC'};
   const preferred=defaults[window]||'ALL';
   return preferred==='ALL'||findTx_(ss,preferred)?preferred:'ALL';
 }
 function setWindowTx_(p){
-  const window=int_(p.window,1,windowCount_()),tx=code_(p.transaction,6);
-  if(tx!=='ALL'&&!findTx_(ss_(),tx))throw Error('Invalid transaction assignment.');
+  const window=int_(p.window,1,windowCount_()),ss=ss_(),assignment=validateWindowAssignment_(ss,requestedWindowAssignment_(p));
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
-    const ss=ss_(),sheet=ss.getSheetByName(CFG.settings)||ensure_(ss,CFG.settings,SH);
+    const sheet=ss.getSheetByName(CFG.settings)||ensure_(ss,CFG.settings,SH);
     const key='WINDOW_TX_'+window,rows=sheet.getLastRow()>1?sheet.getRange(2,1,sheet.getLastRow()-1,1).getValues():[];
     const idx=rows.findIndex(r=>String(r[0]).trim()===key),row=idx>=0?idx+2:sheet.getLastRow()+1;
-    sheet.getRange(row,1,1,3).setValues([[key,tx,new Date()]]);
-    return{ok:true,window,transaction:tx};
+    sheet.getRange(row,1,1,3).setValues([[key,assignmentStorage_(assignment),new Date()]]);
+    return{ok:true,window,transaction:assignment};
   }finally{lock.releaseLock()}
 }
 function windowRoute_(ss,window){
@@ -170,19 +228,25 @@ function call_(p){
   try{
     const ss=ss_(),w=ss.getSheetByName(CFG.windows),win=int_(p.window,1,windowCount_()),row=win+1;
     if(w.getRange(row,2).getValue())throw Error('Complete the current applicant/member transaction first.');
-    const assigned=windowTx_(ss,win),q=ss.getSheetByName(CFG.queue),today=day_();
+    const assignment=windowTx_(ss,win),prechecking=isPrecheckingWindow_(ss,win),hasPrechecking=hasPrecheckingWindow_(ss);
+    const q=ss.getSheetByName(CFG.queue),today=day_();
     if(q.getLastRow()<2)throw Error('Queue is empty.');
     const selection=todayQueueRows_(q,today),v=selection.rows;
     let i=-1;
     for(let x=0;x<v.length;x++){
-      const r=v[x];
+      const r=v[x],transaction=code_(r[6],6),prechecked=String(r[18]||'').toUpperCase()==='YES';
       if(dayCell_(r[1])!==today||String(r[10])!=='WAITING')continue;
-      if(assigned!=='ALL'&&String(r[6])!==assigned)continue;
+      if(prechecking){
+        if(!['NH','RH','TR'].includes(transaction)||prechecked)continue;
+      }else{
+        if(!assignmentAllows_(assignment,transaction))continue;
+        if(hasPrechecking&&['NH','RH','TR'].includes(transaction)&&!prechecked)continue;
+      }
       i=x;break;
     }
-    if(i<0)throw Error('No matching applicant or member is waiting.');
-    const r=v[i],actualRow=selection.startRow+i,now=new Date(),recruiter=txt_(settingValue_(ss,'WINDOW_RECRUITER_'+win),80);q.getRange(actualRow,11,1,3).setValues([['SERVING',win,now]]);q.getRange(actualRow,18).setValue(recruiter);r[17]=recruiter;
-    r[10]='SERVING';r[11]=win;r[12]=now;
+    if(i<0)throw Error(prechecking?'No unchecked New Hire, Rehire, or Transfer queue is waiting.':'No matching applicant or member is waiting.');
+    const r=v[i],actualRow=selection.startRow+i,now=new Date(),recruiter=txt_(settingValue_(ss,'WINDOW_RECRUITER_'+win),80);
+    q.getRange(actualRow,11,1,3).setValues([['SERVING',win,now]]);q.getRange(actualRow,18).setValue(recruiter);r[17]=recruiter;
     w.getRange(row,1,1,WH.length).setValues([[win,r[0],r[3],r[4],r[5],r[6],r[7],r[8],r[9],now,now,actualRow]]);
     return {ok:true,ticket:ticket_(r)};
   }finally{lock.releaseLock()}
@@ -203,6 +267,7 @@ function complete_(p){
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
     const ss=ss_(),w=ss.getSheetByName(CFG.windows),win=int_(p.window,1,windowCount_()),r=w.getRange(win+1,1,1,WH.length).getValues()[0];
+    if(isPrecheckingWindow_(ss,win))throw Error('Pre Checking tickets must be transferred to an available service window.');
     const expected=txt_(p.ticketId,100),active=String(r[1]||'');
     if(!active||(expected&&active!==expected)){
       // Retry-safe: a previous request may have completed but its JSONP response timed out.
@@ -228,6 +293,38 @@ function complete_(p){
     }}
   }finally{lock.releaseLock()}
 }
+function transfer_(p){
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    const ss=ss_(),w=ss.getSheetByName(CFG.windows),count=windowCount_(),
+      source=int_(p.window,1,count),target=int_(p.targetWindow,1,count),code=code_(p.transaction,6);
+    if(source===target)throw Error('Choose another service window.');
+    if(!isPrecheckingWindow_(ss,source))throw Error('Only a Pre Checking window can transfer a ticket.');
+    if(!['MC','NH','RH','TR'].includes(code))throw Error('Choose Member Concern, New Hire, Rehire, or Transfer.');
+    const tx=findTx_(ss,code);if(!tx)throw Error('The selected transaction is not active.');
+    if(isPrecheckingWindow_(ss,target))throw Error('Choose a destination service window, not another Pre Checking window.');
+    const assignment=windowTx_(ss,target);
+    if(!assignmentAllows_(assignment,code))throw Error('The destination window is not assigned to '+tx.name+'.');
+    const sourceRow=source+1,targetRow=target+1,
+      sourceData=w.getRange(sourceRow,1,1,WH.length).getValues()[0],
+      targetData=w.getRange(targetRow,1,1,WH.length).getValues()[0];
+    if(!sourceData[1])throw Error('The Pre Checking window is empty.');
+    if(targetData[1])throw Error('The destination window is serving another applicant or member.');
+    const q=ss.getSheetByName(CFG.queue),queueRow=queueRowForWindow_(q,sourceData);
+    if(queueRow<2)throw Error('The Pre Checking ticket could not be found in the queue.');
+    const row=q.getRange(queueRow,1,1,QH.length).getValues()[0];
+    if(String(row[10])!=='SERVING'||Number(row[11])!==source)throw Error('The Pre Checking ticket changed. Refresh and try again.');
+    if(!['NH','RH','TR'].includes(code_(row[6],6)))throw Error('Only New Hire, Rehire, or Transfer tickets can leave Pre Checking.');
+    const now=new Date(),recruiter=txt_(settingValue_(ss,'WINDOW_RECRUITER_'+target),80);
+    q.getRange(queueRow,11,1,3).setValues([['SERVING',target,now]]);
+    q.getRange(queueRow,18).setValue(recruiter);q.getRange(queueRow,19).setValue('YES');
+    q.getRange(queueRow,20,1,2).setValues([[code,tx.name]]);
+    row[10]='SERVING';row[11]=target;row[12]=now;row[17]=recruiter;row[18]='YES';row[19]=code;row[20]=tx.name;
+    w.getRange(targetRow,1,1,WH.length).setValues([[target,row[0],row[3],row[4],row[5],code,tx.name,row[8],row[9],now,now,queueRow]]);
+    w.getRange(sourceRow,2,1,WH.length-1).clearContent();
+    return{ok:true,window:source,targetWindow:target,ticket:ticket_(row)};
+  }finally{lock.releaseLock()}
+}
 function addWindow_(){
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{const ss=ss_(),w=ss.getSheetByName(CFG.windows),n=windowCount_();if(n>=CFG.maxWindows)throw Error('Maximum windows reached.');w.getRange(n+2,1).setValue(n+1);return{ok:true,window:n+1}}finally{lock.releaseLock()}
@@ -238,13 +335,11 @@ function addTx_(p){
   try{const ss=ss_(),list=allTxs_(ss);if(list.some(x=>x.code===c))throw Error('Code already exists, including inactive records. Restore it in Setup if needed.');ss.getSheetByName(CFG.tx).appendRow([c,n,true,list.length+1]);return{ok:true,transaction:{code:c,name:n}}}finally{lock.releaseLock()}
 }
 function saveWindow_(p){
-  const n=windowCount_(),win=int_(p.window,1,n),tx=code_(p.transaction||'ALL',6),recruiter=txt_(p.recruiter,80);
-  if(tx!=='ALL'&&!findTx_(ss_(),tx))throw Error('Invalid or inactive transaction.');
+  const n=windowCount_(),win=int_(p.window,1,n),ss=ss_(),assignment=validateWindowAssignment_(ss,requestedWindowAssignment_(p)),recruiter=txt_(p.recruiter,80);
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
-    const ss=ss_();
-    writeSettings_(ss,{['WINDOW_TX_'+win]:tx,['WINDOW_RECRUITER_'+win]:recruiter});
-    return{ok:true,window:win,transaction:tx,recruiter};
+    writeSettings_(ss,{['WINDOW_TX_'+win]:assignmentStorage_(assignment),['WINDOW_RECRUITER_'+win]:recruiter});
+    return{ok:true,window:win,transaction:assignment,recruiter};
   }finally{lock.releaseLock()}
 }
 function writeSettings_(ss,changes){
@@ -301,7 +396,13 @@ function deleteTx_(p){
     if(!bool_(rows[idx][2]))return{ok:true,code,active:false};
     // Soft-delete preserves existing waiting, serving, completed and historical records.
     const changes={};
-    for(let i=1;i<=windowCount_();i++)if(windowTx_(ss,i)===code)changes['WINDOW_TX_'+i]='ALL';
+    for(let i=1;i<=windowCount_();i++){
+       const assignment=windowTx_(ss,i);
+       if(assignment!=='ALL'&&assignmentAllows_(assignment,code)){
+         const remaining=windowAssignmentCodes_(assignment).filter(item=>item!==code);
+         changes['WINDOW_TX_'+i]=remaining.length?assignmentStorage_(remaining):'ALL';
+       }
+     }
     if(Object.keys(changes).length)writeSettings_(ss,changes);
     sh.getRange(idx+1,3).setValue(false);
     return{ok:true,code,active:false,reassignedWindows:Object.keys(changes).length};
@@ -321,7 +422,7 @@ function restoreTx_(p){
 function publicConfig_(){
   const ss=ss_();
   const transactions=txs_(ss);
-  return{ok:true,version:'federation-v10',transactions};
+  return{ok:true,version:'federation-v11',transactions};
 }
 function state_(p){
   const view=['display','staff','setup'].includes(String(p?.view||''))?String(p.view):'staff';
@@ -343,9 +444,16 @@ function state_(p){
   const settingMap=new Map(settingsData.map(r=>[String(r[0]).trim(),String(r[1]??'')]));
   const defaultTx={1:'NH',2:'RH',3:'TR',4:'MC'},assignments={},recruiters={};
   for(let i=1;i<=n;i++){
-    const stored=code_(settingMap.get('WINDOW_TX_'+i)||'',6);
-    assignments[String(i)]=stored==='ALL'?'ALL':availableCodes.has(stored)?stored:
-      availableCodes.has(defaultTx[i])?defaultTx[i]:'ALL';
+    const stored=String(settingMap.get('WINDOW_TX_'+i)||'').trim(),fallback=availableCodes.has(defaultTx[i])?defaultTx[i]:'ALL';
+    if(!stored)assignments[String(i)]=fallback;
+    else{
+      const selected=normalizeWindowAssignment_(stored);
+      if(selected==='ALL')assignments[String(i)]='ALL';
+      else{
+        const valid=windowAssignmentCodes_(selected).filter(code=>availableCodes.has(code));
+        assignments[String(i)]=valid.length===1?valid[0]:valid.length?valid:fallback;
+      }
+    }
     recruiters[String(i)]=settingMap.get('WINDOW_RECRUITER_'+i)||'';
   }
   const q=ss.getSheetByName(CFG.queue),waiting=[],completed=[],today=day_();
@@ -377,7 +485,7 @@ function state_(p){
      queueGuideCue:settingMap.get('QUEUE_GUIDE_CUE')?.trim()||'',
      queueGuideSupported:true,
      scanReportSupported:typeof saveScanReport_==='function'&&typeof doPost==='function'&&typeof issueApplicantToken_==='function',
-    federationMode:true,version:'federation-v10'};
+    federationMode:true,version:'federation-v11'};
   try{
     const json=JSON.stringify(result);
     if(cache&&json.length<28000)cache.put(cacheKey,json,2);
@@ -467,7 +575,7 @@ function findTx_(ss,c){return txs_(ss).find(x=>x.code===c)}
 function findActive_(q,today,f,l){if(q.getLastRow()<2)return null;const key=nameKey_(f,l),v=q.getRange(2,1,q.getLastRow()-1,QH.length).getValues();for(const r of v){if(dayCell_(r[1])!==today||!['WAITING','SERVING'].includes(String(r[10])))continue;if(nameKey_(r[15]||String(r[8]).split(' ')[0],r[16]||String(r[8]).split(' ').slice(-1)[0])===key)return r}return null}
 function next_(q,today,tx){let m=0;if(q.getLastRow()<2)return 1;q.getRange(2,1,q.getLastRow()-1,QH.length).getValues().forEach(r=>{if(dayCell_(r[1])===today&&String(r[6])===tx){const x=String(r[3]).match(/-(\d+)$/);if(x)m=Math.max(m,Number(x[1]))}});return m+1}
 function findId_(s,id){if(s.getLastRow()<2)return-1;const x=s.getRange(2,1,s.getLastRow()-1,1).createTextFinder(id).matchEntireCell(true).findNext();return x?x.getRow():-1}
-function ticket_(r){return{ticketId:String(r[0]||''),createdAt:iso_(r[2]),queueNo:String(r[3]||''),mpcCode:String(r[4]||''),mpcName:String(r[5]||''),transaction:String(r[6]||''),transactionName:String(r[7]||''),name:String(r[8]||''),position:String(r[9]||''),status:String(r[10]||''),window:r[11]||'',calledAt:iso_(r[12]),date:dayCell_(r[1]),recruiter:String(r[17]||''),completedAt:iso_(r[13])}}
+function ticket_(r){return{ticketId:String(r[0]||''),createdAt:iso_(r[2]),queueNo:String(r[3]||''),mpcCode:String(r[4]||''),mpcName:String(r[5]||''),transaction:String(r[19]||r[6]||''),transactionName:String(r[20]||r[7]||''),name:String(r[8]||''),position:String(r[9]||''),status:String(r[10]||''),window:r[11]||'',calledAt:iso_(r[12]),date:dayCell_(r[1]),recruiter:String(r[17]||''),completedAt:iso_(r[13])}}
 function windowTicket_(r){return{window:Number(r[0]),ticketId:String(r[1]||''),queueNo:String(r[2]||''),mpcCode:String(r[3]||''),mpcName:String(r[4]||''),transaction:String(r[5]||''),transactionName:String(r[6]||''),name:String(r[7]||''),position:String(r[8]||''),calledAt:iso_(r[9])}}
 function queueRowForWindow_(q,windowRow){
  const stored=Number(windowRow[11]);

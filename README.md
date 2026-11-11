@@ -15,13 +15,13 @@ This is a QR-based queuing system for **recruitment applicants** and **cooperati
 2. For Recruitment, choose an active transaction type and enter the position. For Member Concern, type the concern.
 3. Provide first and last name and select **Get Queue Number**.
 4. See the confirmed NH / RH / TR / MC ticket, then choose **Register Another Applicant / Member** or **Done**. Done attempts to close the tab; browsers only allow programmatic closing for tabs that were script-opened. QR-opened tabs usually remain open and show a clear completion message while retaining the ticket.
-5. Staff use Call Next, Recall, and the green Complete action. Serving tickets and queue history are stored in Google Sheets; the same normalized first + last name **and transaction** receive a single ticket on the same Philippine calendar day, including after completion.
+5. Staff use Call Next and Recall. Standard service windows use Complete; a **Pre Checking** window handles New Hire, Rehire, and Transfer tickets first, then transfers each checked ticket to an idle window assigned to Member Concern, New Hire, Rehire, or Transfer. Pre Checking has no Complete action. Serving tickets and queue history are stored in Google Sheets; the same normalized first + last name **and original transaction** receive a single ticket on the same Philippine calendar day, including after completion.
 6. TV Display shows the scan code, NOW SERVING windows, UP NEXT, and a scrolling announcement with a fixed **ANNOUNCEMENT** label. The call banner is removed. On supported browsers, each Call/Recall speaks the **ticket number first**, without the word "Queue," three times after sound is enabled on the device.
 
 ### Setup
 
 - **Get Queue Page** link lives in Setup, not the TV navigation or below the QR code.
-- Manage service windows, assigned transaction, recruiter, and active windows.
+- Manage service windows, multi-select assigned transactions, recruiter, and active windows.
 - Manage transaction types with Edit or direct Delete, without confirmation popup. Deleted types disappear immediately from active Setup lists, are hidden from public registration, and keep their historical records in Google Sheets. Restore is not shown in the interface. The **Add Transaction Type** button on the right opens an inline form.
 - TV Announcement can store up to **2,500 characters** once the Federation v8 Apps Script backend is deployed. Longer messages are transmitted to Apps Script in smaller chunks, then committed together.
 - Refresh Queue, Enable/Test Sound, Save Connection, and Test Connection are in Setup.
@@ -29,22 +29,23 @@ This is a QR-based queuing system for **recruitment applicants** and **cooperati
 
 ## IMPORTANT: Deploy the Google Apps Script backend separately
 
-**Pushing to GitHub changes the GitHub Pages frontend only. It does not deploy the Apps Script web app.** The latest backend source reports `federation-v10`.
+**Pushing to GitHub changes the GitHub Pages frontend only. It does not deploy the Apps Script web app.** The latest backend source reports `federation-v11`.
 
 1. Open the **existing** Google Apps Script project linked to your TIPON Queuing Database.
 2. Back up the current `Code.gs`, then replace it with the entire [latest Code.gs](apps-script/Code.gs).
 3. Save the project, select `setupTiponQueueSystem` and run it once. Grant the required authorization. This initializes sheet headers/defaults without deleting the existing queue.
 4. Select **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy** to update the existing `/exec` deployment.
-5. In the web app, go to **Setup → Test Connection** and confirm **Federation v10**.
+5. In the web app, go to **Setup → Test Connection** and confirm **Federation v11**.
 6. Test registrations and staff actions using test accounts before real applicants or members.
 
-**Compatibility:** The frontend retains compatibility with Federation v7–v9, but **daily name + transaction deduplication and four-digit numbers require Federation v10 to be deployed**. Federation v10 includes improved Complete writes, source-level sheet header styling, and the existing short-lived queue-state cache.
+**Compatibility:** The frontend retains compatibility with Federation v7–v10. Daily name + original transaction deduplication and four-digit numbers require Federation v10 or newer. **Multi-select window assignments, first-pass Pre Checking routing, and transfer-to-idle-window actions require Federation v11.** Federation v11 adds a queue pre-check marker and routed-service fields without changing existing ticket numbers.
 
 ## Minimum functional acceptance checks
 
 - **Recruitment:** Select transaction, enter position, generate a ticket on mobile, and verify the same record in `QUEUE`.
 - **Member Concern:** Enter a free-text concern and confirm an MC ticket is created.
-- **Duplicate:** Register the same name and transaction multiple times (WAITING, SERVING, and COMPLETED). It must return the same ticket for that day. Change the transaction and verify a different number. Change the Philippine date and verify the series restarts at `0001`. Historical ticket numbers must not be rewritten.
+- **Duplicate:** Register the same name and original transaction multiple times (WAITING, SERVING, and COMPLETED). It must return the same ticket for that day. Change the transaction and verify a different number. Change the Philippine date and verify the series restarts at `0001`. Historical ticket numbers must not be rewritten.
+- **Pre Checking:** With an active Pre Checking window, verify NH/RH/TR tickets are called there before standard windows. Transfer a checked ticket to an idle matching MC/NH/RH/TR window; confirm a busy or mismatched window cannot receive it, the source window clears, the destination shows it serving, and the Pre Checking window has no Complete button.
 - **Done:** Verify script-opened tabs close where allowed; QR/camera tabs should display the finished fallback without losing the queue number.
 - **Staff:** Call/recall/complete a test ticket; verify TV Display and Google Sheets reflect the change. The Staff Console must stay open even if a request times out; it must not redirect to Setup.
 - **Configuration:** Edit a window's assigned transaction/recruiter; confirm the value persists after refresh.
