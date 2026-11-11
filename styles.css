@@ -690,8 +690,12 @@ header.site-header::before{
 #setup .assignment-option input{width:17px;height:17px;margin:0;accent-color:#0b87ab;flex:none}
 #setup .assignment-option:first-child{border-bottom:1px solid #e2edf2;border-radius:0;margin-bottom:4px}
 #staff .precheck-transfer{margin-top:12px;padding:12px;background:#f1f8fb;border:1px solid #d5e7ef;border-radius:10px}
-#staff .precheck-transfer>label{display:block;margin:0 0 7px;color:#234e69;font-size:12px;font-weight:800}
-#staff .transfer-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
-#staff .transfer-select{min-width:0;width:100%;min-height:40px;padding:8px 10px;border:1px solid #cfe0e9;border-radius:8px;background:#fff;color:#12364d;font:600 12px inherit}
-#staff .transfer-hint{display:block;margin-top:7px;color:#668394;font-size:11px;line-height:1.4}
-@media(max-width:560px){#staff .transfer-row{grid-template-columns:1fr}#staff .transfer-row .btn{width:100%}}
+#staff .transfer-title{display:block;color:#234e69;font-size:12px;font-weight:800}
+#staff .precheck-window-buttons{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px;margin-top:9px}
+#staff .precheck-window-button{min-width:0;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 9px;text-align:center;line-height:1.2;white-space:normal}
+#staff .precheck-window-button b{font-size:12px}
+#staff .precheck-window-button small{font-size:10px;font-weight:650;opacity:.92}
+#staff .precheck-window-button .window-occupied{color:#ffe8c2}
+#staff .precheck-window-button:disabled{cursor:not-allowed}
+#staff .transfer-hint{display:block;margin-top:8px;color:#668394;font-size:11px;line-height:1.4}
+@media(max-width:560px){#staff .precheck-window-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}}

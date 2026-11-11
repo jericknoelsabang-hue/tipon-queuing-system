@@ -62,12 +62,16 @@ function isPrecheckingWindow(i){
  const list=assignmentList(S.assignments?.[String(i)]||'ALL');
  return list!=='ALL'&&list.some(isPrecheckingCode);
 }
-function transferDestinations(source){
- const allowed=(S.transactions||[]).filter(tx=>['MC','NH','RH','TR'].includes(String(tx.code||'').toUpperCase()));
- const targets=[];
+function transferDestinations(source,ticket){
+ const allowed=['MC','NH','RH','TR'],original=String(ticket?.transaction||'').toUpperCase(),targets=[];
  for(let i=1;i<=Number(S.windowCount||0);i++){
-  if(i===source||win(i)||isPrecheckingWindow(i))continue;
-  for(const tx of allowed)if(assignmentIncludes(S.assignments?.[String(i)]||'ALL',tx.code))targets.push({window:i,transaction:tx});
+  if(i===source||isPrecheckingWindow(i))continue;
+  const assigned=assignmentList(S.assignments?.[String(i)]||'ALL');
+  const codes=assigned==='ALL'?[]:assigned;
+  const selected=assigned==='ALL'?(allowed.includes(original)?original:allowed[0]):
+    (codes.includes(original)?original:codes.find(code=>allowed.includes(code)));
+  const transaction=(S.transactions||[]).find(tx=>tx.code===selected)||null;
+  targets.push({window:i,transaction,available:!win(i)});
  }
  return targets;
 }
@@ -221,10 +225,16 @@ function staff(){
   $('staffWins').innerHTML=Array.from({length:n},(_,idx)=>{
     const i=idx+1,t=win(i),selected=S.assignments?.[String(i)]||'ALL',
       txName=assignmentLabel(selected), recruiter=S.recruiters?.[String(i)]||'Unassigned',prechecking=isPrecheckingWindow(i);
-    const destinations=prechecking&&t?transferDestinations(i):[];
-    const transferOptions=destinations.length?destinations.map(x=>'<option value="'+x.window+'|'+esc(x.transaction.code)+'">'+esc(x.transaction.code+' · '+x.transaction.name+' → Window '+x.window)+'</option>').join(''):'<option value="">No matching idle window available</option>';
-    const transferHint=!t?'Call a queue to begin pre-checking.':S.version!==REQUIRED?'Deploy Federation v11 Apps Script to enable transfers.':destinations.length?'Only idle windows assigned to the selected transaction are listed.':'No matching window is idle right now.';
-    const transferPanel=prechecking?'<div class="precheck-transfer"><label for="transferTarget'+i+'">Transfer checked ticket</label><div class="transfer-row"><select id="transferTarget'+i+'" class="transfer-select"'+(!t||!connectionHealthy||S.version!==REQUIRED||!destinations.length?' disabled':'')+'>'+transferOptions+'</select><button class="btn success" data-transfer-from="'+i+'" type="button"'+(!t||!connectionHealthy||S.version!==REQUIRED||!destinations.length?' disabled':'')+'>Transfer</button></div><small class="transfer-hint">'+esc(transferHint)+'</small></div>':'';
+    const destinations=prechecking?transferDestinations(i,t):[];
+    const transferButtons=destinations.map(destination=>{
+      const transaction=destination.transaction,sourceBusy=activeWindowActions.has(String(i)),targetBusy=activeWindowActions.has(String(destination.window));
+      const disabled=!t||!destination.available||!transaction||!connectionHealthy||S.version!==REQUIRED||sourceBusy||targetBusy;
+      const transactionLabel=transaction?transaction.code+' · '+transaction.name:'No supported transaction';
+      const title=!destination.available?'This window is Now Serving.':!transaction?'Assign an active NH, RH, TR, MC, or Any transaction.':!t?'Call a queue in Pre Checking first.':'Transfer to this idle window.';
+      return '<button class="btn primary precheck-window-button" data-transfer-from="'+i+'" data-transfer-target="'+destination.window+'" data-transfer-code="'+esc(transaction?.code||'')+'" type="button"'+(disabled?' disabled':'')+' title="'+esc(title)+'"><b>Window '+destination.window+'</b><small>'+esc(transactionLabel)+'</small>'+(destination.available?'':'<small class="window-occupied">Now Serving</small>')+'</button>';
+    }).join('');
+    const transferHint=!t?'Call a queue to enable the destination window buttons.':S.version!==REQUIRED?'Deploy Federation v11 Apps Script to enable transfers.':destinations.some(x=>x.available&&x.transaction)?'Choose an idle window button to transfer the checked ticket.':'No other idle window has a supported transaction assignment.';
+    const transferPanel=prechecking?'<div class="precheck-transfer"><b class="transfer-title">Transfer to window</b><div class="precheck-window-buttons">'+(transferButtons||'<small class="transfer-hint">Add a service window to create a destination button.</small>')+'</div><small class="transfer-hint">'+esc(transferHint)+'</small></div>':'';
     return '<div class="window-card"><div class="split"><h3>Window '+i+'</h3><span class="pill">'+esc(txName)+'</span></div>'+
       '<div class="current">'+(t?'<b class="current-no">'+esc(t.queueNo)+'</b><strong>'+esc(t.name)+'</strong><small>'+esc(t.transactionName)+'</small>':'<small class="muted">No active applicant or member</small>')+'</div>'+
       '<p class="recruiter-label"><b>Recruiter:</b> '+esc(recruiter)+'</p>'+
@@ -233,9 +243,9 @@ function staff(){
       (prechecking?'':'<button class="btn success wide" data-action="complete" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Complete</button>')+'</div>'+transferPanel+'</div>';
   }).join('');
   document.querySelectorAll('[data-action]').forEach(e=>e.onclick=()=>queueAction(e.dataset.action,+e.dataset.win));
-  document.querySelectorAll('[data-transfer-from]').forEach(button=>button.onclick=()=>{
-    const source=Number(button.dataset.transferFrom),select=$('transferTarget'+source),parts=String(select?.value||'').split('|');
-    if(parts.length===2&&parts[0]&&parts[1])void transferTicket(source,Number(parts[0]),parts[1]);
+  document.querySelectorAll('[data-transfer-target]').forEach(button=>button.onclick=()=>{
+    const source=Number(button.dataset.transferFrom),target=Number(button.dataset.transferTarget),transaction=button.dataset.transferCode;
+    if(source&&target&&transaction)void transferTicket(source,target,transaction);
   });
 }
 function dateDisplay(x){
@@ -526,8 +536,7 @@ async function transferTicket(source,target,transaction){
  const keys=[String(source),String(target)];
  if(keys.some(key=>activeWindowActions.has(key)))return;
  keys.forEach(key=>activeWindowActions.add(key));
- const button=document.querySelector('[data-transfer-from="'+source+'"]');
- if(button){button.disabled=true;button.textContent='Transferring…'}
+ staffSignature='';staff();
  try{
   const result=await operate('transfer',{window:source,targetWindow:target,transaction},reply=>{
    const ticket=reply.ticket;
