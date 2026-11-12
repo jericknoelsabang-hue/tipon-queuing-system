@@ -257,13 +257,12 @@ function donePrecheck_(p){
     if(String(row[10])!=='SERVING'||Number(row[11])!==win)throw Error('The Pre Checking ticket changed. Refresh and try again.');
     if(String(row[18]||'').toUpperCase()==='YES')throw Error('This ticket has already passed Pre Checking.');
     if(!['MC','NH','RH','TR'].includes(transaction))throw Error('Only New Hire, Rehire, Transfer, or Member Concern tickets can be marked done.');
-    const allowed=['MC','NH','RH','TR'];
     const available=Array.from({length:windowCount_()},(_,i)=>i+1).some(target=>{
       if(target===win||isPrecheckingWindow_(ss,target))return false;
       const targetData=w.getRange(target+1,1,1,WH.length).getValues()[0];
       if(targetData[1])return false;
       const assignment=windowTx_(ss,target);
-      return assignment==='ALL'||allowed.some(code=>assignmentAllows_(assignment,code));
+      return assignmentAllows_(assignment,transaction);
     });
     if(available)throw Error('A destination window is available. Transfer the ticket directly.');
     const precheckedBy=txt_(row[21]||settingValue_(ss,'WINDOW_RECRUITER_'+win),80);
@@ -342,7 +341,9 @@ function transfer_(p){
     if(queueRow<2)throw Error('The Pre Checking ticket could not be found in the queue.');
     const row=q.getRange(queueRow,1,1,QH.length).getValues()[0];
     if(String(row[10])!=='SERVING'||Number(row[11])!==source)throw Error('The Pre Checking ticket changed. Refresh and try again.');
-    if(!['MC','NH','RH','TR'].includes(code_(row[6],6)))throw Error('Only New Hire, Rehire, Transfer, or Member Concern tickets can leave Pre Checking.');
+    const queueTransaction=code_(row[6],6);
+    if(!['MC','NH','RH','TR'].includes(queueTransaction))throw Error('Only New Hire, Rehire, Transfer, or Member Concern tickets can leave Pre Checking.');
+    if(code!==queueTransaction)throw Error('The destination window must match the transaction for this queue number.');
     const now=new Date(),recruiter=txt_(settingValue_(ss,'WINDOW_RECRUITER_'+target),80),precheckedBy=txt_(row[21]||settingValue_(ss,'WINDOW_RECRUITER_'+source),80);
     q.getRange(queueRow,11,1,3).setValues([['SERVING',target,now]]);q.getRange(queueRow,22).setValue(precheckedBy);
     q.getRange(queueRow,18).setValue(recruiter);q.getRange(queueRow,19).setValue('YES');
