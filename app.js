@@ -471,7 +471,7 @@ async function refresh(silent=false){
        transactions:Array.isArray(response.state?.transactions)?response.state.transactions:[],
        transactionTypes:response.state?.transactionTypes||response.state?.transactions||[],
        queueGuideSupported:response.state?.queueGuideSupported===true,
-       scanReportSupported:response.state?.scanReportSupported===true};
+       };
     hasLoaded=true;
     render();
     if(!COMPATIBLE.has(S.version))

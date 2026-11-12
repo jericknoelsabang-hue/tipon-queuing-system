@@ -2,19 +2,12 @@ const CFG={spreadsheetId:'1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik',queue:'Q
 const QH=['Ticket ID','Queue Date','Created At','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Status','Window','Called At','Completed At','Last Recalled At','First Name','Last Name','Recruiter','Prechecked','Service Transaction Code','Service Transaction','Pre Check By','Remarks'];
 const WH=['Window','Active Ticket ID','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Called At','Updated At','Queue Row'];
 const TH=['Code','Transaction Name','Active','Sort Order'];
-const MH=['MPC Code','MPC Name','Queue Prefix','Logo URL','Active','Sort Order'];
 const DEFAULT_ANNOUNCEMENT='Please keep your queue number until called.';
 const DEFAULT_QUEUE_GUIDE='Hello, mga ka-miyembro! Sa mga bagong dating na wala pang queuing number, i-scan ang QR code na nakikita sa screen. Piliin ang inyong service. Para sa Recruitment, ilagay ang First Name, Last Name, Recruitment Transaction, at Position, pagkatapos ay pindutin ang Get Queue Number. Para sa Member Concern, ilagay ang First Name, Last Name, at Type of Concern, pagkatapos ay pindutin ang Get Queue Number. Kapag mayroon na kayong queue number, please keep your queue number until called.';
 const SH=['Setting','Value','Updated At'];
-// Recruitment requirements: blank by default. A staff-provided title drives an editable, rule-based OCR profile.
-const RH2=['Requirement ID','Requirement Name','Transaction Code','Required','Active','Recognition Keywords','Created At','Updated At'];
-const RSCAN=['Scan ID','Ticket ID','Queue No','Transaction Code','Requirement ID','Requirement Name','Scan Status','Photo Captured','Scan Method','Client Timestamp','Saved At','Recruiter Review','Notes'];
-
 function setupTiponQueueSystem(){
   const ss=SpreadsheetApp.openById(CFG.spreadsheetId);
   ensure_(ss,CFG.queue,QH);ensure_(ss,CFG.windows,WH);ensure_(ss,CFG.tx,TH);ensure_(ss,CFG.settings,SH);
-  ensure_(ss,'REQUIREMENTS_CONFIG',RH2);ensure_(ss,'REQUIREMENT_SCANS',RSCAN);
-  if(typeof initApplicantDb_==='function')initApplicantDb_();
   const w=ss.getSheetByName(CFG.windows);
   if(w.getLastRow()<2)for(let i=1;i<=4;i++)w.getRange(i+1,1).setValue(i);
   const t=ss.getSheetByName(CFG.tx);
@@ -29,23 +22,10 @@ function doGet(e){
   const p=e?.parameter||{},cb=String(p.callback||'callback').replace(/[^A-Za-z0-9_.$]/g,'');
   const action=String(p.action||'state');
   try{
-    if(String(p.mode||'')==='requirementsStaffBridge'){
-      // Must run in a staff-only Apps Script deployment (execute as accessing user).
-      requirementEditorAuth_();
-      return HtmlService.createHtmlOutputFromFile('RequirementsStaffBridge')
-        .setTitle('TIPON TAWAG - Recruiter Requirements')
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-    }
-    if(String(p.mode||'')==='manageRequirements'){
-      requirementEditorAuth_();
-      return HtmlService.createHtmlOutputFromFile('RequirementsStaffEditor')
-        .setTitle('TIPON TAWAG - Manage Pre-Employment Requirements');
-    }
     let r;switch(action){
-      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v11',queueGuideSupported:true,scanReportSupported:typeof saveScanReport_==='function'&&typeof doPost==='function'&&typeof issueApplicantToken_==='function'};break;
+      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v11',queueGuideSupported:true};break;
       case'state':r={ok:true,state:state_(p)};break;
       case'publicConfig':r=publicConfig_();break;
-      case'requirements':r=requirementsConfig_();break;
       // Sensitive staff writes cannot be performed through public JSONP/GET.
       // Use the authenticated recruiter Apps Script bridge instead.
       case'register':r=register_(p);break;
@@ -68,7 +48,7 @@ function doGet(e){
       case'announcementChunk':r=announcementChunk_(p);break;
       default:throw Error('Unknown action');
     }
-    if(r&&r.ok&&!['state','health','publicConfig','requirements','announcementChunk'].includes(action)){
+    if(r&&r.ok&&!['state','health','publicConfig','announcementChunk'].includes(action)){
       try{CacheService.getScriptCache().removeAll(['TIPON_STATE_display','TIPON_STATE_staff','TIPON_STATE_setup'])}catch(e){}
     }
     return out_(cb,r);
@@ -83,10 +63,6 @@ function register_(p){
     if(!tx)throw Error('Invalid or inactive transaction.');
     if(isPrecheckingAssignment_(ss,tx.code))throw Error('Pre Checking is an internal service window and cannot be selected for registration.');
     const answer=issueTicket_(ss,tx,first,last,position);
-    // Issue a short-lived, ticket-bound POST token only after opt-in consent.
-    // Never expose applicant field values in query parameters or public JSONP.
-    if(txCode!=='MC'&&String(p.precheck||'')==='yes'&&typeof issueApplicantToken_==='function')
-      answer.intakeToken=issueApplicantToken_(answer.ticket);
     return answer;
   }finally{lock.releaseLock()}
 }
@@ -508,7 +484,6 @@ function state_(p){
      queueGuide:settingMap.get('QUEUE_GUIDE')?.trim()||DEFAULT_QUEUE_GUIDE,
      queueGuideCue:settingMap.get('QUEUE_GUIDE_CUE')?.trim()||'',
      queueGuideSupported:true,
-     scanReportSupported:typeof saveScanReport_==='function'&&typeof doPost==='function'&&typeof issueApplicantToken_==='function',
     federationMode:true,version:'federation-v11'};
   try{
     const json=JSON.stringify(result);
@@ -624,97 +599,3 @@ function txt_(v,n){return String(v||'').replace(/[\u0000-\u001F\u007F]/g,' ').re
 function int_(v,a,b){v=Number(v);if(!Number.isInteger(v)||v<a||v>b)throw Error('Invalid window.');return v}function bool_(v){return typeof v==='boolean'?v:['TRUE','YES','1','ACTIVE'].includes(String(v).toUpperCase())}
 function day_(){return Utilities.formatDate(new Date(),'Asia/Manila','yyyy-MM-dd')}function dayCell_(v){return v instanceof Date?Utilities.formatDate(v,'Asia/Manila','yyyy-MM-dd'):String(v||'').slice(0,10)}
 function iso_(v){if(!v)return'';return v instanceof Date?v.toISOString():String(v)}function out_(cb,o){return ContentService.createTextOutput(cb+'('+JSON.stringify(o)+');').setMimeType(ContentService.MimeType.JAVASCRIPT)}
-
-/* ===== Dynamic recruitment document pre-screening (pilot) =====
- * Images and extracted ID numbers are NEVER accepted over the legacy JSONP/GET endpoint.
- * Only applicant-visible, non-authoritative requirement statuses are recorded here.
- * For real document uploads/OCR API, use a separately authenticated POST backend.
- */
-function requirementsSheet_(){
-  const ss=ss_();
-  return ss.getSheetByName('REQUIREMENTS_CONFIG')||ensure_(ss,'REQUIREMENTS_CONFIG',RH2);
-}
-function requirementTransactions_(raw){
-  if(Array.isArray(raw)){
-    const c=raw.map(v=>code_(v,6)).filter(Boolean);
-    if(c.includes('ALL'))return ['ALL'];
-    return [...new Set(c)];
-  }
-  const value=String(raw||'ALL').trim();
-  if(!value||value==='ALL')return ['ALL'];
-  try{const json=JSON.parse(value);if(Array.isArray(json))return requirementTransactions_(json)}catch(e){}
-  return requirementTransactions_(value.split(/[,;|]/));
-}
-function requirementsConfig_(){
-  const sh=requirementsSheet_();
-  const rows=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,RH2.length).getValues():[];
-  return {ok:true,version:2,requirements:rows.filter(r=>r[0]&&bool_(r[4])).map(r=>{
-    const transactions=requirementTransactions_(r[2]);
-    return {id:String(r[0]),name:String(r[1]),transaction:transactions.length===1?transactions[0]:'MULTI',
-      transactions:transactions,required:true,active:true,keywords:String(r[5]||'')};
-  })};
-}
-function requirementEditorAuth_(){
-  // A shared GET or URL query key is NOT a valid recruiter authorization model.
-  // Separate staff deployment: Execute as "User accessing the web app" and
-  // restrict to signed-in Google users explicitly listed in Script Properties.
-  const current=String(Session.getActiveUser().getEmail()||'').trim().toLowerCase();
-  const allowed=String(PropertiesService.getScriptProperties().getProperty('TIPON_RECRUITER_EMAILS')||'')
-    .toLowerCase().split(/[\s,;]+/).map(s=>s.trim()).filter(Boolean);
-  if(!current||allowed.indexOf(current)<0)
-    throw Error('NOT_AUTHORIZED: Use the staff-only Apps Script deployment with your approved Google Workspace account.');
-  return current;
-}
-function reqStaffList(){
-  const email=requirementEditorAuth_();
-  const res=requirementsConfig_();
-  return {ok:true,email:email,requirements:res.requirements,
-    transactions:txs_(ss_()).filter(t=>t.code!=='MC')};
-}
-function reqStaffSave(p){
-  requirementEditorAuth_();
-  return upsertRequirement_(p||{});
-}
-function reqStaffDelete(p){
-  requirementEditorAuth_();
-  return removeRequirement_(p||{});
-}
-function upsertRequirement_(p){
-  const name=txt_(p.name,100);
-  if(name.length<3)throw Error('Requirement name must contain at least 3 characters.');
-  const selected=requirementTransactions_(p.transactions||p.transaction||[]);
-  const allActive=txs_(ss_()).filter(t=>t.code!=='MC').map(t=>t.code);
-  if(!selected.length||selected.some(tx=>tx!=='ALL'&&!allActive.includes(tx)))
-    throw Error('Choose at least one active Recruitment Transaction.');
-  const transaction=selected.includes('ALL')?'ALL':JSON.stringify(selected);
-  const keywords=txt_(p.keywords,500).split(',').map(x=>x.trim()).filter(Boolean).slice(0,24).join(', ')||name;
-  const id=txt_(p.id,80);
-  const lock=LockService.getScriptLock();lock.waitLock(30000);
-  try{
-    const sh=requirementsSheet_(),count=sh.getLastRow()-1;
-    const ids=count>0?sh.getRange(2,1,count,1).getValues().map(r=>String(r[0])):[];
-    const pos=id?ids.indexOf(id):-1;
-    if(id&&pos<0)throw Error('Requirement not found. Refresh Setup.');
-    const row=pos>=0?pos+2:sh.getLastRow()+1;
-    const existingCreated=pos>=0?sh.getRange(row,7).getValue():new Date();
-    const rid=id||Utilities.getUuid();
-    sh.getRange(row,1,1,RH2.length).setValues([[rid,name,transaction,true,true,keywords,existingCreated,new Date()]]);
-    return {ok:true,id:rid,name:name,transactions:selected};
-  }finally{lock.releaseLock()}
-}
-function removeRequirement_(p){
-  const id=txt_(p.id,80);
-  if(!id)throw Error('Select a requirement.');
-  const lock=LockService.getScriptLock();lock.waitLock(30000);
-  try{
-    const sh=requirementsSheet_(),row=findId_(sh,id);
-    if(row<2)throw Error('Requirement not found.');
-    sh.getRange(row,5).setValue(false);
-    sh.getRange(row,8).setValue(new Date());
-    return {ok:true,id:id};
-  }finally{lock.releaseLock()}
-}
-
-// This old anonymous GET precheck summary endpoint is intentionally disabled.
-// Images, OCR text, personal data, and definitive "verified" claims must never
-// be submitted via a URL query string.
