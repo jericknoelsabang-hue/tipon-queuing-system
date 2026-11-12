@@ -16,14 +16,14 @@ function setupTiponQueueSystem(){
   const all=allTxs_(ss);
   if(!all.some(t=>t.code==='MC'))ss.getSheetByName(CFG.tx).appendRow(['MC','Member Concerns',true,all.length+1]);
   // A disabled transaction remains disabled after setup.
-  return {ok:true,federationMode:true,version:'federation-v11'};
+  return {ok:true,federationMode:true,version:'federation-v12'};
 }
 function doGet(e){
   const p=e?.parameter||{},cb=String(p.callback||'callback').replace(/[^A-Za-z0-9_.$]/g,'');
   const action=String(p.action||'state');
   try{
     let r;switch(action){
-      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v11',queueGuideSupported:true};break;
+      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v12',queueGuideSupported:true};break;
       case'state':r={ok:true,state:state_(p)};break;
       case'publicConfig':r=publicConfig_();break;
       // Sensitive staff writes cannot be performed through public JSONP/GET.
@@ -34,6 +34,7 @@ function doGet(e){
       case'transfer':r=transfer_(p);break;
       case'recall':r=recall_(p);break;
       case'complete':r=complete_(p);break;
+      case'donePrecheck':r=donePrecheck_(p);break;
       case'saveRemarks':r=saveRemarks_(p);break;
       case'addWindow':r=addWindow_();break;
       case'deleteWindow':r=deleteWindow_(p);break;
@@ -215,14 +216,14 @@ function call_(p){
       const r=v[x],transaction=code_(r[6],6),prechecked=String(r[18]||'').toUpperCase()==='YES';
       if(dayCell_(r[1])!==today||String(r[10])!=='WAITING')continue;
       if(prechecking){
-        if(!['NH','RH','TR'].includes(transaction)||prechecked)continue;
+        if(!['MC','NH','RH','TR'].includes(transaction)||prechecked)continue;
       }else{
         if(!assignmentAllows_(assignment,transaction))continue;
-        if(hasPrechecking&&['NH','RH','TR'].includes(transaction)&&!prechecked)continue;
+        if(hasPrechecking&&['MC','NH','RH','TR'].includes(transaction)&&!prechecked)continue;
       }
       i=x;break;
     }
-    if(i<0)throw Error(prechecking?'No unchecked New Hire, Rehire, or Transfer queue is waiting.':'No matching applicant or member is waiting.');
+    if(i<0)throw Error(prechecking?'No unchecked New Hire, Rehire, Transfer, or Member Concern queue is waiting.':'No matching applicant or member is waiting.');
     const r=v[i],actualRow=selection.startRow+i,now=new Date(),recruiter=txt_(settingValue_(ss,'WINDOW_RECRUITER_'+win),80);
     q.getRange(actualRow,11,1,3).setValues([['SERVING',win,now]]);q.getRange(actualRow,18).setValue(recruiter);r[17]=recruiter;
     if(prechecking&&!String(r[21]||'').trim()){q.getRange(actualRow,22).setValue(recruiter);r[21]=recruiter}
@@ -240,6 +241,38 @@ function recall_(p){
     // Recall intentionally clears the current ticket's Remarks.
     w.getRange(win+1,10,1,2).setValues([[now,now]]);r[9]=now;
     return{ok:true,ticket:windowTicket_(r)}
+  }finally{lock.releaseLock()}
+}
+function donePrecheck_(p){
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    const ss=ss_(),win=int_(p.window,1,windowCount_()),w=ss.getSheetByName(CFG.windows),
+      sourceRow=win+1,sourceData=w.getRange(sourceRow,1,1,WH.length).getValues()[0],
+      expected=txt_(p.ticketId,100),active=String(sourceData[1]||'');
+    if(!isPrecheckingWindow_(ss,win))throw Error('Done Pre-check is only available in a Pre Checking window.');
+    if(!active||(expected&&active!==expected))throw Error('The Pre Checking ticket changed. Refresh and try again.');
+    const q=ss.getSheetByName(CFG.queue),queueRow=queueRowForWindow_(q,sourceData);
+    if(queueRow<2)throw Error('The Pre Checking ticket could not be found in the queue.');
+    const row=q.getRange(queueRow,1,1,QH.length).getValues()[0],transaction=code_(row[6],6);
+    if(String(row[10])!=='SERVING'||Number(row[11])!==win)throw Error('The Pre Checking ticket changed. Refresh and try again.');
+    if(String(row[18]||'').toUpperCase()==='YES')throw Error('This ticket has already passed Pre Checking.');
+    if(!['MC','NH','RH','TR'].includes(transaction))throw Error('Only New Hire, Rehire, Transfer, or Member Concern tickets can be marked done.');
+    const allowed=['MC','NH','RH','TR'];
+    const available=Array.from({length:windowCount_()},(_,i)=>i+1).some(target=>{
+      if(target===win||isPrecheckingWindow_(ss,target))return false;
+      const targetData=w.getRange(target+1,1,1,WH.length).getValues()[0];
+      if(targetData[1])return false;
+      const assignment=windowTx_(ss,target);
+      return assignment==='ALL'||allowed.some(code=>assignmentAllows_(assignment,code));
+    });
+    if(available)throw Error('A destination window is available. Transfer the ticket directly.');
+    const precheckedBy=txt_(row[21]||settingValue_(ss,'WINDOW_RECRUITER_'+win),80);
+    q.getRange(queueRow,11,1,3).setValues([['WAITING','','']]);
+    q.getRange(queueRow,19).setValue('YES');
+    q.getRange(queueRow,22).setValue(precheckedBy);
+    w.getRange(sourceRow,2,1,WH.length-1).clearContent();
+    const updated=q.getRange(queueRow,1,1,QH.length).getValues()[0];
+    return{ok:true,window:win,donePrecheck:true,ticket:ticket_(updated)};
   }finally{lock.releaseLock()}
 }
 function complete_(p){
@@ -309,7 +342,7 @@ function transfer_(p){
     if(queueRow<2)throw Error('The Pre Checking ticket could not be found in the queue.');
     const row=q.getRange(queueRow,1,1,QH.length).getValues()[0];
     if(String(row[10])!=='SERVING'||Number(row[11])!==source)throw Error('The Pre Checking ticket changed. Refresh and try again.');
-    if(!['NH','RH','TR'].includes(code_(row[6],6)))throw Error('Only New Hire, Rehire, or Transfer tickets can leave Pre Checking.');
+    if(!['MC','NH','RH','TR'].includes(code_(row[6],6)))throw Error('Only New Hire, Rehire, Transfer, or Member Concern tickets can leave Pre Checking.');
     const now=new Date(),recruiter=txt_(settingValue_(ss,'WINDOW_RECRUITER_'+target),80),precheckedBy=txt_(row[21]||settingValue_(ss,'WINDOW_RECRUITER_'+source),80);
     q.getRange(queueRow,11,1,3).setValues([['SERVING',target,now]]);q.getRange(queueRow,22).setValue(precheckedBy);
     q.getRange(queueRow,18).setValue(recruiter);q.getRange(queueRow,19).setValue('YES');
@@ -417,7 +450,7 @@ function restoreTx_(p){
 function publicConfig_(){
   const ss=ss_();
   const transactions=txs_(ss).filter(t=>!isPrecheckingAssignment_(ss,t.code));
-  return{ok:true,version:'federation-v11',transactions};
+  return{ok:true,version:'federation-v12',transactions};
 }
 function state_(p){
   const view=['display','staff','setup'].includes(String(p?.view||''))?String(p.view):'staff';
@@ -451,7 +484,7 @@ function state_(p){
     }
     recruiters[String(i)]=settingMap.get('WINDOW_RECRUITER_'+i)||'';
   }
-  const q=ss.getSheetByName(CFG.queue),waiting=[],completed=[],today=day_();
+  const q=ss.getSheetByName(CFG.queue),waiting=[],precheckDone=[],completed=[],today=day_();
   const includeCompleted=!(p&&p.view)||String(p.view)==='staff';
   const rowCount=Math.max(0,q.getLastRow()-1);
   let queueRows=[];
@@ -474,17 +507,21 @@ function state_(p){
     if(ticket)ticket.remarks=String(queueRow?.[22]||'');
   });
   queueRows.forEach(row=>{
-    if(dayCell_(row[1])===today&&String(row[10])==='WAITING')waiting.push(ticket_(row));
+    if(dayCell_(row[1])===today&&String(row[10])==='WAITING'){
+      const ticket=ticket_(row);
+      if(String(row[18]||'').toUpperCase()==='YES')precheckDone.push(ticket);
+      else waiting.push(ticket);
+    }
     if(includeCompleted&&String(row[10])==='COMPLETED')completed.push(ticket_(row));
   });
   if(includeCompleted)completed.reverse();
-  const result={windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,completed,
+  const result={windowCount:n,maxWindowCount:CFG.maxWindows,windows,waiting,precheckDone,completed,
     transactions:activeTx,transactionTypes:txList,assignments,recruiters,
     announcement:settingMap.get('ANNOUNCEMENT')?.trim()||DEFAULT_ANNOUNCEMENT,
      queueGuide:settingMap.get('QUEUE_GUIDE')?.trim()||DEFAULT_QUEUE_GUIDE,
      queueGuideCue:settingMap.get('QUEUE_GUIDE_CUE')?.trim()||'',
      queueGuideSupported:true,
-    federationMode:true,version:'federation-v11'};
+    federationMode:true,version:'federation-v12'};
   try{
     const json=JSON.stringify(result);
     if(cache&&json.length<28000)cache.put(cacheKey,json,2);
