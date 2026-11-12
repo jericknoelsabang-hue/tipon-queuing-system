@@ -8,6 +8,7 @@ let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],transactions:[],tra
 let connectionHealthy=false;
  let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,pollTimer=null,refreshFailures=0,activeWindowActions=new Set(),tableSignature={wait:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
 let lastGuideCue=null,guideDirty=false;let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='',editWindowTxs=[],activeStaffWindow=Number(new URLSearchParams(location.search).get('window'))||0;
+let remarksTimer=null,remarksSaveQueue=Promise.resolve(),remarksDraft={ticketId:'',value:''},remarksSaved={ticketId:'',value:''},remarksQueued={ticketId:'',value:''};
 
 let localTvChannel=null,lastLocalTvSeen=0;
 try{
@@ -242,7 +243,7 @@ function staff(){
   $('queueWaitingCard').classList.toggle('hide',!isOpen);
   $('queueCompletedCard').classList.toggle('hide',!isOpen);
   $('staffPageHint').textContent=isOpen?'Window '+activeStaffWindow+' console. Queue history is limited to this service window.':'Select Open to enter a service window console.';
-  if(isOpen){$('windowConsoleTitle').textContent='Window '+activeStaffWindow+' Console';$('waitQueueHeading').textContent='Waiting Queue · Window '+activeStaffWindow;$('completedQueueHeading').textContent='Completed Queue · Window '+activeStaffWindow;}
+  if(isOpen){$('windowConsoleTitle').textContent='Window '+activeStaffWindow+' Console';}
   if(signature===staffSignature)return;
   staffSignature=signature;
   if(!isOpen){
@@ -270,23 +271,49 @@ function staff(){
   }
   const i=activeStaffWindow,t=win(i),selected=S.assignments?.[String(i)]||'ALL',
     txName=assignmentLabel(selected),recruiter=S.recruiters?.[String(i)]||'Unassigned',prechecking=isPrecheckingWindow(i);
+  const activeTicketId=String(t?.ticketId||'');
+  if(remarksDraft.ticketId!==activeTicketId){
+    remarksDraft={ticketId:activeTicketId,value:String(t?.remarks||'')};
+    remarksSaved={ticketId:activeTicketId,value:String(t?.remarks||'')};
+    remarksQueued={ticketId:'',value:''};
+  }else if(t&&!remarksQueued.ticketId&&!remarksTimer&&remarksDraft.value===String(t.remarks||'')){
+    remarksSaved={ticketId:activeTicketId,value:String(t.remarks||'')};
+  }
+  const remarksValue=t&&remarksDraft.ticketId===activeTicketId?remarksDraft.value:String(t?.remarks||'');
+  const remarksStatus=remarksValue===String(t?.remarks||'')?'Saved':'Unsaved';
   const destinations=prechecking?transferDestinations(i,t):[];
   const transferButtons=destinations.map(destination=>{
     const transaction=destination.transaction,sourceBusy=activeWindowActions.has(String(i)),targetBusy=activeWindowActions.has(String(destination.window));
     const disabled=!t||!destination.available||!transaction||!connectionHealthy||S.version!==REQUIRED||sourceBusy||targetBusy;
-    const transactionLabel=transaction?transaction.code+' · '+transaction.name:'No supported transaction';
-    const title=!destination.available?'This window is Now Serving.':!transaction?'Assign an active NH, RH, TR, MC, or Any transaction.':!t?'Call a queue in Pre Checking first.':'Transfer to this idle window.';
-    return '<button class="btn primary precheck-window-button" data-transfer-from="'+i+'" data-transfer-target="'+destination.window+'" data-transfer-code="'+esc(transaction?.code||'')+'" type="button"'+(disabled?' disabled':'')+' title="'+esc(title)+'"><b>Window '+destination.window+'</b><small>'+esc(transactionLabel)+'</small>'+(destination.available?'':'<small class="window-occupied">Now Serving</small>')+'</button>';
+    const title=!destination.available?'This window is currently serving a ticket.':!transaction?'No compatible transaction is assigned to this window.':!t?'Call a queue in Pre Checking first.':'Transfer the checked ticket to this window.';
+    return '<button class="btn '+(destination.available?'success window-available':'primary window-busy')+' precheck-window-button" data-transfer-from="'+i+'" data-transfer-target="'+destination.window+'" data-transfer-code="'+esc(transaction?.code||'')+'" type="button"'+(disabled?' disabled':'')+' title="'+esc(title)+'"><b>Window '+destination.window+'</b></button>';
   }).join('');
   const transferHint=!t?'Call a queue to enable the destination window buttons.':S.version!==REQUIRED?'Deploy Federation v11 Apps Script to enable transfers.':destinations.some(x=>x.available&&x.transaction)?'Choose an idle window button to transfer the checked ticket.':'No other idle window has a supported transaction assignment.';
   const transferPanel=prechecking?'<div class="precheck-transfer"><b class="transfer-title">Transfer to window</b><div class="precheck-window-buttons">'+(transferButtons||'<small class="transfer-hint">Add a service window to create a destination button.</small>')+'</div><small class="transfer-hint">'+esc(transferHint)+'</small></div>':'';
   $('staffWins').innerHTML='<div class="window-grid"><div class="window-card"><div class="split"><h3>Window '+i+'</h3><span class="pill">'+esc(txName)+'</span></div>'+
     '<div class="current">'+(t?'<b class="current-no">'+esc(t.queueNo)+'</b><strong>'+esc(t.name)+'</strong><small>'+esc(t.transactionName)+'</small>':'<small class="muted">No active applicant or member</small>')+'</div>'+
     '<p class="recruiter-label"><b>Recruiter:</b> '+esc(recruiter)+'</p>'+
-    '<div class="window-actions"><button class="btn primary" data-action="call" data-win="'+i+'" type="button"'+(t||!connectionHealthy?' disabled':'')+'>Call Next</button>'+
+    '<div class="window-actions '+(prechecking?'prechecking':'standard')+'"><button class="btn primary" data-action="call" data-win="'+i+'" type="button"'+(t||!connectionHealthy?' disabled':'')+'>Call Next</button>'+
     '<button class="btn ghost" data-action="recall" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Recall</button>'+
-    (prechecking?'':'<button class="btn success wide" data-action="complete" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Complete</button>')+'</div>'+transferPanel+'</div></div>';
+    (prechecking?'':'<button class="btn success" data-action="complete" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Complete</button>')+'</div>'+
+    (prechecking?'':'<label class="field window-remarks" for="windowRemarks"><span class="remarks-head"><b>Remarks</b><small id="remarksStatus">'+esc(remarksStatus)+'</small></span><textarea id="windowRemarks" maxlength="500" rows="3" placeholder="Add remarks for this applicant or member."'+(!t||!connectionHealthy?' disabled':'')+'>'+esc(remarksValue)+'</textarea></label>')+transferPanel+'</div></div>';
   document.querySelectorAll('[data-action]').forEach(button=>button.onclick=()=>queueAction(button.dataset.action,+button.dataset.win));
+  const remarksInput=$('windowRemarks');
+  if(remarksInput){
+    remarksInput.oninput=()=>{
+      const value=remarksInput.value.slice(0,500),ticketId=String(t?.ticketId||'');
+      remarksDraft={ticketId,value};
+      const status=$('remarksStatus');if(status)status.textContent='Unsaved';
+      if(remarksTimer)clearTimeout(remarksTimer);
+      if(ticketId)remarksTimer=setTimeout(()=>{remarksTimer=null;void queueRemarksSave(i,ticketId,value)},650);
+    };
+    remarksInput.onblur=()=>{
+      if(remarksTimer)clearTimeout(remarksTimer);
+      remarksTimer=null;
+      const ticketId=String(t?.ticketId||'');
+      if(ticketId)void queueRemarksSave(i,ticketId,remarksInput.value);
+    };
+  }
   document.querySelectorAll('[data-transfer-target]').forEach(button=>button.onclick=()=>{
     const source=Number(button.dataset.transferFrom),target=Number(button.dataset.transferTarget),transaction=button.dataset.transferCode;
     if(source&&target&&transaction)void transferTicket(source,target,transaction);
@@ -313,7 +340,12 @@ function queueTables(){
     if(tableSignature[key]===signature)return p;
     tableSignature[key]=signature;
     const label=key==='wait'?'wait':'completed';
-    $(bodyId).innerHTML=rows.length?rows.map(x=>'<tr><td>'+esc(dateDisplay(x))+'</td><td><b>'+esc(x.queueNo)+'</b></td><td>'+esc(x.name)+'</td><td>'+esc(x.transactionName)+'</td><td>'+esc(x.position)+'</td><td>'+esc(x.recruiter||'—')+'</td></tr>').join(''):'<tr><td colspan="6" class="empty">No '+(key==='wait'?'waiting':'completed')+' applicants or members for Window '+windowNo+'</td></tr>';
+    const cells=rows.map(x=>{
+      const base='<td>'+esc(dateDisplay(x))+'</td><td><b>'+esc(x.queueNo)+'</b></td><td>'+esc(x.name)+'</td><td>'+esc(x.transactionName)+'</td><td>'+esc(x.position)+'</td>';
+      return '<tr>'+base+(key==='completed'?'<td>'+esc(x.precheckedBy||'—')+'</td><td>'+esc(x.recruiter||'—')+'</td>':'')+'</tr>';
+    }).join('');
+    const columns=key==='completed'?7:5;
+    $(bodyId).innerHTML=rows.length?cells:'<tr><td colspan="'+columns+'" class="empty">No '+(key==='wait'?'waiting':'completed')+' applicants or members.</td></tr>';
     $(label+'Showing').textContent='Showing '+(count?p*size+1:0)+'–'+Math.min((p+1)*size,count)+' of '+count;
     $(label+'Page').textContent='Page '+(p+1)+' of '+(lastPage+1);
     $(label+'Prev').disabled=p===0;$(label+'Next').disabled=p===lastPage;return p;
@@ -515,6 +547,32 @@ async function operate(action,params={},after){
   if(writePending===0){queuedRefresh=false;void refresh(true)}
  }
 }
+function queueRemarksSave(i,ticketId,value){
+ const clean=String(value??'').replace(/[\u0000-\u001F\u007F]/g,' ').replace(/\s+/g,' ').trim().slice(0,500);
+ if(!ticketId)return Promise.resolve(false);
+ if(remarksDraft.ticketId===ticketId)remarksDraft.value=clean;
+ if(remarksSaved.ticketId===ticketId&&remarksSaved.value===clean)return Promise.resolve(true);
+ if(remarksQueued.ticketId===ticketId&&remarksQueued.value===clean)return remarksSaveQueue;
+ remarksQueued={ticketId,value:clean};
+ remarksSaveQueue=remarksSaveQueue.catch(()=>false).then(async()=>{
+  if(remarksSaved.ticketId===ticketId&&remarksSaved.value===clean)return true;
+  const result=await operate('saveRemarks',{window:i,ticketId,remarks:clean},()=>{
+   const active=win(i);
+   if(active&&active.ticketId===ticketId)S.windows={...(S.windows||{}),[String(i)]:{...active,remarks:clean}};
+   staffSignature='';windowSignature='';render();
+  });
+  if(result){
+   remarksSaved={ticketId,value:clean};
+   if(remarksQueued.ticketId===ticketId&&remarksQueued.value===clean)remarksQueued={ticketId:'',value:''};
+   const status=$('remarksStatus');if(status&&remarksDraft.ticketId===ticketId&&remarksDraft.value===clean)status.textContent='Saved';
+   return true;
+  }
+  if(remarksQueued.ticketId===ticketId&&remarksQueued.value===clean)remarksQueued={ticketId:'',value:''};
+  const status=$('remarksStatus');if(status)status.textContent='Not saved';
+  return false;
+ });
+ return remarksSaveQueue;
+}
 async function queueAction(action,i){
  if(action==='complete'&&isPrecheckingWindow(i)){staffMessage('Pre Checking tickets must be transferred to an available service window.','err');return}
  const key=String(i);
@@ -527,8 +585,15 @@ async function queueAction(action,i){
   armed=true;localStorage.setItem('tqSound','1');
   try{const A=window.AudioContext||window.webkitAudioContext;if(A){audio=audio||new A();audio.resume?.()}}catch{}
  }
- const original=win(i);
+ let original=win(i);
  try{
+  if(action==='complete'&&original?.ticketId){
+   if(remarksTimer)clearTimeout(remarksTimer);remarksTimer=null;
+   const remarks=$('windowRemarks')?.value??original.remarks??'';
+   const saved=await queueRemarksSave(i,original.ticketId,remarks);
+   if(!saved)return;
+   original=win(i)||original;
+  }
   const args=action==='complete'?{window:i,ticketId:original?.ticketId||''}:{window:i};
   const result=await operate(action,args,reply=>{
    if(action==='call'||action==='recall'){

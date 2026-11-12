@@ -681,14 +681,14 @@ header.site-header::before{
 
 
 /* Multi-transaction assignment dropdown for service windows. */
-#setup .assignment-dropdown{position:relative;width:100%}
-#setup .assignment-toggle{width:100%;min-height:45px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border:1px solid var(--line,#cfe0e9);border-radius:9px;background:#fff;color:var(--ink,#12364d);font:inherit;font-size:14px;font-weight:600;text-align:left;cursor:pointer}
-#setup .assignment-toggle:hover{border-color:#83b9d0}
-#setup .assignment-menu{position:absolute;z-index:50;top:calc(100% + 5px);left:0;right:0;max-height:260px;overflow:auto;padding:7px;background:#fff;border:1px solid #cfe0e9;border-radius:10px;box-shadow:0 12px 26px #16364a24}
-#setup .assignment-option{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:7px;color:#234a5f;font-size:13px;font-weight:650;cursor:pointer}
-#setup .assignment-option:hover{background:#eef7fb}
-#setup .assignment-option input{width:17px;height:17px;margin:0;accent-color:#0b87ab;flex:none}
-#setup .assignment-option:first-child{border-bottom:1px solid #e2edf2;border-radius:0;margin-bottom:4px}
+#staff .assignment-dropdown{position:relative;width:100%}
+#staff .assignment-toggle{width:100%;min-height:40px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 11px;border:1px solid var(--line,#cfe0e9);border-radius:8px;background:#fff;color:var(--ink,#12364d);font:inherit;font-size:13px;font-weight:600;text-align:left;cursor:pointer}
+#staff .assignment-toggle:hover{border-color:#83b9d0}
+#staff .assignment-menu{position:absolute;z-index:50;top:calc(100% + 4px);left:0;right:0;max-height:190px;overflow:auto;padding:4px;background:#fff;border:1px solid #cfe0e9;border-radius:8px;box-shadow:0 8px 18px #16364a24}
+#staff .assignment-option{display:flex;align-items:center;gap:8px;min-height:28px;padding:4px 7px;border-radius:5px;color:#234a5f;font-size:12px;font-weight:600;cursor:pointer}
+#staff .assignment-option:hover{background:#eef7fb}
+#staff .assignment-option input{width:14px;height:14px;margin:0;accent-color:#0b87ab;flex:none}
+#staff .assignment-option:first-child{border-bottom:1px solid #e2edf2;border-radius:0;margin-bottom:3px}
 #staff .precheck-transfer{margin-top:12px;padding:12px;background:#f1f8fb;border:1px solid #d5e7ef;border-radius:10px}
 #staff .transfer-title{display:block;color:#234e69;font-size:12px;font-weight:800}
 #staff .precheck-window-buttons{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px;margin-top:9px}
@@ -718,3 +718,20 @@ header.site-header::before{
 .staff-window-actions{display:flex;gap:6px;align-items:center;white-space:nowrap}
 .staff-window-actions .btn{flex:0 0 auto}
 @media(max-width:650px){.staff-window-actions{gap:5px}.staff-window-actions .btn{padding:5px 8px}}
+
+/* Queue console controls and remarks. */
+.window-actions.standard{grid-template-columns:repeat(3,minmax(0,1fr))}
+.window-actions.prechecking{grid-template-columns:repeat(2,minmax(0,1fr))}
+.window-remarks{display:block;margin-top:12px}
+.window-remarks .remarks-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.window-remarks .remarks-head small{font-size:11px;font-weight:700;color:var(--muted)}
+.window-remarks textarea{width:100%;min-height:76px;resize:vertical}
+#staff .precheck-window-button.window-available,
+#staff .precheck-window-button.window-available:disabled{
+  background:#16885e!important;border-color:#16885e!important;color:#fff!important;
+  opacity:1;box-shadow:0 5px 14px rgba(0,92,62,.14)
+}
+#staff .precheck-window-button.window-busy:disabled{opacity:.55}
+@media(max-width:650px){
+ .window-actions.standard .btn{padding:7px 4px;font-size:10px}
+}

@@ -1,5 +1,5 @@
 const CFG={spreadsheetId:'1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik',queue:'QUEUE',windows:'WINDOWS',tx:'TRANSACTION_TYPES',mpc:'MPC_CONFIG',settings:'SETTINGS',maxWindows:20};
-const QH=['Ticket ID','Queue Date','Created At','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Status','Window','Called At','Completed At','Last Recalled At','First Name','Last Name','Recruiter','Prechecked','Service Transaction Code','Service Transaction'];
+const QH=['Ticket ID','Queue Date','Created At','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Status','Window','Called At','Completed At','Last Recalled At','First Name','Last Name','Recruiter','Prechecked','Service Transaction Code','Service Transaction','Pre Check By','Remarks'];
 const WH=['Window','Active Ticket ID','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Called At','Updated At','Queue Row'];
 const TH=['Code','Transaction Name','Active','Sort Order'];
 const MH=['MPC Code','MPC Name','Queue Prefix','Logo URL','Active','Sort Order'];
@@ -54,6 +54,7 @@ function doGet(e){
       case'transfer':r=transfer_(p);break;
       case'recall':r=recall_(p);break;
       case'complete':r=complete_(p);break;
+      case'saveRemarks':r=saveRemarks_(p);break;
       case'addWindow':r=addWindow_();break;
       case'deleteWindow':r=deleteWindow_(p);break;
       case'saveWindow':r=saveWindow_(p);break;
@@ -247,6 +248,7 @@ function call_(p){
     if(i<0)throw Error(prechecking?'No unchecked New Hire, Rehire, or Transfer queue is waiting.':'No matching applicant or member is waiting.');
     const r=v[i],actualRow=selection.startRow+i,now=new Date(),recruiter=txt_(settingValue_(ss,'WINDOW_RECRUITER_'+win),80);
     q.getRange(actualRow,11,1,3).setValues([['SERVING',win,now]]);q.getRange(actualRow,18).setValue(recruiter);r[17]=recruiter;
+    if(prechecking&&!String(r[21]||'').trim()){q.getRange(actualRow,22).setValue(recruiter);r[21]=recruiter}
     w.getRange(row,1,1,WH.length).setValues([[win,r[0],r[3],r[4],r[5],r[6],r[7],r[8],r[9],now,now,actualRow]]);
     return {ok:true,ticket:ticket_(r)};
   }finally{lock.releaseLock()}
@@ -294,6 +296,21 @@ function complete_(p){
     }}
   }finally{lock.releaseLock()}
 }
+function saveRemarks_(p){
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    const ss=ss_(),win=int_(p.window,1,windowCount_()),ticketId=txt_(p.ticketId,100),remarks=txt_(p.remarks,500);
+    if(!ticketId)throw Error('Ticket ID is required to save remarks.');
+    const w=ss.getSheetByName(CFG.windows),windowRow=w.getRange(win+1,1,1,WH.length).getValues()[0];
+    if(String(windowRow[1]||'')!==ticketId)throw Error('The active queue changed. Refresh before saving remarks.');
+    const q=ss.getSheetByName(CFG.queue),row=queueRowForWindow_(q,windowRow);
+    if(row<2)throw Error('The active queue ticket was not found.');
+    const ticketRow=q.getRange(row,1,1,QH.length).getValues()[0];
+    if(String(ticketRow[0]||'')!==ticketId||String(ticketRow[10])!=='SERVING'||Number(ticketRow[11])!==win)throw Error('The active queue changed. Refresh before saving remarks.');
+    q.getRange(row,23).setValue(remarks);ticketRow[22]=remarks;
+    return{ok:true,window:win,ticket:ticket_(ticketRow)};
+  }finally{lock.releaseLock()}
+}
 function transfer_(p){
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
@@ -316,11 +333,11 @@ function transfer_(p){
     const row=q.getRange(queueRow,1,1,QH.length).getValues()[0];
     if(String(row[10])!=='SERVING'||Number(row[11])!==source)throw Error('The Pre Checking ticket changed. Refresh and try again.');
     if(!['NH','RH','TR'].includes(code_(row[6],6)))throw Error('Only New Hire, Rehire, or Transfer tickets can leave Pre Checking.');
-    const now=new Date(),recruiter=txt_(settingValue_(ss,'WINDOW_RECRUITER_'+target),80);
-    q.getRange(queueRow,11,1,3).setValues([['SERVING',target,now]]);
+    const now=new Date(),recruiter=txt_(settingValue_(ss,'WINDOW_RECRUITER_'+target),80),precheckedBy=txt_(row[21]||settingValue_(ss,'WINDOW_RECRUITER_'+source),80);
+    q.getRange(queueRow,11,1,3).setValues([['SERVING',target,now]]);q.getRange(queueRow,22).setValue(precheckedBy);
     q.getRange(queueRow,18).setValue(recruiter);q.getRange(queueRow,19).setValue('YES');
     q.getRange(queueRow,20,1,2).setValues([[code,tx.name]]);
-    row[10]='SERVING';row[11]=target;row[12]=now;row[17]=recruiter;row[18]='YES';row[19]=code;row[20]=tx.name;
+    row[10]='SERVING';row[11]=target;row[12]=now;row[17]=recruiter;row[18]='YES';row[19]=code;row[20]=tx.name;row[21]=precheckedBy;
     w.getRange(targetRow,1,1,WH.length).setValues([[target,row[0],row[3],row[4],row[5],code,tx.name,row[8],row[9],now,now,queueRow]]);
     w.getRange(sourceRow,2,1,WH.length-1).clearContent();
     return{ok:true,window:source,targetWindow:target,ticket:ticket_(row)};
@@ -474,6 +491,11 @@ function state_(p){
       queueRows=q.getRange(2,1,rowCount,QH.length).getValues();
     }
   }
+  const queueRowsById=new Map(queueRows.map(row=>[String(row[0]||''),row]));
+  Object.keys(windows).forEach(key=>{
+    const ticket=windows[key],queueRow=ticket&&queueRowsById.get(ticket.ticketId);
+    if(ticket)ticket.remarks=String(queueRow?.[22]||'');
+  });
   queueRows.forEach(row=>{
     if(dayCell_(row[1])===today&&String(row[10])==='WAITING')waiting.push(ticket_(row));
     if(includeCompleted&&String(row[10])==='COMPLETED')completed.push(ticket_(row));
@@ -576,7 +598,7 @@ function findTx_(ss,c){return txs_(ss).find(x=>x.code===c)}
 function findActive_(q,today,f,l){if(q.getLastRow()<2)return null;const key=nameKey_(f,l),v=q.getRange(2,1,q.getLastRow()-1,QH.length).getValues();for(const r of v){if(dayCell_(r[1])!==today||!['WAITING','SERVING'].includes(String(r[10])))continue;if(nameKey_(r[15]||String(r[8]).split(' ')[0],r[16]||String(r[8]).split(' ').slice(-1)[0])===key)return r}return null}
 function next_(q,today,tx){let m=0;if(q.getLastRow()<2)return 1;q.getRange(2,1,q.getLastRow()-1,QH.length).getValues().forEach(r=>{if(dayCell_(r[1])===today&&String(r[6])===tx){const x=String(r[3]).match(/-(\d+)$/);if(x)m=Math.max(m,Number(x[1]))}});return m+1}
 function findId_(s,id){if(s.getLastRow()<2)return-1;const x=s.getRange(2,1,s.getLastRow()-1,1).createTextFinder(id).matchEntireCell(true).findNext();return x?x.getRow():-1}
-function ticket_(r){return{ticketId:String(r[0]||''),createdAt:iso_(r[2]),queueNo:String(r[3]||''),mpcCode:String(r[4]||''),mpcName:String(r[5]||''),transaction:String(r[19]||r[6]||''),transactionName:String(r[20]||r[7]||''),name:String(r[8]||''),position:String(r[9]||''),status:String(r[10]||''),window:r[11]||'',calledAt:iso_(r[12]),date:dayCell_(r[1]),recruiter:String(r[17]||''),completedAt:iso_(r[13]),prechecked:String(r[18]||'').toUpperCase()==='YES'}}
+function ticket_(r){return{ticketId:String(r[0]||''),createdAt:iso_(r[2]),queueNo:String(r[3]||''),mpcCode:String(r[4]||''),mpcName:String(r[5]||''),transaction:String(r[19]||r[6]||''),transactionName:String(r[20]||r[7]||''),name:String(r[8]||''),position:String(r[9]||''),status:String(r[10]||''),window:r[11]||'',calledAt:iso_(r[12]),date:dayCell_(r[1]),recruiter:String(r[17]||''),completedAt:iso_(r[13]),prechecked:String(r[18]||'').toUpperCase()==='YES',precheckedBy:String(r[21]||''),remarks:String(r[22]||'')}}
 function windowTicket_(r){return{window:Number(r[0]),ticketId:String(r[1]||''),queueNo:String(r[2]||''),mpcCode:String(r[3]||''),mpcName:String(r[4]||''),transaction:String(r[5]||''),transactionName:String(r[6]||''),name:String(r[7]||''),position:String(r[8]||''),calledAt:iso_(r[9])}}
 function queueRowForWindow_(q,windowRow){
  const stored=Number(windowRow[11]);
