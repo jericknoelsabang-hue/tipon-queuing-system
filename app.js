@@ -347,9 +347,9 @@ function queueTables(){
     const label=key==='wait'?'wait':'completed';
     const cells=rows.map(x=>{
       const base='<td>'+esc(dateDisplay(x))+'</td><td><b>'+esc(x.queueNo)+'</b></td><td>'+esc(x.name)+'</td><td>'+esc(x.transactionName)+'</td><td>'+esc(x.position)+'</td>';
-      return '<tr>'+base+(key==='completed'?'<td>'+esc(x.precheckedBy||'—')+'</td><td>'+esc(x.recruiter||'—')+'</td>':'')+'</tr>';
+      return '<tr>'+base+(key==='completed'?'<td>'+esc(x.precheckedBy||'—')+'</td><td>'+esc(x.recruiter||'—')+'</td><td class="completed-remarks">'+esc(x.remarks||'—')+'</td>':'')+'</tr>';
     }).join('');
-    const columns=key==='completed'?7:5;
+    const columns=key==='completed'?8:5;
     $(bodyId).innerHTML=rows.length?cells:'<tr><td colspan="'+columns+'" class="empty">No '+(key==='wait'?'waiting':'completed')+' applicants or members.</td></tr>';
     $(label+'Showing').textContent='Showing '+(count?p*size+1:0)+'–'+Math.min((p+1)*size,count)+' of '+count;
     $(label+'Page').textContent='Page '+(p+1)+' of '+(lastPage+1);
@@ -592,6 +592,10 @@ async function queueAction(action,i){
  }
  let original=win(i);
  try{
+  if(action==='recall'&&original?.ticketId){
+   if(remarksTimer)clearTimeout(remarksTimer);remarksTimer=null;
+   await remarksSaveQueue.catch(()=>false);
+  }
   if(action==='complete'&&original?.ticketId){
    if(remarksTimer)clearTimeout(remarksTimer);remarksTimer=null;
    const remarks=$('windowRemarks')?.value??original.remarks??'';
@@ -606,6 +610,12 @@ async function queueAction(action,i){
     if(ticket){
      S.windows={...(S.windows||{}),[key]:ticket};
      if(action==='call')S.waiting=(S.waiting||[]).filter(x=>x.ticketId!==ticket.ticketId);
+     if(action==='recall'){
+      if(remarksTimer)clearTimeout(remarksTimer);remarksTimer=null;
+      remarksDraft={ticketId:ticket.ticketId,value:''};
+      remarksSaved={ticketId:ticket.ticketId,value:''};
+      remarksQueued={ticketId:'',value:''};
+     }
      last[i]=ticket.ticketId+'|'+ticket.calledAt;
      announce(ticket,i);
     }

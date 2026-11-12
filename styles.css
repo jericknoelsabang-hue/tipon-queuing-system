@@ -739,3 +739,5 @@ header.site-header::before{
 @media(max-width:650px){
  .window-actions.standard .btn{padding:7px 4px;font-size:10px}
 }
+
+#staff .completed-remarks{min-width:180px;max-width:420px;white-space:normal;overflow-wrap:anywhere;color:#426579;font-size:12px;line-height:1.4}

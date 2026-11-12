@@ -259,8 +259,8 @@ function recall_(p){
     const ss=ss_(),w=ss.getSheetByName(CFG.windows),win=int_(p.window,1,windowCount_()),r=w.getRange(win+1,1,1,WH.length).getValues()[0];
     if(!r[1])throw Error('Window is empty.');
     const q=ss.getSheetByName(CFG.queue),row=queueRowForWindow_(q,r),now=new Date();
-    if(row>1)q.getRange(row,15).setValue(now);
-    // Refresh the announcement marker while preserving original QUEUE.Called At.
+    if(row>1){q.getRange(row,15).setValue(now);q.getRange(row,23).clearContent()}
+    // Recall intentionally clears the current ticket's Remarks.
     w.getRange(win+1,10,1,2).setValues([[now,now]]);r[9]=now;
     return{ok:true,ticket:windowTicket_(r)}
   }finally{lock.releaseLock()}
