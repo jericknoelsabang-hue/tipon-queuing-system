@@ -731,7 +731,11 @@ header.site-header::before{
   background:#16885e!important;border-color:#16885e!important;color:#fff!important;
   opacity:1;box-shadow:0 5px 14px rgba(0,92,62,.14)
 }
-#staff .precheck-window-button.window-busy:disabled{opacity:.55}
+#staff .precheck-window-button.window-busy,
+#staff .precheck-window-button.window-busy:disabled{
+  background:#c94040!important;border-color:#c94040!important;color:#fff!important;
+  opacity:1;box-shadow:0 5px 14px rgba(140,20,20,.16);cursor:not-allowed
+}
 @media(max-width:650px){
  .window-actions.standard .btn{padding:7px 4px;font-size:10px}
 }
