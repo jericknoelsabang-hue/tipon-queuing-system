@@ -240,9 +240,12 @@ function staff(){
   $('staffMetrics').classList.toggle('hide',isOpen);
   $('staffListHeader').classList.toggle('hide',isOpen);
   $('windowConsoleHeader').classList.toggle('hide',!isOpen);
-  $('queueWaitingCard').classList.toggle('hide',!isOpen);
-  $('queueCompletedCard').classList.toggle('hide',!isOpen);
-  $('staffPageHint').textContent=isOpen?'Window '+activeStaffWindow+' console. Queue history is limited to this service window.':'Select Open to enter a service window console.';
+  $('queueWaitingCard').classList.remove('hide');
+  $('queueCompletedCard').classList.remove('hide');
+  $('staffPageHint').textContent=isOpen?'Window '+activeStaffWindow+' console. Queue history is limited to this service window.':'Select Open to manage a service window. All queues are listed below.';
+  const queueScope=isOpen?'this service window':'all service windows';
+  $('waitingQueueDescription').textContent='Applicants and members waiting across '+queueScope+'.';
+  $('completedQueueDescription').textContent='Completed transactions across '+queueScope+', newest first.';
   if(isOpen){$('windowConsoleTitle').textContent='Window '+activeStaffWindow+' Console';}
   if(signature===staffSignature)return;
   staffSignature=signature;
@@ -325,10 +328,12 @@ function dateDisplay(x){
   return parts?parts[2]+'/'+parts[3]+'/'+parts[1]:raw||'—';
 }
 function queueTables(){
-  if(page!=='staff'||!activeStaffWindow)return;
-  const windowNo=activeStaffWindow,prechecking=isPrecheckingWindow(windowNo),
+  if(page!=='staff')return;
+  const windowNo=activeStaffWindow,isWindowConsole=windowNo>0,
+    prechecking=isWindowConsole&&isPrecheckingWindow(windowNo),
     hasPrechecking=Array.from({length:Number(S.windowCount||0)},(_,idx)=>idx+1).some(i=>isPrecheckingWindow(i));
-  const canWait=prechecking?ticket=>['NH','RH','TR'].includes(String(ticket.transaction||'').toUpperCase())&&!ticket.prechecked:
+  const canWait=!isWindowConsole?()=>true:prechecking?
+    ticket=>['NH','RH','TR'].includes(String(ticket.transaction||'').toUpperCase())&&!ticket.prechecked:
     ticket=>{
       const code=String(ticket.transaction||'').toUpperCase();
       return assignmentIncludes(S.assignments?.[String(windowNo)]||'ALL',code)&&
@@ -351,7 +356,7 @@ function queueTables(){
     $(label+'Prev').disabled=p===0;$(label+'Next').disabled=p===lastPage;return p;
   };
   waitPage=make((S.waiting||[]).filter(canWait),waitPage,'wait','wt');
-  completedPage=make((S.completed||[]).filter(ticket=>Number(ticket.window)===windowNo),completedPage,'completed','ct');
+  completedPage=make((S.completed||[]).filter(ticket=>!isWindowConsole||Number(ticket.window)===windowNo),completedPage,'completed','ct');
 }
 function setupTables(){
   const connected=Boolean(S.version),writable=COMPATIBLE.has(S.version);
