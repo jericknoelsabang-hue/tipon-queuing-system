@@ -713,3 +713,8 @@ header.site-header::before{
  .window-list-table{min-width:680px}
  #windowConsoleHeader{align-items:flex-start}
 }
+
+/* Service Windows is managed from Staff Console; keep its Setup table action layout. */
+.staff-window-actions{display:flex;gap:6px;align-items:center;white-space:nowrap}
+.staff-window-actions .btn{flex:0 0 auto}
+@media(max-width:650px){.staff-window-actions{gap:5px}.staff-window-actions .btn{padding:5px 8px}}

@@ -225,6 +225,7 @@ function updateStaffWindowRoute(value){
 }
 function openStaffWindow(i){
  activeStaffWindow=Number(i)||0;updateStaffWindowRoute(activeStaffWindow);
+ $('windowEditor').classList.add('hide');$('editWindowTxMenu').classList.add('hide');editWindow=0;
  waitPage=0;completedPage=0;tableSignature={wait:'',completed:''};staffSignature='';
  staff();queueTables();window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -232,8 +233,9 @@ function staff(){
   const n=Number(S.windowCount||0);
   if(activeStaffWindow>n){activeStaffWindow=0;updateStaffWindowRoute(0)}
   const isOpen=activeStaffWindow>0;
-  const signature=JSON.stringify({isOpen,activeStaffWindow,n,windows:S.windows,tx:S.transactions,assignments:S.assignments,waiting:S.waiting,recruiters:S.recruiters,connectionHealthy,actions:[...activeWindowActions]});
+  const signature=JSON.stringify({isOpen,activeStaffWindow,n,max:S.maxWindowCount,version:S.version,windows:S.windows,tx:S.transactions,assignments:S.assignments,waiting:S.waiting,recruiters:S.recruiters,connectionHealthy,actions:[...activeWindowActions]});
   $('wc').textContent=n+' WINDOWS';
+  $('addWin').disabled=!COMPATIBLE.has(S.version)||n>=Number(S.maxWindowCount||20);
   $('staffMetrics').classList.toggle('hide',isOpen);
   $('staffListHeader').classList.toggle('hide',isOpen);
   $('windowConsoleHeader').classList.toggle('hide',!isOpen);
@@ -244,14 +246,26 @@ function staff(){
   if(signature===staffSignature)return;
   staffSignature=signature;
   if(!isOpen){
+    const windows=S.windows||{},recruiters=S.recruiters||{};
+    const canDeleteWindow=i=>!Object.entries(windows).some(([number,ticket])=>Boolean(ticket)&&Number(number)>=i);
     const rows=Array.from({length:n},(_,idx)=>{
-      const i=idx+1,t=win(i),assigned=assignmentLabel(S.assignments?.[String(i)]||'ALL'),recruiter=S.recruiters?.[String(i)]||'—';
-      return '<tr><td><b>Window '+i+'</b></td><td>'+esc(assigned)+'</td><td>'+esc(recruiter)+'</td><td>'+(t?'<span class="serving-status">Now Serving '+esc(t.queueNo)+'</span>':'Available')+'</td><td><button class="btn sm primary" data-open-window="'+i+'" type="button">Open</button></td></tr>';
+      const i=idx+1,t=windows[String(i)]||null,assigned=assignmentLabel(S.assignments?.[String(i)]||'ALL'),recruiter=recruiters[String(i)]||'—',canDelete=canDeleteWindow(i);
+      return '<tr><td><b>Window '+i+'</b></td><td>'+esc(assigned)+'</td><td>'+esc(recruiter)+'</td><td>'+(t?'Serving '+esc(t.queueNo):'Available')+'</td><td class="actions-cell staff-window-actions">'+
+        '<button class="btn sm primary" data-open-window="'+i+'" type="button">Open</button>'+
+        '<button class="btn sm" data-edit-win="'+i+'" type="button"'+(!COMPATIBLE.has(S.version)?' disabled':'')+'>Edit</button>'+
+        '<button class="btn sm danger" data-delete-win="'+i+'" type="button"'+(!COMPATIBLE.has(S.version)||!canDelete||n<=1?' disabled':'')+' title="'+(!canDelete?'Complete this or later active windows first':'Delete window immediately')+'">Delete</button></td></tr>';
     }).join('');
-    $('staffWins').innerHTML='<div class="window-list-wrap"><table class="window-list-table"><thead><tr><th>Window</th><th>Assigned Transaction</th><th>Recruiter</th><th>Status</th><th>Action</th></tr></thead><tbody>'+(
-      rows||'<tr><td colspan="5" class="empty">Waiting for service windows from Apps Script.</td></tr>'
+    $('staffWins').innerHTML='<div class="table-wrap"><table><thead><tr><th>Window</th><th>Assigned transaction</th><th>Recruiter</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+(
+      rows||'<tr><td colspan="5" class="empty">'+(connectionHealthy?'No windows available. Add a window in Staff Console.':'Waiting for saved service windows from Apps Script.')+'</td></tr>'
     )+'</tbody></table></div>';
     document.querySelectorAll('[data-open-window]').forEach(button=>button.onclick=()=>openStaffWindow(button.dataset.openWindow));
+    document.querySelectorAll('[data-edit-win]').forEach(button=>button.onclick=()=>openWindowEditor(Number(button.dataset.editWin)));
+    document.querySelectorAll('[data-delete-win]').forEach(button=>button.onclick=async()=>{
+      if(button.disabled)return;
+      button.disabled=true;button.textContent='Deleting…';
+      const result=await operate('deleteWindow',{window:Number(button.dataset.deleteWin)});
+      if(!result){staffSignature='';staff()}
+    });
     return;
   }
   const i=activeStaffWindow,t=win(i),selected=S.assignments?.[String(i)]||'ALL',
@@ -308,39 +322,15 @@ function queueTables(){
   completedPage=make((S.completed||[]).filter(ticket=>Number(ticket.window)===windowNo),completedPage,'completed','ct');
 }
 function setupTables(){
-  const connected=Boolean(S.version), writable=COMPATIBLE.has(S.version);
-  const n=connected?Math.max(0,Math.min(Number(S.windowCount)||0,Number(S.maxWindowCount)||20)):0;
+  const connected=Boolean(S.version),writable=COMPATIBLE.has(S.version);
   const list=(Array.isArray(S.transactionTypes)&&S.transactionTypes.length?S.transactionTypes:Array.isArray(S.transactions)?S.transactions:[]).filter(x=>x.active!==false);
-  const activeTx=Array.isArray(S.transactions)?S.transactions:[];
-  const windows=S.windows||{}, assigns=S.assignments||{}, recruiters=S.recruiters||{};
-  const canDeleteWindow=i=>!Object.entries(windows).some(([number,ticket])=>Boolean(ticket)&&Number(number)>=i);
-  $('setupWc').textContent=connected?n+' WINDOWS':'LOADING';
-  $('addWin').disabled=!writable||n>=Number(S.maxWindowCount||20);
   $('addTx').disabled=!writable;
   $('openAddTx').disabled=!writable;
-  $('setupListHint').textContent=!valid(url())?'No Apps Script connection configured. Add a valid /exec URL above.':
-    !connected?'Connecting to Apps Script… Existing windows and transactions appear when the backend responds.':
-    !writable?'Read-only backend '+S.version+'. Deploy Federation v11 Code.gs to enable edits.':
-    S.version!==REQUIRED?'Connected to '+S.version+'. Deploy Federation v11 Code.gs for multi-select assignments and Pre Checking transfers.':'Connected to '+S.version+'. Saved windows and transactions are available for management.';
-  const trxName=code=>activeTx.find(x=>x.code===code)?.name||list.find(x=>x.code===code)?.name||(code==='ALL'?'Any transaction':code);
-  $('setupWins').innerHTML=n?Array.from({length:n},(_,idx)=>{
-    const i=idx+1,t=windows[String(i)]||null,tx=assigns[String(i)]||'ALL',name=recruiters[String(i)]||'—';
-    return '<tr><td><b>Window '+i+'</b></td><td>'+esc(assignmentLabel(tx))+'</td><td>'+esc(name)+'</td><td>'+(t?'Serving '+esc(t.queueNo):'Available')+'</td><td class="actions-cell">'+
-      '<button class="btn sm" data-edit-win="'+i+'" type="button"'+(!writable?' disabled':'')+'>Edit</button>'+
-      '<button class="btn sm danger" data-delete-win="'+i+'" type="button"'+(!writable||!canDeleteWindow(i)||n<=1?' disabled':'')+' title="'+(!canDeleteWindow(i)?'Complete this or later active windows first':'Delete window immediately')+'">Delete</button></td></tr>';
-  }).join(''):'<tr><td colspan="5" class="empty">'+(connected?'No windows available. Add a window in Setup.':'Waiting for saved service windows from Apps Script.')+'</td></tr>';
   $('setupTx').innerHTML=list.length?list.map(x=>{
     return '<tr><td><b>'+esc(x.code)+'</b></td><td>'+esc(x.name)+'</td><td>Active</td><td class="actions-cell">'+
       '<button class="btn sm" type="button" data-edit-tx="'+esc(x.code)+'"'+(!writable?' disabled':'')+'>Edit</button>'+
       '<button class="btn sm danger" type="button" data-delete-tx="'+esc(x.code)+'"'+(!writable?' disabled':'')+'>Delete</button></td></tr>';
   }).join(''):'<tr><td colspan="4" class="empty">'+(connected?'No active transaction types. Add one above.':'Waiting for saved transaction types from Apps Script.')+'</td></tr>';
-  document.querySelectorAll('[data-edit-win]').forEach(b=>b.onclick=()=>openWindowEditor(Number(b.dataset.editWin)));
-  document.querySelectorAll('[data-delete-win]').forEach(b=>b.onclick=async()=>{
-    if(b.disabled)return;
-    b.disabled=true;b.textContent='Deleting…';
-    const result=await operate('deleteWindow',{window:Number(b.dataset.deleteWin)});
-    if(!result)setupTables();
-  });
   document.querySelectorAll('[data-edit-tx]').forEach(b=>b.onclick=()=>openTxEditor(b.dataset.editTx));
   document.querySelectorAll('[data-delete-tx]').forEach(b=>b.onclick=async()=>{
     if(b.disabled)return;
@@ -728,7 +718,7 @@ $('saveWindow').onclick=async()=>{
       S.recruiters={...(S.recruiters||{}),[String(i)]:recruiter};
       staffSignature='';render();
     });
-    if(result){$('windowEditor').classList.add('hide');$('editWindowTxMenu').classList.add('hide');$('editWindowTxToggle').setAttribute('aria-expanded','false');editWindow=0;status('Window '+i+' saved to Google Sheets.','ok')}
+    if(result){$('windowEditor').classList.add('hide');$('editWindowTxMenu').classList.add('hide');$('editWindowTxToggle').setAttribute('aria-expanded','false');editWindow=0;if(page==='staff')staffMessage('Window '+i+' saved to Google Sheets.','ok');else status('Window '+i+' saved to Google Sheets.','ok')}
   }finally{save.disabled=false;save.textContent='Save Changes'}
 };
 $('cancelTx').onclick=()=>{$('txEditor').classList.add('hide');editTxCode=''};

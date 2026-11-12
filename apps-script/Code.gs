@@ -287,8 +287,9 @@ function complete_(p){
     const statusBlock=q.getRange(row,11,1,4),previous=statusBlock.getValues()[0];
     statusBlock.setValues([['COMPLETED',previous[1],previous[2],completedAt]]);
     w.getRange(win+1,2,1,WH.length-1).clearContent();
+    const completedRow=q.getRange(row,1,1,QH.length).getValues()[0];
     return{ok:true,window:win,ticket:{
-      ...windowTicket_(r),status:'COMPLETED',
+      ...ticket_(completedRow),status:'COMPLETED',window:win,
       completedAt:iso_(completedAt)
     }}
   }finally{lock.releaseLock()}

@@ -15,17 +15,17 @@ This is a QR-based queuing system for **recruitment applicants** and **cooperati
 2. For Recruitment, choose an active transaction type and enter the position. For Member Concern, type the concern.
 3. Provide first and last name and select **Get Queue Number**.
 4. See the confirmed NH / RH / TR / MC ticket, then choose **Register Another Applicant / Member** or **Done**. Done attempts to close the tab; browsers only allow programmatic closing for tabs that were script-opened. QR-opened tabs usually remain open and show a clear completion message while retaining the ticket.
-5. The Staff Console first lists each service window with its assigned transactions, recruiter, current status, and an **Open** action. Opening a window shows only that window’s Call Next and Recall controls, Waiting Queue, and Completed Queue. Standard service windows also have Complete to move a served ticket into Completed Queue. A **Pre Checking** window handles New Hire, Rehire, and Transfer tickets first, has no Complete action, and can transfer a checked ticket to an idle destination window. Destination buttons follow the configured windows automatically, and busy windows are disabled. The original queue number remains unchanged for duplicate checks.
+5. The Staff Console contains the Service Windows table with the same columns and management actions as Setup, plus **Open** before Edit and Delete. Opening a window shows its Call Next and Recall controls, Waiting Queue, and Completed Queue. Completed Queue includes the recruiter who assisted. Standard service windows have Complete to move a served ticket into Completed Queue. A **Pre Checking** window handles New Hire, Rehire, and Transfer tickets first, has no Complete action, and can transfer a checked ticket to an idle destination window. Destination buttons follow the configured windows automatically, and busy windows are disabled. The original queue number remains unchanged for duplicate checks.
 6. TV Display shows the scan code, NOW SERVING windows, UP NEXT, and a scrolling announcement with a fixed **ANNOUNCEMENT** label. The call banner is removed. On supported browsers, each Call/Recall speaks the **ticket number first**, without the word "Queue," three times after sound is enabled on the device.
 
 ### Setup
 
 - **Get Queue Page** link lives in Setup, not the TV navigation or below the QR code.
-- Manage service windows, multi-select assigned transactions, recruiter, and active windows.
+- Service windows are managed in Staff Console, where users can open a window or edit its transactions and recruiter.
 - Manage transaction types with Edit or direct Delete, without confirmation popup. Deleted types disappear immediately from active Setup lists, are hidden from public registration, and keep their historical records in Google Sheets. Restore is not shown in the interface. The **Add Transaction Type** button on the right opens an inline form.
 - TV Announcement can store up to **2,500 characters** once the Federation v8 Apps Script backend is deployed. Longer messages are transmitted to Apps Script in smaller chunks, then committed together.
 - Refresh Queue, Enable/Test Sound, Save Connection, and Test Connection are in Setup.
-- The Waiting and Completed Queue tables show 10 rows per page, with row counts underneath.
+- The Staff Console Waiting and Completed Queue tables show 10 rows per page, with row counts underneath.
 
 ## IMPORTANT: Deploy the Google Apps Script backend separately
 

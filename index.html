@@ -79,31 +79,9 @@
       <div class="metric"><span>Now serving</span><strong id="metricServing">0</strong><small>Active service windows</small></div>
     </div>
     <div class="card">
-      <div class="split" id="staffListHeader"><div><h2>Service Windows</h2><p>Open a window to call and manage its queue.</p></div><span class="pill" id="wc">4 WINDOWS</span></div>
+      <div class="split" id="staffListHeader"><div><h2>Service Windows</h2><p>Edit assigned transactions and recruiter for each window. Only windows without active downstream sessions can be removed safely.</p></div><div class="buttons"><span class="pill" id="wc">5 WINDOWS</span><button id="addWin" class="btn success" type="button">+ Add Window</button></div></div>
       <div class="split hide" id="windowConsoleHeader"><div><h2 id="windowConsoleTitle">Window Console</h2><p>Call and review queues for this service window.</p></div><button id="backToWindows" class="btn ghost" type="button">Back to Windows</button></div>
       <div id="staffWins"></div>
-    </div>
-    <div class="card queue-table-card hide" id="queueWaitingCard"><div class="split"><div><h2 id="waitQueueHeading">Waiting Queue</h2><p>Applicants and members waiting for this service window.</p></div></div>
-      <div class="table-wrap"><table><thead><tr><th>Date</th><th>Queue</th><th>Name</th><th>Transaction</th><th>Purpose</th><th>Recruiter</th></tr></thead><tbody id="wt"></tbody></table></div>
-      <div class="table-bottom"><span id="waitShowing" class="table-count">Showing 0–0 of 0</span><div class="pager"><button id="waitPrev" class="btn sm ghost" type="button">Previous</button><span id="waitPage">Page 1 of 1</span><button id="waitNext" class="btn sm ghost" type="button">Next</button></div></div>
-    </div>
-    <div class="card queue-table-card hide" id="queueCompletedCard"><div class="split"><div><h2 id="completedQueueHeading">Completed Queue</h2><p>Finished transactions for this service window, newest completion first.</p></div></div>
-      <div class="table-wrap"><table><thead><tr><th>Date</th><th>Queue</th><th>Name</th><th>Transaction</th><th>Purpose</th><th>Recruiter</th></tr></thead><tbody id="ct"></tbody></table></div>
-      <div class="table-bottom"><span id="completedShowing" class="table-count">Showing 0–0 of 0</span><div class="pager"><button id="completedPrev" class="btn sm ghost" type="button">Previous</button><span id="completedPage">Page 1 of 1</span><button id="completedNext" class="btn sm ghost" type="button">Next</button></div></div>
-    </div>
-  </section>
-  <section id="setup" class="hide">
-    <div class="page-head"><div><span class="eyebrow">tipón TAWAG · Configuration</span><h1>Setup &amp; Connections</h1><p>Manage service windows, recruiters, transaction types, and the backend connection.</p></div></div>
-    <div id="setupAlert" class="status" role="alert">Checking backend connection…</div>
-    <div class="card"><h2>Google Apps Script Connection</h2><p>The Apps Script backend supports attendance-independent queuing, member concerns, recruiter assignments, and transaction management.</p>
-      <label class="field" for="api">Apps Script Web App URL (/exec)<input id="api" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec"></label>
-      <div class="buttons" style="margin-top:13px"><button id="save" class="btn primary" type="button">Save Connection</button><button id="test" class="btn" type="button">Test Connection</button><button id="reconnect" class="btn success" type="button">Reconnect Using Default</button><button id="clear" class="btn ghost" type="button">Clear</button></div>
-      <div class="setup-guide"><b>How to fix “Unknown action”:</b> Open the deployed Apps Script project, replace Code.gs with the <a target="_blank" rel="noopener" href="https://github.com/jericknoelsabang-hue/tipon-queuing-system/blob/main/apps-script/Code.gs">latest GitHub Code.gs</a>, run <code>setupTiponQueueSystem</code>, then choose <b>Deploy → Manage deployments → Edit → New version → Deploy</b>. Keep the same /exec URL.</div>
-    </div>
-    <div class="card get-queue-setup"><div class="split"><div><h2>Get Queue Page</h2><p>Share this registration page with recruitment applicants and members, or open it to test the QR link.</p></div><a id="getQueueSetup" class="btn primary" href="join.html" target="_blank" rel="noopener">Open Get Queue Page</a></div></div>
-    <p id="setupListHint" class="small-muted" role="status">Loading saved windows and transaction types from the backend…</p>
-    <div class="card"><div class="split"><div><h2>Service Windows</h2><p>Edit assigned transactions and recruiter for each window. Only windows without active downstream sessions can be removed safely.</p></div><div class="buttons"><span class="pill" id="setupWc">4 WINDOWS</span><button id="addWin" class="btn success" type="button">+ Add Window</button></div></div>
-      <div class="table-wrap"><table><thead><tr><th>Window</th><th>Assigned transaction</th><th>Recruiter</th><th>Status</th><th>Actions</th></tr></thead><tbody id="setupWins"></tbody></table></div>
       <div class="inline-editor hide" id="windowEditor"><h3 id="windowEditorTitle">Edit Window</h3><div class="grid">
         <div class="field"><label for="editWindowTxToggle">Assigned transaction</label><div class="assignment-dropdown" id="editWindowTx">
           <button id="editWindowTxToggle" class="assignment-toggle" type="button" aria-haspopup="true" aria-expanded="false"><span id="editWindowTxLabel">Select transactions</span><span aria-hidden="true">▾</span></button>
@@ -112,6 +90,24 @@
         <label class="field" for="editRecruiter">Recruiter name<input id="editRecruiter" maxlength="80" placeholder="Full name of recruiter" autocomplete="off"></label>
       </div><div class="buttons"><button id="saveWindow" class="btn success" type="button">Save Changes</button><button id="cancelWindow" class="btn ghost" type="button">Cancel</button></div></div>
     </div>
+    <div class="card queue-table-card hide" id="queueWaitingCard"><div class="split"><div><h2 id="waitQueueHeading">Waiting Queue</h2><p>Applicants and members waiting for this service window.</p></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Date</th><th>Queue</th><th>Name</th><th>Transaction</th><th>Purpose</th><th>Recruiter</th></tr></thead><tbody id="wt"></tbody></table></div>
+      <div class="table-bottom"><span id="waitShowing" class="table-count">Showing 0–0 of 0</span><div class="pager"><button id="waitPrev" class="btn sm ghost" type="button">Previous</button><span id="waitPage">Page 1 of 1</span><button id="waitNext" class="btn sm ghost" type="button">Next</button></div></div>
+    </div>
+    <div class="card queue-table-card hide" id="queueCompletedCard"><div class="split"><div><h2 id="completedQueueHeading">Completed Queue</h2><p>Completed transactions and the recruiter who assisted, newest first.</p></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Date</th><th>Queue</th><th>Name</th><th>Transaction</th><th>Purpose</th><th>Recruiter</th></tr></thead><tbody id="ct"></tbody></table></div>
+      <div class="table-bottom"><span id="completedShowing" class="table-count">Showing 0–0 of 0</span><div class="pager"><button id="completedPrev" class="btn sm ghost" type="button">Previous</button><span id="completedPage">Page 1 of 1</span><button id="completedNext" class="btn sm ghost" type="button">Next</button></div></div>
+    </div>
+  </section>
+  <section id="setup" class="hide">
+    <div class="page-head"><div><span class="eyebrow">tipón TAWAG · Configuration</span><h1>Setup &amp; Connections</h1><p>Manage transaction types and the backend connection.</p></div></div>
+    <div id="setupAlert" class="status" role="alert">Checking backend connection…</div>
+    <div class="card"><h2>Google Apps Script Connection</h2><p>The Apps Script backend supports attendance-independent queuing, member concerns, recruiter assignments, and transaction management.</p>
+      <label class="field" for="api">Apps Script Web App URL (/exec)<input id="api" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec"></label>
+      <div class="buttons" style="margin-top:13px"><button id="save" class="btn primary" type="button">Save Connection</button><button id="test" class="btn" type="button">Test Connection</button><button id="reconnect" class="btn success" type="button">Reconnect Using Default</button><button id="clear" class="btn ghost" type="button">Clear</button></div>
+      <div class="setup-guide"><b>How to fix “Unknown action”:</b> Open the deployed Apps Script project, replace Code.gs with the <a target="_blank" rel="noopener" href="https://github.com/jericknoelsabang-hue/tipon-queuing-system/blob/main/apps-script/Code.gs">latest GitHub Code.gs</a>, run <code>setupTiponQueueSystem</code>, then choose <b>Deploy → Manage deployments → Edit → New version → Deploy</b>. Keep the same /exec URL.</div>
+    </div>
+    <div class="card get-queue-setup"><div class="split"><div><h2>Get Queue Page</h2><p>Share this registration page with recruitment applicants and members, or open it to test the QR link.</p></div><a id="getQueueSetup" class="btn primary" href="join.html" target="_blank" rel="noopener">Open Get Queue Page</a></div></div>
     <div class="card"><div class="split transaction-heading"><div><h2>Transaction Types</h2><p>Manage available transaction types. Deleting removes the type from this list and new registrations, while preserving historical queue records.</p></div><button id="openAddTx" class="btn success" type="button" aria-controls="txAddEditor" aria-expanded="false">+ Add Transaction Type</button></div>
       <div class="inline-editor hide" id="txAddEditor"><h3>Add Transaction Type</h3><div class="grid">
         <label class="field" for="newCode">Transaction Code<input id="newCode" maxlength="6" placeholder="e.g. INQ" autocomplete="off"></label>
