@@ -1,11 +1,18 @@
 /* tipón TAWAG public recruitment/member registration; no staff navigation. */
 (()=>{'use strict';
-const $=id=>document.getElementById(id),C=window.TIPON_CONFIG||{},VERSION='federation-v10',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9','federation-v10']);
-let service='recruitment',seq=0,memberAvailable=true;
+const $=id=>document.getElementById(id),C=window.TIPON_CONFIG||{},VERSION='federation-v11',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9','federation-v10','federation-v11']);
+let service='recruitment',seq=0,memberAvailable=true,servicesLoaded=false,recruitmentAvailable=false,submitting=false;
 const apiUrl=()=>new URLSearchParams(location.search).get('api')||localStorage.getItem('tqApi')||C.backendUrl||'';
 function valid(url){try{const u=new URL(url);return u.origin==='https://script.google.com'&&u.pathname.endsWith('/exec')}catch{return false}}
 function message(text,ok=false){const e=$('message');e.textContent=String(text);e.className='message'+(ok?' ok':'')}
 function clear(){const e=$('message');e.textContent='';e.classList.add('hide')}
+function updateSubmitAvailability(){
+ const first=$('firstName').value.trim(),last=$('lastName').value.trim();
+ const ready=!submitting&&servicesLoaded&&Boolean(first&&last)&&(service==='recruitment'
+  ? recruitmentAvailable&&Boolean($('transaction').value&&$('position').value.trim())
+  : memberAvailable&&Boolean($('concern').value.trim()));
+ $('submit').disabled=!ready;
+}
 function jp(action,params={}){return new Promise((resolve,reject)=>{
  if(!valid(apiUrl()))return reject(Error('Queuing system connection is not configured. Please ask the reception staff for assistance.'));
  const cb='__tiponJoin'+Date.now()+(++seq),tag=document.createElement('script');let done=false;
@@ -27,7 +34,7 @@ function choose(next){
  $('positionField').classList.toggle('hide',!recruitment);
  $('concernOptions').classList.toggle('hide',recruitment);
  $('position').required=recruitment;$('transaction').required=recruitment;$('concern').required=!recruitment;
- $('submit').textContent='GET QUEUE NUMBER';clear();
+ $('submit').textContent='GET QUEUE NUMBER';clear();updateSubmitAvailability();
 }
 $('chooseRecruitment').onclick=()=>choose('recruitment');
 $('chooseMember').onclick=()=>choose('member');
@@ -61,7 +68,7 @@ $('done').onclick=()=>{
 };
 $('queueForm').onsubmit=async event=>{
  event.preventDefault();clear();
- const button=$('submit');if(button.disabled)return;button.disabled=true;button.textContent='PLEASE WAIT…';
+ const button=$('submit');if(button.disabled)return;submitting=true;button.disabled=true;button.textContent='PLEASE WAIT…';
  try{
   const firstName=$('firstName').value.trim(),lastName=$('lastName').value.trim();
   const transaction=service==='recruitment' ? $('transaction').value : 'MC';
@@ -69,17 +76,15 @@ $('queueForm').onsubmit=async event=>{
   if(!firstName||!lastName||!position||(service==='recruitment'&&!transaction))
     throw Error('Complete your name, choose a recruitment transaction, and enter your position.');
   // One request instead of a health check plus registration. The backend validates and deduplicates applicants.
-  const precheck=service==='recruitment'&&$('scanYes')?.checked&&$('privacyAgree')?.checked?'yes':'no';
-  const res=await jp('register',{firstName,lastName,position,transaction,precheck});
+  const res=await jp('register',{firstName,lastName,position,transaction});
   if(!res.ok)throw Error(res.error||'Unable to generate your queue number.');
   if(!res.ticket||!res.ticket.queueNo)throw Error('The server returned no queue number. Please notify staff.');
   receipt(res.ticket,Boolean(res.duplicate));
-   window.dispatchEvent(new CustomEvent('tipon:ticket',{detail:{ticket:res.ticket,duplicate:Boolean(res.duplicate),intakeToken:res.intakeToken||''}}));
  }catch(e){message(e.message)}
- finally{button.disabled=false;button.textContent='GET QUEUE NUMBER'}
+ finally{submitting=false;button.textContent='GET QUEUE NUMBER';updateSubmitAvailability()}
 };
 async function loadTransactions(){
- if(!valid(apiUrl())){message('The queue is not configured. Please notify reception staff.');$('submit').disabled=true;return}
+ if(!valid(apiUrl())){servicesLoaded=false;updateSubmitAvailability();message('The queue is not configured. Please notify reception staff.');return}
  try{
   let res=await jp('publicConfig');
   // Existing Federation v7 backends can still register while the new Apps Script is being deployed.
@@ -92,7 +97,8 @@ async function loadTransactions(){
   $('chooseMember').disabled=!memberAvailable;
   $('chooseMember').setAttribute('aria-disabled',String(!memberAvailable));
   const tx=active.filter(t=>t.code!=='MC');
-  $('chooseRecruitment').disabled=!tx.length;
+  recruitmentAvailable=tx.length>0;servicesLoaded=true;
+  $('chooseRecruitment').disabled=!recruitmentAvailable;
   if(tx.length){
     const select=$('transaction'),previous=select.value;select.textContent='';
     const placeholder=document.createElement('option');
@@ -110,15 +116,18 @@ async function loadTransactions(){
     placeholder.disabled=true;placeholder.selected=true;select.appendChild(placeholder);
   }
   if(!tx.length&&!memberAvailable){$('submit').disabled=true;message('Recruitment and Member Concern registration are currently unavailable. Please ask staff.');return}
-  $('submit').disabled=false;
   if(!tx.length&&memberAvailable)choose('member');
   else if(!memberAvailable&&service==='member')choose('recruitment');
   clear();
- }catch(e){message('Could not load available services: '+e.message)}
+  updateSubmitAvailability();
+ }catch(e){servicesLoaded=false;updateSubmitAvailability();message('Could not load available services: '+e.message)}
 }
-localStorage.removeItem('tqPendingPrecheck'); // clear legacy v4 state: no applicant verification is required
-// Start every new applicant entry with no transaction and no Yes/No preselection.
+['firstName','lastName','transaction','position','concern'].forEach(id=>{
+ const field=$(id);if(!field)return;
+ field.addEventListener('input',updateSubmitAvailability);
+ field.addEventListener('change',updateSubmitAvailability);
+});
+// Start every new applicant entry without a selected transaction.
 $('transaction').value='';
-$('scanYes').checked=false;$('scanNo').checked=false;
 choose('recruitment');void loadTransactions();
 })();

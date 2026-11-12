@@ -96,80 +96,8 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
  .join-brand-label{font-size:clamp(17px,5.5vw,24px);padding-left:10px}
 }
 
-/* Document camera and opt-in prescreening: accessible on mobile, tablet and desktop. */
-.scan-decision,.scan-box{background:#f3faff;border:1px solid #cfe5f0;border-radius:14px;margin:17px 0;padding:19px}
-.scan-decision h3,.scan-box h3{font:750 16px Poppins,sans-serif;color:#0d4260;margin:0 0 9px}
-.scan-decision p,.scan-box p{font-size:12px;line-height:1.55;color:#50738a}
-.scan-choice{display:flex;gap:16px;flex-wrap:wrap;margin-top:13px}.scan-choice label{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#0b405b}
-.scan-choice input,.scan-privacy input{width:18px;height:18px;accent-color:#0887b2}
-.scan-privacy{background:#f4fbff;border:1px solid #c8e0ed;border-radius:11px;padding:15px;margin:14px 0}
-.scan-privacy strong{color:#14516b}.scan-privacy label{display:flex;align-items:flex-start;gap:9px;font-size:12px;font-weight:700;color:#20536a}.scan-privacy p{margin:8px 0 12px}
-.scan-expected-list{display:flex;flex-wrap:wrap;gap:7px;margin:9px 0 14px}
-.scan-expected-chip{padding:6px 10px;border:1px solid #b5d3e3;border-radius:18px;background:#fff;font-size:11px;font-weight:700;color:#17516d}
-.scan-action-center{display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;gap:6px;margin:16px auto}
-.scan-main-btn{min-height:48px;min-width:245px;font-size:13px}
-.scan-photo-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;color:#14516b;font-size:12px;margin:20px 0 11px}
-.scan-photo-heading span{font-weight:500;color:#68879a}
-.scan-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(114px,1fr));gap:12px}
-.scan-photo-card{position:relative;background:#fff;border:1px solid #c5dce8;border-radius:12px;overflow:hidden;min-height:147px}
-.scan-photo-card img{display:block;object-fit:cover;width:100%;height:118px;background:#dfeef5}
-.scan-photo-indicator{position:absolute;top:8px;left:8px;background:rgba(6,48,69,.85);color:#fff;padding:3px 6px;border-radius:6px;font-size:9px;font-weight:900;letter-spacing:.045em}
-.scan-photo-progress{width:calc(100% - 12px);height:5px;display:block;margin:6px;accent-color:#16a17e}
-
-.scan-photo-card .scan-card-footer{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;font-size:11px;font-weight:750;color:#25576f;gap:6px}
-.scan-photo-card .scan-remove{font-size:12px;border:0;background:#f9e9e9;color:#9d3333;border-radius:6px;cursor:pointer;padding:4px 6px}
-.scan-progress{background:#e6f3fc;border:1px solid #a6d2ea;border-radius:11px;padding:12px;color:#12475f;margin:12px 0;font-weight:650;font-size:12px}
-.scan-progress progress{width:100%;margin-top:8px;accent-color:#168eb9}
-.scan-report{background:#eef8f1;border:1px solid #a7dabc;border-radius:11px;padding:14px;color:#19513d;margin:14px 0;font-size:12px}
-.scan-report p{margin:7px 0}.scan-report h3{margin:2px 0 8px;color:#165c42;font-size:17px}.scan-report .scan-review-line{border-bottom:1px solid #d1e9d7;padding:8px 0;line-height:1.55}
-.scan-report .scan-review-line:last-child{border:0}.scan-review-line strong{font-weight:850}
-.scan-camera{position:fixed;z-index:9999;inset:0;background:rgba(2,20,35,.96);display:flex;justify-content:center;align-items:center;padding:14px;overflow-y:auto}
-.scan-camera-shell{width:min(920px,100%);display:flex;flex-direction:column;gap:10px;color:#fff}
-.scan-camera-head,.scan-camera-actions{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
-.scan-camera-head{justify-content:space-between}.scan-camera-head strong{font:750 18px Poppins,sans-serif}
-.scan-camera video{width:100%;height:min(70vh,720px);object-fit:cover;object-position:center;background:#0a141a;border:2px solid #4b7c9b;border-radius:13px}
-.scan-camera-actions .btn{min-height:44px}.scan-shutter{font-weight:900;font-size:14px!important}
-#scanCameraStatus{text-align:center;font-size:12px;color:#dcebf6;line-height:1.6}
-@media(max-width:540px){.scan-choice{flex-direction:column}.scan-camera-actions{display:grid;grid-template-columns:1fr 1fr}.scan-camera-actions button:first-child{grid-column:1/-1}.scan-camera video{height:min(62dvh,680px);object-fit:cover}.scan-main-btn{width:100%;min-width:0}}
-
-
-/* Applicant progress gating, layout, and centered dynamic requirements. */
-#scanDecision .scan-choice{justify-content:center;align-items:center;gap:12px 16px;margin:17px auto 10px}
-#scanDecision .scan-opt{display:inline-flex;justify-content:center;align-items:center;gap:10px;background:#fff;border:1px solid #c8deeb;border-radius:12px;min-height:48px;padding:11px 18px;color:#184762;cursor:pointer;transition:background-color .15s,border-color .15s}
-#scanDecision .scan-opt:has(input:checked){background:#e2f5ff;border-color:#1c91c0;box-shadow:0 3px 11px rgba(6,98,141,.09)}
-#scanDecision .scan-opt-disabled{opacity:.55;cursor:not-allowed}
-#scanDecision .scan-opt input{margin:0;flex:none}
-#scanDecision .scan-entry-hint{font-size:11px;color:#547992;text-align:center;line-height:1.6;margin:10px auto 2px;max-width:620px}
-#scanBox .scan-expected-list{justify-content:center;align-items:center;gap:9px;margin:13px auto 19px;max-width:660px}
-#scanBox .scan-expected-chip{padding:8px 13px;border-radius:999px;background:#fff;box-shadow:0 2px 9px rgba(14,92,130,.05);letter-spacing:.01em}
-#scanBox .scan-expected-chip.scan-chip-match{background:#e3f7ed;border-color:#78c9a5;color:#166743}
-#scanBox .scan-expected-chip.scan-chip-review{background:#fff7e5;border-color:#e1c27d;color:#83601a}
-#scanBox .scan-expected-chip.scan-chip-missing{background:#f3f6f8;border-color:#c8d9e2;color:#536a79}
-#scanBox #scanConfigMessage{text-align:center;max-width:650px;margin:9px auto 4px;color:#2d6684;font-weight:700}
-#scanBox .scan-privacy{border-radius:13px}
-@media(max-width:540px){
- #scanDecision .scan-choice{flex-direction:column;gap:9px}
- #scanDecision .scan-opt{width:100%;max-width:400px;padding:12px 10px}
- #scanBox .scan-expected-list{gap:7px}
- #scanBox .scan-expected-chip{font-size:10px;padding:7px 11px}
-}
-.scan-review-note{margin:11px auto 6px;max-width:650px;padding:12px 14px;text-align:center;border:1px solid #a8cddf;background:#f5fbff;border-radius:10px;color:#165270;font-size:12px;font-weight:750;line-height:1.5}
-/* Keep scan completion text visibly centered on mobile and desktop. */
-#scanBox #scanReviewNote.scan-review-note{
-  display:flex;justify-content:center;align-items:center;text-align:center;
-  width:100%;max-width:680px;min-height:62px;
-  margin:14px auto 6px;padding:14px 18px;box-sizing:border-box;
-  line-height:1.6;overflow-wrap:anywhere;
-}
-#scanBox #scanReviewNote.scan-review-note.hide{display:none!important}
-.scan-sync-state{margin:12px auto 6px;text-align:center;max-width:640px;padding:10px 13px;
-  background:#f2f9ff;border:1px solid #c5dfea;border-radius:10px;font-size:12px;line-height:1.6}
-.scan-sync-state[data-state="saved"]{background:#e8f8ed;border-color:#a1d8b6;color:#14633d}
-.scan-sync-state[data-state="error"]{background:#fff6e8;border-color:#e4cc97;color:#754c13}
-.scan-sync-state[data-state="pending"]{color:#1f5876}
-@media(max-width:600px){#scanBox #scanReviewNote.scan-review-note{max-width:100%;padding:13px 12px}}
 </style>
-<script defer src="config.js"></script><script defer src="scan-sync.js?v=3.1"></script><script defer src="join.js?v=11.2"></script><script defer src="requirements-client.js?v=8.1"></script>
+<script defer src="config.js"></script><script defer src="join.js?v=11.3"></script>
 </head><body>
 <div class="join-top"></div><header class="join-head"><div class="join-head-inner">
   <div class="join-wordmark"><img class="join-logo" src="assets/tipon-logo-hd.webp" alt="tipón Federation"><span class="join-brand-label">TAWAG<span>.</span></span></div>
@@ -195,63 +123,11 @@ body{background:radial-gradient(circle at 5% 4%,#cfeafa,transparent 28%),linear-
       <label for="concern">Type of concern *</label>
       <input id="concern" name="concern" type="text" maxlength="80" placeholder="Enter your concern (e.g., COE request)" autocomplete="off">
     </div>
-    <section id="scanDecision" class="scan-decision">
-      <h3>Pre-Employment Requirements</h3>
-      <p>Would you like to check your documents before getting a queue number?</p>
-      <div class="scan-choice" role="group" aria-label="Choose whether to check your documents">
-        <label id="scanYesLabel" class="scan-opt scan-opt-disabled"><input type="radio" name="scanChoice" id="scanYes" disabled> Yes, check my requirements</label>
-        <label id="scanNoLabel" class="scan-opt scan-opt-disabled"><input type="radio" name="scanChoice" id="scanNo" disabled> No, get my queue number</label>
-      </div>
-      <p id="scanEntryHint" class="scan-entry-hint" role="status">Complete your first name, last name, recruitment transaction, and position to enable document checking.</p>
-    </section>
-    <section id="scanBox" class="scan-box hide" aria-labelledby="scanTitle">
-      <h3 id="scanTitle">Pre-Employment Document Check</h3>
-      <p class="helper">Capture as many document photos as needed. Check all photos together after you finish.</p>
-      <div class="scan-privacy">
-        <strong>Data Privacy Notice</strong>
-        <p>Your photos and full OCR text stay on this device. If you consent, selected applicant details detected by OCR and preliminary document-check statuses may be saved to TIPON's recruitment database with your queue record. OCR may make mistakes; the recruiter must verify the original documents. Photos are not uploaded or stored in Google Drive. You may choose No to skip this optional check.</p>
-        <label><input id="privacyAgree" type="checkbox"> I consent to the on-device document check and saving detected applicant details and preliminary checklist statuses to the recruitment database.</label>
-      </div>
-      <div id="scanControls" class="hide">
-        <p id="scanConfigMessage" class="helper"></p><div id="scanExpectedList" class="scan-expected-list" aria-label="Recruiter required documents"></div>
-        <div class="scan-action-center">
-          <button id="scanStart" type="button" class="btn primary scan-main-btn">CAPTURE REQUIREMENTS</button>
-          <p class="helper">Use your camera and press Capture repeatedly. There is no set number of photos.</p>
-        </div>
-        <div class="scan-photo-heading"><strong id="scanPhotoCount">0 photos captured</strong><span id="scanPhotoSub">Add all your requirements before reviewing.</span></div>
-        <div id="scanGallery" class="scan-gallery" aria-live="polite"></div>
-        <div class="scan-action-center"><button id="scanReview" type="button" class="btn success scan-main-btn hide">CHECK CAPTURED DOCUMENTS</button></div>
-        <div id="scanProgress" class="scan-progress hide" role="status" aria-live="polite"></div>
-        <p id="scanReviewNote" class="scan-review-note hide" role="status" aria-live="polite"></p>
-        <section id="scanResultCard" class="scan-report hide" aria-labelledby="scanResultTitle">
-          <h3 id="scanResultTitle">Document Pre-Screening Result</h3>
-          <p id="scanResultSummary"></p>
-          <div id="scanResultRows" aria-live="polite"></div>
-       </section>
-      
-      </div>
-      <p id="scanNotice" class="helper" role="status"></p>
-    </section>
-    <div id="scanCamera" class="scan-camera hide" role="dialog" aria-modal="true" aria-label="Capture pre-employment requirements">
-      <div class="scan-camera-shell">
-        <div class="scan-camera-head"><strong>Capture your requirements</strong><button id="scanClose" type="button" class="btn ghost">Close Camera</button></div>
-        <video id="scanVideo" autoplay playsinline muted aria-label="Live document camera preview"></video>
-        <canvas id="scanCanvas" class="hide" aria-hidden="true"></canvas>
-        <div class="scan-camera-actions">
-          <button id="scanShot" type="button" class="btn primary scan-shutter">CAPTURE PHOTO</button>
-          <button id="scanFallbackButton" type="button" class="btn ghost">USE PHONE CAMERA</button>
-          <input type="file" id="scanFallback" accept="image/*" capture="environment" class="hide">
-          <button id="scanFinish" type="button" class="btn success">DONE TAKING PHOTOS</button>
-        </div>
-        <p id="scanCameraStatus" role="status">Point your camera at the document. Keep the entire page visible.</p>
-      </div>
-    </div>
-    <button id="submit" class="btn primary submit" type="submit">GET QUEUE NUMBER</button></form>
+    <button id="submit" class="btn primary submit" type="submit" disabled>GET QUEUE NUMBER</button></form>
   </div>
   <div id="receipt" class="receipt hide" aria-live="polite">
     <span id="receiptTag" class="pill">SUBMITTED</span><h2 id="receiptTitle">Your request was received</h2>
     <div id="receiptCode" class="code">PC-001</div><p id="receiptText">Please proceed to the pre-checking station.</p>
-    <p id="scanSyncStatus" class="scan-sync-state hide" role="status" aria-live="polite"></p>
     <div class="receipt-actions"><button id="another" class="btn ghost" type="button">Register Another Applicant / Member</button><button id="done" class="btn success" type="button">Done</button></div>
     <p id="finishedNotice" class="finished-notice hide" role="status">Registration finished. Please keep your queue number and close this page when you're ready.</p>
   </div>
