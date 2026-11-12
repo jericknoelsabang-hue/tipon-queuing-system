@@ -96,7 +96,10 @@ async function loadTransactions(){
   memberAvailable=active.some(t=>t.code==='MC');
   $('chooseMember').disabled=!memberAvailable;
   $('chooseMember').setAttribute('aria-disabled',String(!memberAvailable));
-  const tx=active.filter(t=>t.code!=='MC');
+  const tx=active.filter(t=>{
+    const code=String(t.code||'').toUpperCase(),name=String(t.name||'').trim().toLowerCase().replace(/[ -]/g,'');
+    return code!=='MC'&&code!=='PC'&&name!=='prechecking';
+  });
   recruitmentAvailable=tx.length>0;servicesLoaded=true;
   $('chooseRecruitment').disabled=!recruitmentAvailable;
   if(tx.length){
