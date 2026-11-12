@@ -232,7 +232,7 @@ function openStaffWindow(i){
 }
 function staff(){
   const n=Number(S.windowCount||0);
-  if(activeStaffWindow>n){activeStaffWindow=0;updateStaffWindowRoute(0)}
+  if(hasLoaded&&activeStaffWindow>n){activeStaffWindow=0;updateStaffWindowRoute(0)}
   const isOpen=activeStaffWindow>0;
   const signature=JSON.stringify({isOpen,activeStaffWindow,n,max:S.maxWindowCount,version:S.version,windows:S.windows,tx:S.transactions,assignments:S.assignments,waiting:S.waiting,recruiters:S.recruiters,connectionHealthy,actions:[...activeWindowActions]});
   $('wc').textContent=n+' WINDOWS';
