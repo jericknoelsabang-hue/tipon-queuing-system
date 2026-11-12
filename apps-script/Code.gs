@@ -1,4 +1,4 @@
-const CFG={spreadsheetId:'1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik',queue:'QUEUE',windows:'WINDOWS',tx:'TRANSACTION_TYPES',mpc:'MPC_CONFIG',settings:'SETTINGS',maxWindows:20};
+const CFG={spreadsheetId:'1S8qIM1Iw4WxHQovO5T4RaD1bzr_C36fFBX4O3Udjdik',queue:'QUEUE',windows:'WINDOWS',tx:'TRANSACTION_TYPES',settings:'SETTINGS',maxWindows:20};
 const QH=['Ticket ID','Queue Date','Created At','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Status','Window','Called At','Completed At','Last Recalled At','First Name','Last Name','Recruiter','Prechecked','Service Transaction Code','Service Transaction','Pre Check By','Remarks'];
 const WH=['Window','Active Ticket ID','Queue No','MPC Code','MPC Name','Transaction Code','Transaction','Applicant Name','Position / Purpose','Called At','Updated At','Queue Row'];
 const TH=['Code','Transaction Name','Active','Sort Order'];
@@ -81,6 +81,7 @@ function register_(p){
   try{
     const ss=ss_(),tx=findTx_(ss,txCode);
     if(!tx)throw Error('Invalid or inactive transaction.');
+    if(isPrecheckingAssignment_(ss,tx.code))throw Error('Pre Checking is an internal service window and cannot be selected for registration.');
     const answer=issueTicket_(ss,tx,first,last,position);
     // Issue a short-lived, ticket-bound POST token only after opt-in consent.
     // Never expose applicant field values in query parameters or public JSONP.
@@ -439,7 +440,7 @@ function restoreTx_(p){
 }
 function publicConfig_(){
   const ss=ss_();
-  const transactions=txs_(ss);
+  const transactions=txs_(ss).filter(t=>!isPrecheckingAssignment_(ss,t.code));
   return{ok:true,version:'federation-v11',transactions};
 }
 function state_(p){
