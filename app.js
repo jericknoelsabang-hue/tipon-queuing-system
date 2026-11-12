@@ -3,11 +3,11 @@
 (()=>{'use strict';
 const C=window.TIPON_CONFIG||{}, $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const REQUIRED='federation-v11',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9','federation-v10','federation-v11']),DEFAULT='Please keep your queue number until called.',DEFAULT_GUIDE='Hello, mga ka-miyembro! Sa mga bagong dating na wala pang queuing number, i-scan ang QR code na nakikita sa screen. Piliin ang inyong service. Para sa Recruitment, ilagay ang First Name, Last Name, Recruitment Transaction at Position. Pagkatapos, pindutin ang Get Queue Number. Para sa Member Concern, ilagay ang First Name, Last Name at Type of Concern, pagkatapos ay pindutin ang Get Queue Number. Kapag may queue number na, please keep your queue number until called.';
-let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],transactions:[],transactionTypes:[],assignments:{},announcement:DEFAULT,queueGuide:DEFAULT_GUIDE,queueGuideCue:'',completed:[],recruiters:{}};
+const REQUIRED='federation-v12',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9','federation-v10','federation-v11','federation-v12']),DEFAULT='Please keep your queue number until called.',DEFAULT_GUIDE='Hello, mga ka-miyembro! Sa mga bagong dating na wala pang queuing number, i-scan ang QR code na nakikita sa screen. Piliin ang inyong service. Para sa Recruitment, ilagay ang First Name, Last Name, Recruitment Transaction at Position. Pagkatapos, pindutin ang Get Queue Number. Para sa Member Concern, ilagay ang First Name, Last Name at Type of Concern, pagkatapos ay pindutin ang Get Queue Number. Kapag may queue number na, please keep your queue number until called.';
+let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],precheckDone:[],transactions:[],transactionTypes:[],assignments:{},announcement:DEFAULT,queueGuide:DEFAULT_GUIDE,queueGuideCue:'',completed:[],recruiters:{}};
 let connectionHealthy=false;
- let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,pollTimer=null,refreshFailures=0,activeWindowActions=new Set(),tableSignature={wait:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
-let lastGuideCue=null,guideDirty=false;let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='',editWindowTxs=[],activeStaffWindow=Number(new URLSearchParams(location.search).get('window'))||0;
+ let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,pollTimer=null,refreshFailures=0,activeWindowActions=new Set(),tableSignature={wait:'',precheckDone:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
+let lastGuideCue=null,guideDirty=false;let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,precheckDonePage=0,completedPage=0,editWindow=0,editTxCode='',editWindowTxs=[],activeStaffWindow=Number(new URLSearchParams(location.search).get('window'))||0;
 let remarksTimer=null,remarksSaveQueue=Promise.resolve(),remarksDraft={ticketId:'',value:''},remarksSaved={ticketId:'',value:''},remarksQueued={ticketId:'',value:''};
 
 let localTvChannel=null,lastLocalTvSeen=0;
@@ -227,7 +227,7 @@ function updateStaffWindowRoute(value){
 function openStaffWindow(i){
  activeStaffWindow=Number(i)||0;updateStaffWindowRoute(activeStaffWindow);
  $('windowEditor').classList.add('hide');$('editWindowTxMenu').classList.add('hide');editWindow=0;
- waitPage=0;completedPage=0;tableSignature={wait:'',completed:''};staffSignature='';
+ waitPage=0;precheckDonePage=0;completedPage=0;tableSignature={wait:'',precheckDone:'',completed:''};staffSignature='';
  staff();queueTables();window.scrollTo({top:0,behavior:'smooth'});
 }
 function staff(){
@@ -240,12 +240,13 @@ function staff(){
   $('staffMetrics').classList.toggle('hide',isOpen);
   $('staffListHeader').classList.toggle('hide',isOpen);
   $('windowConsoleHeader').classList.toggle('hide',!isOpen);
+  $('queuePrecheckDoneCard').classList.remove('hide');
   $('queueWaitingCard').classList.remove('hide');
   $('queueCompletedCard').classList.remove('hide');
-  $('staffPageHint').textContent=isOpen?'Window '+activeStaffWindow+' console. Queue history is limited to this service window.':'Select Open to manage a service window. All queues are listed below.';
-  const queueScope=isOpen?'this service window':'all service windows';
-  $('waitingQueueDescription').textContent='Applicants and members waiting across '+queueScope+'.';
-  $('completedQueueDescription').textContent='Completed transactions across '+queueScope+', newest first.';
+  $('staffPageHint').textContent=isOpen?'Window '+activeStaffWindow+' console. Queue history is shared across all service windows.':'Select Open to manage a service window. All queues are listed below.';
+  $('waitingQueueDescription').textContent='Applicants and members waiting across all service windows.';
+  $('precheckDoneDescription').textContent='Applicants and members checked at Pre Checking who are waiting for an available service window.';
+  $('completedQueueDescription').textContent='Completed transactions across all service windows, newest first.';
   if(isOpen){$('windowConsoleTitle').textContent='Window '+activeStaffWindow+' Console';}
   if(signature===staffSignature)return;
   staffSignature=signature;
@@ -291,14 +292,17 @@ function staff(){
     const title=!destination.available?'This window is currently serving a ticket.':!transaction?'No compatible transaction is assigned to this window.':!t?'Call a queue in Pre Checking first.':'Transfer the checked ticket to this window.';
     return '<button class="btn '+(destination.available?'success window-available':'primary window-busy')+' precheck-window-button" data-transfer-from="'+i+'" data-transfer-target="'+destination.window+'" data-transfer-code="'+esc(transaction?.code||'')+'" type="button"'+(disabled?' disabled':'')+' title="'+esc(title)+'"><b>Window '+destination.window+'</b></button>';
   }).join('');
-  const transferHint=!t?'Call a queue to enable the destination window buttons.':S.version!==REQUIRED?'Deploy Federation v11 Apps Script to enable transfers.':destinations.some(x=>x.available&&x.transaction)?'Choose an idle window button to transfer the checked ticket.':'No other idle window has a supported transaction assignment.';
+  const transferHint=!t?'Call a queue to enable the destination window buttons.':S.version!==REQUIRED?'Deploy Federation v12 Apps Script to enable transfers.':destinations.some(x=>x.available&&x.transaction)?'Choose an idle window button to transfer the checked ticket.':'No other idle window has a supported transaction assignment.';
   const transferPanel=prechecking?'<div class="precheck-transfer"><b class="transfer-title">Transfer to window</b><div class="precheck-window-buttons">'+(transferButtons||'<small class="transfer-hint">Add a service window to create a destination button.</small>')+'</div><small class="transfer-hint">'+esc(transferHint)+'</small></div>':'';
+  const hasAvailableDestination=destinations.some(destination=>destination.available&&destination.transaction);
+  const donePrecheckDisabled=!t||hasAvailableDestination||!connectionHealthy||S.version!==REQUIRED||activeWindowActions.has(String(i));
+  const donePrecheckTitle=!t?'Call a queue in Pre Checking first.':hasAvailableDestination?'A destination window is available. Transfer the ticket directly.':!connectionHealthy?'Connect to Apps Script to update the queue.':S.version!==REQUIRED?'Deploy Federation v12 Apps Script.':'Save this checked ticket to Done Pre-check while all destination windows are unavailable.';
   $('staffWins').innerHTML='<div class="window-grid"><div class="window-card"><div class="split"><h3>Window '+i+'</h3><span class="pill">'+esc(txName)+'</span></div>'+
     '<div class="current">'+(t?'<b class="current-no">'+esc(t.queueNo)+'</b><strong>'+esc(t.name)+'</strong><small>'+esc(t.transactionName)+'</small>':'<small class="muted">No active applicant or member</small>')+'</div>'+
     '<p class="recruiter-label"><b>Recruiter:</b> '+esc(recruiter)+'</p>'+
     '<div class="window-actions '+(prechecking?'prechecking':'standard')+'"><button class="btn primary" data-action="call" data-win="'+i+'" type="button"'+(t||!connectionHealthy?' disabled':'')+'>Call Next</button>'+
     '<button class="btn ghost" data-action="recall" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Recall</button>'+
-    (prechecking?'':'<button class="btn success" data-action="complete" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Complete</button>')+'</div>'+
+    (prechecking?'<button class="btn success" data-action="donePrecheck" data-win="'+i+'" type="button"'+(donePrecheckDisabled?' disabled':'')+' title="'+esc(donePrecheckTitle)+'">Done Pre-check</button>':'<button class="btn success" data-action="complete" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Complete</button>')+'</div>'+
     (prechecking?'':'<label class="field window-remarks" for="windowRemarks"><span class="remarks-head"><b>Remarks</b><small id="remarksStatus">'+esc(remarksStatus)+'</small></span><textarea id="windowRemarks" maxlength="500" rows="3" placeholder="Add remarks for this applicant or member."'+(!t||!connectionHealthy?' disabled':'')+'>'+esc(remarksValue)+'</textarea></label>')+transferPanel+'</div></div>';
   document.querySelectorAll('[data-action]').forEach(button=>button.onclick=()=>queueAction(button.dataset.action,+button.dataset.win));
   const remarksInput=$('windowRemarks');
@@ -329,34 +333,28 @@ function dateDisplay(x){
 }
 function queueTables(){
   if(page!=='staff')return;
-  const windowNo=activeStaffWindow,isWindowConsole=windowNo>0,
-    prechecking=isWindowConsole&&isPrecheckingWindow(windowNo),
-    hasPrechecking=Array.from({length:Number(S.windowCount||0)},(_,idx)=>idx+1).some(i=>isPrecheckingWindow(i));
-  const canWait=!isWindowConsole?()=>true:prechecking?
-    ticket=>['NH','RH','TR'].includes(String(ticket.transaction||'').toUpperCase())&&!ticket.prechecked:
-    ticket=>{
-      const code=String(ticket.transaction||'').toUpperCase();
-      return assignmentIncludes(S.assignments?.[String(windowNo)]||'ALL',code)&&
-        !(hasPrechecking&&['NH','RH','TR'].includes(code)&&!ticket.prechecked);
-    };
   const make=(list,page,key,bodyId)=>{
     const size=10,count=list.length,lastPage=Math.max(0,Math.ceil(count/size)-1),p=Math.max(0,Math.min(page,lastPage)),rows=list.slice(p*size,p*size+size);
-    const signature=JSON.stringify({windowNo,rows:list,page:p,count});
+    const signature=JSON.stringify({rows:list,page:p,count});
     if(tableSignature[key]===signature)return p;
     tableSignature[key]=signature;
-    const label=key==='wait'?'wait':'completed';
+    const label=key==='wait'?'wait':key==='done'?'precheckDone':'completed';
     const cells=rows.map(x=>{
       const base='<td>'+esc(dateDisplay(x))+'</td><td><b>'+esc(x.queueNo)+'</b></td><td>'+esc(x.name)+'</td><td>'+esc(x.transactionName)+'</td><td>'+esc(x.position)+'</td>';
-      return '<tr>'+base+(key==='completed'?'<td>'+esc(x.precheckedBy||'—')+'</td><td>'+esc(x.recruiter||'—')+'</td><td class="completed-remarks">'+esc(x.remarks||'—')+'</td>':'')+'</tr>';
+      const extra=key==='done'?'<td>'+esc(x.precheckedBy||'—')+'</td>':
+        key==='completed'?'<td>'+esc(x.precheckedBy||'—')+'</td><td>'+esc(x.recruiter||'—')+'</td><td class="completed-remarks">'+esc(x.remarks||'—')+'</td>':'';
+      return '<tr>'+base+extra+'</tr>';
     }).join('');
-    const columns=key==='completed'?8:5;
-    $(bodyId).innerHTML=rows.length?cells:'<tr><td colspan="'+columns+'" class="empty">No '+(key==='wait'?'waiting':'completed')+' applicants or members.</td></tr>';
+    const columns=key==='completed'?8:key==='done'?6:5;
+    const emptyText=key==='wait'?'waiting':key==='done'?'done Pre-check':'completed';
+    $(bodyId).innerHTML=rows.length?cells:'<tr><td colspan="'+columns+'" class="empty">No '+emptyText+' applicants or members.</td></tr>';
     $(label+'Showing').textContent='Showing '+(count?p*size+1:0)+'–'+Math.min((p+1)*size,count)+' of '+count;
     $(label+'Page').textContent='Page '+(p+1)+' of '+(lastPage+1);
     $(label+'Prev').disabled=p===0;$(label+'Next').disabled=p===lastPage;return p;
   };
-  waitPage=make((S.waiting||[]).filter(canWait),waitPage,'wait','wt');
-  completedPage=make((S.completed||[]).filter(ticket=>!isWindowConsole||Number(ticket.window)===windowNo),completedPage,'completed','ct');
+  waitPage=make(S.waiting||[],waitPage,'wait','wt');
+  precheckDonePage=make(S.precheckDone||[],precheckDonePage,'done','precheckDoneBody');
+  completedPage=make(S.completed||[],completedPage,'completed','ct');
 }
 function setupTables(){
   const connected=Boolean(S.version),writable=COMPATIBLE.has(S.version);
@@ -470,6 +468,7 @@ async function refresh(silent=false){
     S={...S,...response.state,
        transactions:Array.isArray(response.state?.transactions)?response.state.transactions:[],
        transactionTypes:response.state?.transactionTypes||response.state?.transactions||[],
+       precheckDone:Array.isArray(response.state?.precheckDone)?response.state.precheckDone:[],
        queueGuideSupported:response.state?.queueGuideSupported===true,
        };
     hasLoaded=true;
@@ -477,7 +476,7 @@ async function refresh(silent=false){
     if(!COMPATIBLE.has(S.version))
       status('Backend version is outdated. Check the Apps Script deployment.','err');
     else if(S.version!==REQUIRED)
-      status('Connected to '+S.version+'. Deploy Federation v11 Code.gs for multi-select assignments and Pre Checking transfers.','err');
+      status('Connected to '+S.version+'. Deploy Federation v12 Code.gs for multi-select assignments and Pre Checking transfers.','err');
     else status('Connected to tipón TAWAG • '+S.version+' • Synced '+new Date().toLocaleTimeString('en-PH',{timeZone:'Asia/Manila'}),'ok');
   }catch(e){
     connectionHealthy=false;
@@ -580,11 +579,13 @@ function queueRemarksSave(i,ticketId,value){
 }
 async function queueAction(action,i){
  if(action==='complete'&&isPrecheckingWindow(i)){staffMessage('Pre Checking tickets must be transferred to an available service window.','err');return}
+ if(action==='donePrecheck'&&!isPrecheckingWindow(i)){staffMessage('Done Pre-check is only available in a Pre Checking window.','err');return}
  const key=String(i);
  if(activeWindowActions.has(key))return;
  activeWindowActions.add(key);clearStaffMessage();
  const button=document.querySelector('[data-action="'+action+'"][data-win="'+i+'"]');
- if(button){button.disabled=true;button.textContent=action==='complete'?'Completing…':action==='recall'?'Recalling…':'Calling…'}
+ if(button)button.disabled=true;
+ if(button)button.textContent=action==='complete'?'Completing…':action==='donePrecheck'?'Saving…':action==='recall'?'Recalling…':'Calling…';
  // Prime audio from the staff member's click; TV devices still require "Enable / Test Sound".
  if(action==='call'||action==='recall'){
   armed=true;localStorage.setItem('tqSound','1');
@@ -603,13 +604,16 @@ async function queueAction(action,i){
    if(!saved)return;
    original=win(i)||original;
   }
-  const args=action==='complete'?{window:i,ticketId:original?.ticketId||''}:{window:i};
+  const args=action==='complete'||action==='donePrecheck'?{window:i,ticketId:original?.ticketId||''}:{window:i};
   const result=await operate(action,args,reply=>{
    if(action==='call'||action==='recall'){
     const ticket=reply.ticket;
     if(ticket){
      S.windows={...(S.windows||{}),[key]:ticket};
-     if(action==='call')S.waiting=(S.waiting||[]).filter(x=>x.ticketId!==ticket.ticketId);
+     if(action==='call'){
+      S.waiting=(S.waiting||[]).filter(x=>x.ticketId!==ticket.ticketId);
+      S.precheckDone=(S.precheckDone||[]).filter(x=>x.ticketId!==ticket.ticketId);
+     }
      if(action==='recall'){
       if(remarksTimer)clearTimeout(remarksTimer);remarksTimer=null;
       remarksDraft={ticketId:ticket.ticketId,value:''};
@@ -619,6 +623,11 @@ async function queueAction(action,i){
      last[i]=ticket.ticketId+'|'+ticket.calledAt;
      announce(ticket,i);
     }
+   }else if(action==='donePrecheck'){
+    S.windows={...(S.windows||{}),[key]:null};
+    last[i]='';
+    const done=reply.ticket;
+    if(done)S.precheckDone=[done,...(S.precheckDone||[]).filter(x=>x.ticketId!==done.ticketId)];
    }else if(action==='complete'){
     S.windows={...(S.windows||{}),[key]:null};
     last[i]='';
@@ -630,7 +639,10 @@ async function queueAction(action,i){
   });
   if(result){
    const number=result.ticket?.queueNo||original?.queueNo||'';
-   staffMessage(action==='complete'?'Completed '+number+' and saved to the queue.':action==='recall'?'Recalled '+number+' (3 voice announcements).':'Called '+number+' (3 voice announcements).','ok');
+   const message=action==='complete'?'Completed '+number+' and saved to the queue.':
+    action==='donePrecheck'?'Finished Pre-check for '+number+'. Added it to Done Pre-check until a window is available.':
+    action==='recall'?'Recalled '+number+' (3 voice announcements).':'Called '+number+' (3 voice announcements).';
+   staffMessage(message,'ok');
   }
  }finally{
   activeWindowActions.delete(key);
@@ -639,7 +651,7 @@ async function queueAction(action,i){
 }
 async function transferTicket(source,target,transaction){
  if(!ready())return;
- if(S.version!==REQUIRED){staffMessage('Deploy Federation v11 Apps Script to enable Pre Checking transfers.','err');return}
+ if(S.version!==REQUIRED){staffMessage('Deploy Federation v12 Apps Script to enable Pre Checking transfers.','err');return}
  if(!source||!target||source===target)return;
  const keys=[String(source),String(target)];
  if(keys.some(key=>activeWindowActions.has(key)))return;
@@ -785,7 +797,7 @@ $('saveWindow').onclick=async()=>{
   const i=editWindow,selected=editWindowTxs.slice(),recruiter=$('editRecruiter').value.trim();
   if(!i)return;
   if(!selected.length){status('Select at least one assigned transaction.','err');return}
-  if(selected.length>1&&S.version!==REQUIRED){status('Deploy Federation v11 Apps Script before saving multiple assigned transactions.','err');return}
+  if(selected.length>1&&S.version!==REQUIRED){status('Deploy Federation v12 Apps Script before saving multiple assigned transactions.','err');return}
   const assignment=selected.includes('ALL')?'ALL':selected.length===1?selected[0]:selected;
   const payload={window:i,recruiter};
   if(assignment==='ALL')payload.transaction='ALL';
@@ -815,8 +827,12 @@ $('saveTx').onclick=async()=>{
     if(result){$('txEditor').classList.add('hide');editTxCode='';status('Transaction '+code+' saved to Google Sheets.','ok')}
   }finally{btn.disabled=false}
 };
-for(const key of ['wait','completed'])for(const side of ['Prev','Next']){
-  $(key+side).onclick=()=>{if(key==='wait')waitPage+=side==='Next'?1:-1;else completedPage+=side==='Next'?1:-1;queueTables()};
+for(const key of ['wait','precheckDone','completed'])for(const side of ['Prev','Next']){
+  $(key+side).onclick=()=>{
+   const delta=side==='Next'?1:-1;
+   if(key==='wait')waitPage+=delta;else if(key==='precheckDone')precheckDonePage+=delta;else completedPage+=delta;
+   queueTables();
+  };
 }
 $('openAddTx').onclick=()=>{
  const editor=$('txAddEditor'),isOpening=editor.classList.contains('hide');
@@ -875,7 +891,7 @@ $('reconnect').onclick=()=>{
   status('Rechecking the official Apps Script deployment. If the connection still fails, redeploy Code.gs in Google Apps Script.','');
   void refresh(false);
 };
-$('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(!COMPATIBLE.has(r.version))throw Error('Backend is '+(r.version||'outdated')+'. Deploy the latest Code.gs.');status('Backend verified • '+r.version+' • '+r.windows+' service windows.'+(r.version!==REQUIRED?' Update to v11 for multi-select assignments and Pre Checking transfers.':''),'ok');await refresh(true)}catch(e){error(e)}};
+$('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(!COMPATIBLE.has(r.version))throw Error('Backend is '+(r.version||'outdated')+'. Deploy the latest Code.gs.');status('Backend verified • '+r.version+' • '+r.windows+' service windows.'+(r.version!==REQUIRED?' Update to v12 for Pre Checking and shared queue history.':''),'ok');await refresh(true)}catch(e){error(e)}};
 $('clear').onclick=()=>{localStorage.removeItem('tqApi');$('api').value='';S.version='';qrUrl='';status('Connection cleared.','err');qr()};
 $('backToWindows').onclick=()=>openStaffWindow(0);
 const full=$('fullscreen');
