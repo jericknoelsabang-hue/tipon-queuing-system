@@ -7,7 +7,7 @@ const REQUIRED='federation-v11',COMPATIBLE=new Set(['federation-v7','federation-
 let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],transactions:[],transactionTypes:[],assignments:{},announcement:DEFAULT,queueGuide:DEFAULT_GUIDE,queueGuideCue:'',completed:[],recruiters:{}};
 let connectionHealthy=false;
  let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,pollTimer=null,refreshFailures=0,activeWindowActions=new Set(),tableSignature={wait:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
-let lastGuideCue=null,guideDirty=false;let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='',editWindowTxs=[];
+let lastGuideCue=null,guideDirty=false;let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,completedPage=0,editWindow=0,editTxCode='',editWindowTxs=[],activeStaffWindow=Number(new URLSearchParams(location.search).get('window'))||0;
 
 let localTvChannel=null,lastLocalTvSeen=0;
 try{
@@ -216,33 +216,63 @@ function metrics(){
   $('metricWait').textContent=connectionHealthy?String((S.waiting||[]).length):'—';
   $('metricServing').textContent=connectionHealthy?String(Array.from({length:Number(S.windowCount||0)},(_,i)=>win(i+1)).filter(Boolean).length):'—';
 }
+function updateStaffWindowRoute(value){
+ try{
+  const next=new URL(window.location.href);
+  if(value)next.searchParams.set('window',String(value));else next.searchParams.delete('window');
+  history.replaceState(history.state,'',next.pathname+next.search+next.hash);
+ }catch{}
+}
+function openStaffWindow(i){
+ activeStaffWindow=Number(i)||0;updateStaffWindowRoute(activeStaffWindow);
+ waitPage=0;completedPage=0;tableSignature={wait:'',completed:''};staffSignature='';
+ staff();queueTables();window.scrollTo({top:0,behavior:'smooth'});
+}
 function staff(){
   const n=Number(S.windowCount||0);
+  if(activeStaffWindow>n){activeStaffWindow=0;updateStaffWindowRoute(0)}
+  const isOpen=activeStaffWindow>0;
+  const signature=JSON.stringify({isOpen,activeStaffWindow,n,windows:S.windows,tx:S.transactions,assignments:S.assignments,waiting:S.waiting,recruiters:S.recruiters,connectionHealthy,actions:[...activeWindowActions]});
   $('wc').textContent=n+' WINDOWS';
-  const signature=JSON.stringify({n,windows:S.windows,tx:S.transactions,assignments:S.assignments,waiting:S.waiting,recruiters:S.recruiters,connectionHealthy});
+  $('staffMetrics').classList.toggle('hide',isOpen);
+  $('staffListHeader').classList.toggle('hide',isOpen);
+  $('windowConsoleHeader').classList.toggle('hide',!isOpen);
+  $('queueWaitingCard').classList.toggle('hide',!isOpen);
+  $('queueCompletedCard').classList.toggle('hide',!isOpen);
+  $('staffPageHint').textContent=isOpen?'Window '+activeStaffWindow+' console. Queue history is limited to this service window.':'Select Open to enter a service window console.';
+  if(isOpen){$('windowConsoleTitle').textContent='Window '+activeStaffWindow+' Console';$('waitQueueHeading').textContent='Waiting Queue · Window '+activeStaffWindow;$('completedQueueHeading').textContent='Completed Queue · Window '+activeStaffWindow;}
   if(signature===staffSignature)return;
   staffSignature=signature;
-  $('staffWins').innerHTML=Array.from({length:n},(_,idx)=>{
-    const i=idx+1,t=win(i),selected=S.assignments?.[String(i)]||'ALL',
-      txName=assignmentLabel(selected), recruiter=S.recruiters?.[String(i)]||'Unassigned',prechecking=isPrecheckingWindow(i);
-    const destinations=prechecking?transferDestinations(i,t):[];
-    const transferButtons=destinations.map(destination=>{
-      const transaction=destination.transaction,sourceBusy=activeWindowActions.has(String(i)),targetBusy=activeWindowActions.has(String(destination.window));
-      const disabled=!t||!destination.available||!transaction||!connectionHealthy||S.version!==REQUIRED||sourceBusy||targetBusy;
-      const transactionLabel=transaction?transaction.code+' · '+transaction.name:'No supported transaction';
-      const title=!destination.available?'This window is Now Serving.':!transaction?'Assign an active NH, RH, TR, MC, or Any transaction.':!t?'Call a queue in Pre Checking first.':'Transfer to this idle window.';
-      return '<button class="btn primary precheck-window-button" data-transfer-from="'+i+'" data-transfer-target="'+destination.window+'" data-transfer-code="'+esc(transaction?.code||'')+'" type="button"'+(disabled?' disabled':'')+' title="'+esc(title)+'"><b>Window '+destination.window+'</b><small>'+esc(transactionLabel)+'</small>'+(destination.available?'':'<small class="window-occupied">Now Serving</small>')+'</button>';
+  if(!isOpen){
+    const rows=Array.from({length:n},(_,idx)=>{
+      const i=idx+1,t=win(i),assigned=assignmentLabel(S.assignments?.[String(i)]||'ALL'),recruiter=S.recruiters?.[String(i)]||'—';
+      return '<tr><td><b>Window '+i+'</b></td><td>'+esc(assigned)+'</td><td>'+esc(recruiter)+'</td><td>'+(t?'<span class="serving-status">Now Serving '+esc(t.queueNo)+'</span>':'Available')+'</td><td><button class="btn sm primary" data-open-window="'+i+'" type="button">Open</button></td></tr>';
     }).join('');
-    const transferHint=!t?'Call a queue to enable the destination window buttons.':S.version!==REQUIRED?'Deploy Federation v11 Apps Script to enable transfers.':destinations.some(x=>x.available&&x.transaction)?'Choose an idle window button to transfer the checked ticket.':'No other idle window has a supported transaction assignment.';
-    const transferPanel=prechecking?'<div class="precheck-transfer"><b class="transfer-title">Transfer to window</b><div class="precheck-window-buttons">'+(transferButtons||'<small class="transfer-hint">Add a service window to create a destination button.</small>')+'</div><small class="transfer-hint">'+esc(transferHint)+'</small></div>':'';
-    return '<div class="window-card"><div class="split"><h3>Window '+i+'</h3><span class="pill">'+esc(txName)+'</span></div>'+
-      '<div class="current">'+(t?'<b class="current-no">'+esc(t.queueNo)+'</b><strong>'+esc(t.name)+'</strong><small>'+esc(t.transactionName)+'</small>':'<small class="muted">No active applicant or member</small>')+'</div>'+
-      '<p class="recruiter-label"><b>Recruiter:</b> '+esc(recruiter)+'</p>'+
-      '<div class="window-actions"><button class="btn primary" data-action="call" data-win="'+i+'" type="button"'+(t||!connectionHealthy?' disabled':'')+'>Call Next</button>'+
-      '<button class="btn ghost" data-action="recall" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Recall</button>'+
-      (prechecking?'':'<button class="btn success wide" data-action="complete" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Complete</button>')+'</div>'+transferPanel+'</div>';
+    $('staffWins').innerHTML='<div class="window-list-wrap"><table class="window-list-table"><thead><tr><th>Window</th><th>Assigned Transaction</th><th>Recruiter</th><th>Status</th><th>Action</th></tr></thead><tbody>'+(
+      rows||'<tr><td colspan="5" class="empty">Waiting for service windows from Apps Script.</td></tr>'
+    )+'</tbody></table></div>';
+    document.querySelectorAll('[data-open-window]').forEach(button=>button.onclick=()=>openStaffWindow(button.dataset.openWindow));
+    return;
+  }
+  const i=activeStaffWindow,t=win(i),selected=S.assignments?.[String(i)]||'ALL',
+    txName=assignmentLabel(selected),recruiter=S.recruiters?.[String(i)]||'Unassigned',prechecking=isPrecheckingWindow(i);
+  const destinations=prechecking?transferDestinations(i,t):[];
+  const transferButtons=destinations.map(destination=>{
+    const transaction=destination.transaction,sourceBusy=activeWindowActions.has(String(i)),targetBusy=activeWindowActions.has(String(destination.window));
+    const disabled=!t||!destination.available||!transaction||!connectionHealthy||S.version!==REQUIRED||sourceBusy||targetBusy;
+    const transactionLabel=transaction?transaction.code+' · '+transaction.name:'No supported transaction';
+    const title=!destination.available?'This window is Now Serving.':!transaction?'Assign an active NH, RH, TR, MC, or Any transaction.':!t?'Call a queue in Pre Checking first.':'Transfer to this idle window.';
+    return '<button class="btn primary precheck-window-button" data-transfer-from="'+i+'" data-transfer-target="'+destination.window+'" data-transfer-code="'+esc(transaction?.code||'')+'" type="button"'+(disabled?' disabled':'')+' title="'+esc(title)+'"><b>Window '+destination.window+'</b><small>'+esc(transactionLabel)+'</small>'+(destination.available?'':'<small class="window-occupied">Now Serving</small>')+'</button>';
   }).join('');
-  document.querySelectorAll('[data-action]').forEach(e=>e.onclick=()=>queueAction(e.dataset.action,+e.dataset.win));
+  const transferHint=!t?'Call a queue to enable the destination window buttons.':S.version!==REQUIRED?'Deploy Federation v11 Apps Script to enable transfers.':destinations.some(x=>x.available&&x.transaction)?'Choose an idle window button to transfer the checked ticket.':'No other idle window has a supported transaction assignment.';
+  const transferPanel=prechecking?'<div class="precheck-transfer"><b class="transfer-title">Transfer to window</b><div class="precheck-window-buttons">'+(transferButtons||'<small class="transfer-hint">Add a service window to create a destination button.</small>')+'</div><small class="transfer-hint">'+esc(transferHint)+'</small></div>':'';
+  $('staffWins').innerHTML='<div class="window-grid"><div class="window-card"><div class="split"><h3>Window '+i+'</h3><span class="pill">'+esc(txName)+'</span></div>'+
+    '<div class="current">'+(t?'<b class="current-no">'+esc(t.queueNo)+'</b><strong>'+esc(t.name)+'</strong><small>'+esc(t.transactionName)+'</small>':'<small class="muted">No active applicant or member</small>')+'</div>'+
+    '<p class="recruiter-label"><b>Recruiter:</b> '+esc(recruiter)+'</p>'+
+    '<div class="window-actions"><button class="btn primary" data-action="call" data-win="'+i+'" type="button"'+(t||!connectionHealthy?' disabled':'')+'>Call Next</button>'+
+    '<button class="btn ghost" data-action="recall" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Recall</button>'+
+    (prechecking?'':'<button class="btn success wide" data-action="complete" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Complete</button>')+'</div>'+transferPanel+'</div></div>';
+  document.querySelectorAll('[data-action]').forEach(button=>button.onclick=()=>queueAction(button.dataset.action,+button.dataset.win));
   document.querySelectorAll('[data-transfer-target]').forEach(button=>button.onclick=()=>{
     const source=Number(button.dataset.transferFrom),target=Number(button.dataset.transferTarget),transaction=button.dataset.transferCode;
     if(source&&target&&transaction)void transferTicket(source,target,transaction);
@@ -254,20 +284,28 @@ function dateDisplay(x){
   return parts?parts[2]+'/'+parts[3]+'/'+parts[1]:raw||'—';
 }
 function queueTables(){
-  if(page!=='staff')return;
+  if(page!=='staff'||!activeStaffWindow)return;
+  const windowNo=activeStaffWindow,prechecking=isPrecheckingWindow(windowNo),
+    hasPrechecking=Array.from({length:Number(S.windowCount||0)},(_,idx)=>idx+1).some(i=>isPrecheckingWindow(i));
+  const canWait=prechecking?ticket=>['NH','RH','TR'].includes(String(ticket.transaction||'').toUpperCase())&&!ticket.prechecked:
+    ticket=>{
+      const code=String(ticket.transaction||'').toUpperCase();
+      return assignmentIncludes(S.assignments?.[String(windowNo)]||'ALL',code)&&
+        !(hasPrechecking&&['NH','RH','TR'].includes(code)&&!ticket.prechecked);
+    };
   const make=(list,page,key,bodyId)=>{
     const size=10,count=list.length,lastPage=Math.max(0,Math.ceil(count/size)-1),p=Math.max(0,Math.min(page,lastPage)),rows=list.slice(p*size,p*size+size);
-    const signature=JSON.stringify({rows:list,page:p,count});
+    const signature=JSON.stringify({windowNo,rows:list,page:p,count});
     if(tableSignature[key]===signature)return p;
     tableSignature[key]=signature;
     const label=key==='wait'?'wait':'completed';
-    $(bodyId).innerHTML=rows.length?rows.map(x=>'<tr><td>'+esc(dateDisplay(x))+'</td><td><b>'+esc(x.queueNo)+'</b></td><td>'+esc(x.name)+'</td><td>'+esc(x.transactionName)+'</td><td>'+esc(x.position)+'</td><td>'+esc(x.recruiter||'—')+'</td></tr>').join(''):'<tr><td colspan="6" class="empty">No '+(key==='wait'?'waiting':'completed')+' applicants or members</td></tr>';
+    $(bodyId).innerHTML=rows.length?rows.map(x=>'<tr><td>'+esc(dateDisplay(x))+'</td><td><b>'+esc(x.queueNo)+'</b></td><td>'+esc(x.name)+'</td><td>'+esc(x.transactionName)+'</td><td>'+esc(x.position)+'</td><td>'+esc(x.recruiter||'—')+'</td></tr>').join(''):'<tr><td colspan="6" class="empty">No '+(key==='wait'?'waiting':'completed')+' applicants or members for Window '+windowNo+'</td></tr>';
     $(label+'Showing').textContent='Showing '+(count?p*size+1:0)+'–'+Math.min((p+1)*size,count)+' of '+count;
     $(label+'Page').textContent='Page '+(p+1)+' of '+(lastPage+1);
     $(label+'Prev').disabled=p===0;$(label+'Next').disabled=p===lastPage;return p;
   };
-  waitPage=make(S.waiting||[],waitPage,'wait','wt');
-  completedPage=make(S.completed||[],completedPage,'completed','ct');
+  waitPage=make((S.waiting||[]).filter(canWait),waitPage,'wait','wt');
+  completedPage=make((S.completed||[]).filter(ticket=>Number(ticket.window)===windowNo),completedPage,'completed','ct');
 }
 function setupTables(){
   const connected=Boolean(S.version), writable=COMPATIBLE.has(S.version);
@@ -769,6 +807,7 @@ $('reconnect').onclick=()=>{
 };
 $('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(!COMPATIBLE.has(r.version))throw Error('Backend is '+(r.version||'outdated')+'. Deploy the latest Code.gs.');status('Backend verified • '+r.version+' • '+r.windows+' service windows.'+(r.version!==REQUIRED?' Update to v11 for multi-select assignments and Pre Checking transfers.':''),'ok');await refresh(true)}catch(e){error(e)}};
 $('clear').onclick=()=>{localStorage.removeItem('tqApi');$('api').value='';S.version='';qrUrl='';status('Connection cleared.','err');qr()};
+$('backToWindows').onclick=()=>openStaffWindow(0);
 const full=$('fullscreen');
 function reflect(){full.setAttribute('aria-pressed',document.fullscreenElement===$('display')?'true':'false')}
 full.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('display').requestFullscreen()}catch(e){error(e,true)}};

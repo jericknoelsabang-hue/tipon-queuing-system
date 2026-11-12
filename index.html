@@ -71,19 +71,23 @@
     </div></div>
   </section>
   <section id="staff" class="hide">
-    <div class="page-head"><div><span class="eyebrow">tipón TAWAG · Operations</span><h1>Staff Console</h1><p>Call, recall, and complete queue numbers for your configured service windows.</p></div></div>
+    <div class="page-head"><div><span class="eyebrow">tipón TAWAG · Operations</span><h1>Staff Console</h1><p id="staffPageHint">Select Open to enter a service window console.</p></div></div>
     <div id="staffAlert" class="status hide staff-alert" role="status" aria-live="polite"></div>
-    <div class="tiles">
+    <div class="tiles" id="staffMetrics">
       <div class="metric"><span>Service windows</span><strong id="metricWindows">4</strong><small>Assigned transactions</small></div>
       <div class="metric"><span>Waiting in queue</span><strong id="metricWait">0</strong><small>Registered queue numbers</small></div>
       <div class="metric"><span>Now serving</span><strong id="metricServing">0</strong><small>Active service windows</small></div>
     </div>
-    <div class="card"><div class="split"><div><h2>Service Windows</h2><p>Use Setup to add, edit, or remove windows and assign recruiters.</p></div><span class="pill" id="wc">4 WINDOWS</span></div><div id="staffWins" class="window-grid"></div></div>
-    <div class="card queue-table-card"><div class="split"><div><h2>Waiting Queue</h2><p>Applicants and members waiting to be called.</p></div></div>
+    <div class="card">
+      <div class="split" id="staffListHeader"><div><h2>Service Windows</h2><p>Open a window to call and manage its queue.</p></div><span class="pill" id="wc">4 WINDOWS</span></div>
+      <div class="split hide" id="windowConsoleHeader"><div><h2 id="windowConsoleTitle">Window Console</h2><p>Call and review queues for this service window.</p></div><button id="backToWindows" class="btn ghost" type="button">Back to Windows</button></div>
+      <div id="staffWins"></div>
+    </div>
+    <div class="card queue-table-card hide" id="queueWaitingCard"><div class="split"><div><h2 id="waitQueueHeading">Waiting Queue</h2><p>Applicants and members waiting for this service window.</p></div></div>
       <div class="table-wrap"><table><thead><tr><th>Date</th><th>Queue</th><th>Name</th><th>Transaction</th><th>Purpose</th><th>Recruiter</th></tr></thead><tbody id="wt"></tbody></table></div>
       <div class="table-bottom"><span id="waitShowing" class="table-count">Showing 0–0 of 0</span><div class="pager"><button id="waitPrev" class="btn sm ghost" type="button">Previous</button><span id="waitPage">Page 1 of 1</span><button id="waitNext" class="btn sm ghost" type="button">Next</button></div></div>
     </div>
-    <div class="card queue-table-card"><div class="split"><div><h2>Completed Queue</h2><p>Finished transactions, newest completion first.</p></div></div>
+    <div class="card queue-table-card hide" id="queueCompletedCard"><div class="split"><div><h2 id="completedQueueHeading">Completed Queue</h2><p>Finished transactions for this service window, newest completion first.</p></div></div>
       <div class="table-wrap"><table><thead><tr><th>Date</th><th>Queue</th><th>Name</th><th>Transaction</th><th>Purpose</th><th>Recruiter</th></tr></thead><tbody id="ct"></tbody></table></div>
       <div class="table-bottom"><span id="completedShowing" class="table-count">Showing 0–0 of 0</span><div class="pager"><button id="completedPrev" class="btn sm ghost" type="button">Previous</button><span id="completedPage">Page 1 of 1</span><button id="completedNext" class="btn sm ghost" type="button">Next</button></div></div>
     </div>
