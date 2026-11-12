@@ -68,11 +68,9 @@ function transferDestinations(source,ticket){
  for(let i=1;i<=Number(S.windowCount||0);i++){
   if(i===source||isPrecheckingWindow(i))continue;
   const assigned=assignmentList(S.assignments?.[String(i)]||'ALL');
-  const codes=assigned==='ALL'?[]:assigned;
-  const selected=assigned==='ALL'?(allowed.includes(original)?original:allowed[0]):
-    (codes.includes(original)?original:codes.find(code=>allowed.includes(code)));
-  const transaction=(S.transactions||[]).find(tx=>tx.code===selected)||null;
-  targets.push({window:i,transaction,available:!win(i)});
+  const matches=allowed.includes(original)&&(assigned==='ALL'||assigned.includes(original));
+  const transaction=matches?(S.transactions||[]).find(tx=>tx.code===original)||null:null;
+  targets.push({window:i,transaction,available:!win(i),matches});
  }
  return targets;
 }
@@ -288,15 +286,15 @@ function staff(){
   const destinations=prechecking?transferDestinations(i,t):[];
   const transferButtons=destinations.map(destination=>{
     const transaction=destination.transaction,sourceBusy=activeWindowActions.has(String(i)),targetBusy=activeWindowActions.has(String(destination.window));
-    const disabled=!t||!destination.available||!transaction||!connectionHealthy||S.version!==REQUIRED||sourceBusy||targetBusy;
-    const title=!destination.available?'This window is currently serving a ticket.':!transaction?'No compatible transaction is assigned to this window.':!t?'Call a queue in Pre Checking first.':'Transfer the checked ticket to this window.';
-    return '<button class="btn '+(destination.available?'success window-available':'primary window-busy')+' precheck-window-button" data-transfer-from="'+i+'" data-transfer-target="'+destination.window+'" data-transfer-code="'+esc(transaction?.code||'')+'" type="button"'+(disabled?' disabled':'')+' title="'+esc(title)+'"><b>Window '+destination.window+'</b></button>';
+    const ready=Boolean(t&&destination.available&&transaction),disabled=!ready||!connectionHealthy||S.version!==REQUIRED||sourceBusy||targetBusy;
+    const title=!t?'Call a queue in Pre Checking first.':!transaction?'This window is not assigned to the transaction for this queue number.':!destination.available?'This window is currently serving a ticket.':'Transfer the checked ticket to this window.';
+    return '<button class="btn '+(ready?'success window-available':'primary window-busy')+' precheck-window-button" data-transfer-from="'+i+'" data-transfer-target="'+destination.window+'" data-transfer-code="'+esc(transaction?.code||'')+'" type="button"'+(disabled?' disabled':'')+' title="'+esc(title)+'"><b>Window '+destination.window+'</b></button>';
   }).join('');
-  const transferHint=!t?'Call a queue to enable the destination window buttons.':S.version!==REQUIRED?'Deploy Federation v12 Apps Script to enable transfers.':destinations.some(x=>x.available&&x.transaction)?'Choose an idle window button to transfer the checked ticket.':'No other idle window has a supported transaction assignment.';
+  const transferHint=!t?'Call a queue to enable the destination window buttons.':S.version!==REQUIRED?'Deploy Federation v12 Apps Script to enable transfers.':destinations.some(x=>x.available&&x.transaction)?'Choose an idle window button to transfer the checked ticket.':'No available window is assigned to this queue transaction. Use Done Pre-check to wait.';
   const transferPanel=prechecking?'<div class="precheck-transfer"><b class="transfer-title">Transfer to window</b><div class="precheck-window-buttons">'+(transferButtons||'<small class="transfer-hint">Add a service window to create a destination button.</small>')+'</div><small class="transfer-hint">'+esc(transferHint)+'</small></div>':'';
   const hasAvailableDestination=destinations.some(destination=>destination.available&&destination.transaction);
   const donePrecheckDisabled=!t||hasAvailableDestination||!connectionHealthy||S.version!==REQUIRED||activeWindowActions.has(String(i));
-  const donePrecheckTitle=!t?'Call a queue in Pre Checking first.':hasAvailableDestination?'A destination window is available. Transfer the ticket directly.':!connectionHealthy?'Connect to Apps Script to update the queue.':S.version!==REQUIRED?'Deploy Federation v12 Apps Script.':'Save this checked ticket to Done Pre-check while all destination windows are unavailable.';
+  const donePrecheckTitle=!t?'Call a queue in Pre Checking first.':hasAvailableDestination?'A destination window is available. Transfer the ticket directly.':!connectionHealthy?'Connect to Apps Script to update the queue.':S.version!==REQUIRED?'Deploy Federation v12 Apps Script.':'Save this checked ticket to Done Pre-check until a matching window becomes available.';
   $('staffWins').innerHTML='<div class="window-grid"><div class="window-card"><div class="split"><h3>Window '+i+'</h3><span class="pill">'+esc(txName)+'</span></div>'+
     '<div class="current">'+(t?'<b class="current-no">'+esc(t.queueNo)+'</b><strong>'+esc(t.name)+'</strong><small>'+esc(t.transactionName)+'</small>':'<small class="muted">No active applicant or member</small>')+'</div>'+
     '<p class="recruiter-label"><b>Recruiter:</b> '+esc(recruiter)+'</p>'+
