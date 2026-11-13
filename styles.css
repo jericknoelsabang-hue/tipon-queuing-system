@@ -1527,3 +1527,9 @@ header.site-header::before{
     font-size:clamp(28px,15cqw,44px)!important;
   }
 }
+
+
+/* Hide the waiting-board pagination/status footers on the TV display only. */
+#display .waiting-boards .queue-board-footer{
+  display:none!important;
+}

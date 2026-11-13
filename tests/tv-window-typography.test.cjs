@@ -65,3 +65,12 @@ test('waiting board colors and ticket styles remain distinct between the two sta
   assert.match(waitingPolish,/\.queue-board-precheck \.queue-board-ticket\{/);
   assert.match(waitingPolish,/\.queue-board-ready \.queue-board-ticket\{/);
 });
+
+
+test('TV waiting boards hide the pagination and all-numbers footer text',()=>{
+  assert.match(css,/#display \.waiting-boards \.queue-board-footer\{\s*display:none!important;\s*\}/);
+  assert.match(html,/id="precheckQueuePage"/);
+  assert.match(html,/id="precheckQueueRotation"/);
+  assert.match(html,/id="readyQueuePage"/);
+  assert.match(html,/id="readyQueueRotation"/);
+});
