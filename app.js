@@ -3,7 +3,7 @@
 (()=>{'use strict';
 const C=window.TIPON_CONFIG||{}, $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const REQUIRED='federation-v12',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9','federation-v10','federation-v11','federation-v12']),DEFAULT='Please keep your queue number until called.',DEFAULT_GUIDE='Hello, mga ka-miyembro! Sa mga bagong dating na wala pang queuing number, i-scan ang QR code na nakikita sa screen. Piliin ang inyong service. Para sa Recruitment, ilagay ang First Name, Last Name, Recruitment Transaction at Position. Pagkatapos, pindutin ang Get Queue Number. Para sa Member Concern, ilagay ang First Name, Last Name at Type of Concern, pagkatapos ay pindutin ang Get Queue Number. Kapag may queue number na, please keep your queue number until called.';
+const REQUIRED='federation-v13',COMPATIBLE=new Set(['federation-v7','federation-v8','federation-v9','federation-v10','federation-v11','federation-v12','federation-v13']),DEFAULT='Please keep your queue number until called.',DEFAULT_GUIDE='Hello, mga ka-miyembro! Sa mga bagong dating na wala pang queuing number, i-scan ang QR code na nakikita sa screen. Piliin ang inyong service. Para sa Recruitment, ilagay ang First Name, Last Name, Recruitment Transaction at Position. Pagkatapos, pindutin ang Get Queue Number. Para sa Member Concern, ilagay ang First Name, Last Name at Type of Concern, pagkatapos ay pindutin ang Get Queue Number. Kapag may queue number na, please keep your queue number until called.';
 let S={windowCount:0,maxWindowCount:20,windows:{},waiting:[],precheckDone:[],transactions:[],transactionTypes:[],assignments:{},announcement:DEFAULT,queueGuide:DEFAULT_GUIDE,queueGuideCue:'',completed:[],recruiters:{}};
 let connectionHealthy=false;
  let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,pollTimer=null,refreshFailures=0,activeWindowActions=new Set(),tableSignature={wait:'',precheckDone:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
@@ -290,11 +290,11 @@ function staff(){
     const title=!t?'Call a queue in Pre Checking first.':!transaction?'This window is not assigned to the transaction for this queue number.':!destination.available?'This window is currently serving a ticket.':'Transfer the checked ticket to this window.';
     return '<button class="btn '+(ready?'success window-available':'primary window-busy')+' precheck-window-button" data-transfer-from="'+i+'" data-transfer-target="'+destination.window+'" data-transfer-code="'+esc(transaction?.code||'')+'" type="button"'+(disabled?' disabled':'')+' title="'+esc(title)+'"><b>Window '+destination.window+'</b></button>';
   }).join('');
-  const transferHint=!t?'Call a queue to enable the destination window buttons.':S.version!==REQUIRED?'Deploy Federation v12 Apps Script to enable transfers.':destinations.some(x=>x.available&&x.transaction)?'Choose an idle window button to transfer the checked ticket.':'No available window is assigned to this queue transaction. Use Done Pre-check to wait.';
+  const transferHint=!t?'Call a queue to enable the destination window buttons.':S.version!==REQUIRED?'Deploy Federation v13 Apps Script to enable transfers.':destinations.some(x=>x.available&&x.transaction)?'Choose an idle window button to transfer the checked ticket.':'No available window is assigned to this queue transaction. Use Done Pre-check to wait.';
   const transferPanel=prechecking?'<div class="precheck-transfer"><b class="transfer-title">Transfer to window</b><div class="precheck-window-buttons">'+(transferButtons||'<small class="transfer-hint">Add a service window to create a destination button.</small>')+'</div><small class="transfer-hint">'+esc(transferHint)+'</small></div>':'';
   const hasAvailableDestination=destinations.some(destination=>destination.available&&destination.transaction);
   const donePrecheckDisabled=!t||hasAvailableDestination||!connectionHealthy||S.version!==REQUIRED||activeWindowActions.has(String(i));
-  const donePrecheckTitle=!t?'Call a queue in Pre Checking first.':hasAvailableDestination?'A destination window is available. Transfer the ticket directly.':!connectionHealthy?'Connect to Apps Script to update the queue.':S.version!==REQUIRED?'Deploy Federation v12 Apps Script.':'Save this checked ticket to Done Pre-check until a matching window becomes available.';
+  const donePrecheckTitle=!t?'Call a queue in Pre Checking first.':hasAvailableDestination?'A destination window is available. Transfer the ticket directly.':!connectionHealthy?'Connect to Apps Script to update the queue.':S.version!==REQUIRED?'Deploy Federation v13 Apps Script.':'Save this checked ticket to Done Pre-check until a matching window becomes available.';
   $('staffWins').innerHTML='<div class="window-grid"><div class="window-card"><div class="split"><h3>Window '+i+'</h3><span class="pill">'+esc(txName)+'</span></div>'+
     '<div class="current">'+(t?'<b class="current-no">'+esc(t.queueNo)+'</b><strong>'+esc(t.name)+'</strong><small>'+esc(t.transactionName)+'</small>':'<small class="muted">No active applicant or member</small>')+'</div>'+
     '<p class="recruiter-label"><b>Recruiter:</b> '+esc(recruiter)+'</p>'+
@@ -474,7 +474,7 @@ async function refresh(silent=false){
     if(!COMPATIBLE.has(S.version))
       status('Backend version is outdated. Check the Apps Script deployment.','err');
     else if(S.version!==REQUIRED)
-      status('Connected to '+S.version+'. Deploy Federation v12 Code.gs for multi-select assignments and Pre Checking transfers.','err');
+      status('Connected to '+S.version+'. Deploy Federation v13 Code.gs for multi-select assignments and Pre Checking transfers.','err');
     else status('Connected to tipón TAWAG • '+S.version+' • Synced '+new Date().toLocaleTimeString('en-PH',{timeZone:'Asia/Manila'}),'ok');
   }catch(e){
     connectionHealthy=false;
@@ -649,7 +649,7 @@ async function queueAction(action,i){
 }
 async function transferTicket(source,target,transaction){
  if(!ready())return;
- if(S.version!==REQUIRED){staffMessage('Deploy Federation v12 Apps Script to enable Pre Checking transfers.','err');return}
+ if(S.version!==REQUIRED){staffMessage('Deploy Federation v13 Apps Script to enable Pre Checking transfers.','err');return}
  if(!source||!target||source===target)return;
  const keys=[String(source),String(target)];
  if(keys.some(key=>activeWindowActions.has(key)))return;
@@ -795,7 +795,7 @@ $('saveWindow').onclick=async()=>{
   const i=editWindow,selected=editWindowTxs.slice(),recruiter=$('editRecruiter').value.trim();
   if(!i)return;
   if(!selected.length){status('Select at least one assigned transaction.','err');return}
-  if(selected.length>1&&S.version!==REQUIRED){status('Deploy Federation v12 Apps Script before saving multiple assigned transactions.','err');return}
+  if(selected.length>1&&S.version!==REQUIRED){status('Deploy Federation v13 Apps Script before saving multiple assigned transactions.','err');return}
   const assignment=selected.includes('ALL')?'ALL':selected.length===1?selected[0]:selected;
   const payload={window:i,recruiter};
   if(assignment==='ALL')payload.transaction='ALL';
@@ -889,7 +889,7 @@ $('reconnect').onclick=()=>{
   status('Rechecking the official Apps Script deployment. If the connection still fails, redeploy Code.gs in Google Apps Script.','');
   void refresh(false);
 };
-$('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(!COMPATIBLE.has(r.version))throw Error('Backend is '+(r.version||'outdated')+'. Deploy the latest Code.gs.');status('Backend verified • '+r.version+' • '+r.windows+' service windows.'+(r.version!==REQUIRED?' Update to v12 for Pre Checking and shared queue history.':''),'ok');await refresh(true)}catch(e){error(e)}};
+$('test').onclick=async()=>{try{const r=await jp('health');if(!r.ok)throw Error(r.error);if(!COMPATIBLE.has(r.version))throw Error('Backend is '+(r.version||'outdated')+'. Deploy the latest Code.gs.');status('Backend verified • '+r.version+' • '+r.windows+' service windows.'+(r.version!==REQUIRED?' Update to v13 for transaction-matched Pre Checking transfers.':''),'ok');await refresh(true)}catch(e){error(e)}};
 $('clear').onclick=()=>{localStorage.removeItem('tqApi');$('api').value='';S.version='';qrUrl='';status('Connection cleared.','err');qr()};
 $('backToWindows').onclick=()=>openStaffWindow(0);
 const full=$('fullscreen');
