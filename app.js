@@ -178,6 +178,7 @@ function renderWaitingBoards(){
 }
 function tv(){
   const count=Number(S.windowCount||0),indexes=Array.from({length:count},(_,i)=>i+1);
+  $('wins').style.setProperty('--window-count',String(Math.max(1,Math.min(count,5))));
   const signature=JSON.stringify({windows:S.windows,count});
   if(signature!==windowSignature){
     windowSignature=signature;
