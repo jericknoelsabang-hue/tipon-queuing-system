@@ -138,6 +138,7 @@ function styleQueueSheets_(ss){
   w.getRange(1,1,1,WH.length).setBackground('#075477').setFontColor('#ffffff').setFontWeight('bold');
   w.setColumnWidths(1,WH.length,160);[ [1,110],[2,245],[3,125],[4,140],[5,180],[6,230],[7,210],[8,175],[9,175],[10,105] ].forEach(([col,width])=>w.setColumnWidth(col,width));
   w.getRange(1,1,wRows,WH.length).createFilter();
+  if(h.getMaxColumns()>EH.length)h.deleteColumns(EH.length+1,h.getMaxColumns()-EH.length);
   const hRows=Math.max(2,h.getLastRow());h.getRange(1,1,hRows,EH.length).setVerticalAlignment('middle');
   h.getRange(1,1,1,EH.length).setBackground('#075477').setFontColor('#ffffff').setFontWeight('bold').setWrap(true);
   h.setColumnWidths(1,EH.length,165);[[1,230],[2,245],[3,180],[4,115],[5,110],[6,220],[7,135],[8,180],[9,210],[10,260],[11,125],[12,125],[13,180],[14,300]].forEach(([col,width])=>h.setColumnWidth(col,width));
@@ -708,12 +709,11 @@ function ticket_(r){
 }function windowCount_(){const s=ss_().getSheetByName(CFG.windows);let n=0;if(s&&s.getLastRow()>1)s.getRange(2,1,s.getLastRow()-1,1).getValues().forEach(r=>{const x=Number(r[0]);if(Number.isInteger(x)&&x>n)n=x});return Math.max(1,Math.min(CFG.maxWindows,n||4))}
 function ensure_(ss,name,h){
   const sheet=ss.getSheetByName(name)||ss.insertSheet(name);
-  const oldLastColumn=Math.max(sheet.getLastColumn(),h.length);
   if(sheet.getMaxColumns()<h.length)sheet.insertColumnsAfter(sheet.getMaxColumns(),h.length-sheet.getMaxColumns());
   sheet.getRange(1,1,1,h.length).setValues([h]).setFontWeight('bold').setBackground('#075477').setFontColor('#ffffff').setVerticalAlignment('middle').setWrap(true);
   sheet.setFrozenRows(1);
   return sheet;
-}function ss_(){return _tiponSpreadsheet||(_tiponSpreadsheet=SpreadsheetApp.openById(CFG.spreadsheetId))}
+}
 let _tiponSpreadsheet=null;
 function ss_(){return _tiponSpreadsheet||(_tiponSpreadsheet=SpreadsheetApp.openById(CFG.spreadsheetId))}
 function nameKey_(f,l){return norm_(f)+'|'+norm_(l)}function norm_(v){let s=String(v||'').trim().toUpperCase();if(s.normalize)s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');return s.replace(/[^A-Z0-9]/g,'')}
