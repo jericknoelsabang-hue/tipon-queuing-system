@@ -177,7 +177,7 @@ function renderWaitingBoards(){
   queueBoards.ready.update(groups.ready,now);
   const windows=Array.from({length:Number(S.windowCount||0)},(_,i)=>i+1).filter(isPrecheckingWindow);
   const label=windows.length>1?'Windows '+windows.join(' / '):'Window '+(windows[0]||1);
-  const hint='Please wait to be called at '+label+'.';
+  const hint='New arrivals - Please wait to be called at '+label+'.';
   if($('precheckQueueHint').textContent!==hint)$('precheckQueueHint').textContent=hint;
 }
 function tv(){

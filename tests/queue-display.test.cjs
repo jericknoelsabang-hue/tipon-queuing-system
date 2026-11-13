@@ -5,7 +5,7 @@ const {splitWaitingQueues,createBoard}=require('../queue-display.js');
 const ticket=(n,extra={})=>({ticketId:'ticket-'+n,queueNo:'NH-'+String(n).padStart(4,'0'),status:'WAITING',...extra});
 const tickets=n=>Array.from({length:n},(_,i)=>ticket(i+1));
 function board(width=800){
-  const numbers={clientWidth:width,style:{setProperty(){}},_html:'',writes:0,
+  const numbers={clientWidth:width,_html:'',writes:0,
     set innerHTML(value){this._html=value;this.writes++},get innerHTML(){return this._html}};
   const count={textContent:''},page={textContent:''},rotation={textContent:'',classList:{toggle(){}}};
   return {numbers,count,page,rotation,update:createBoard({numbers,count,page,rotation,emptyText:'Nobody waiting.'}).update,
@@ -34,15 +34,19 @@ test('server queue order and input arrays are preserved',()=>{
   assert.equal(JSON.stringify(waiting),original);
 });
 
-test('all 45 tickets appear over five one-minute sets, including tickets beyond the old 20-ticket cutoff',()=>{
+test('all 45 tickets appear over twelve one-minute sets, with no more than four visible at once',()=>{
   const view=board(),list=tickets(45),seen=[];
-  for(let minute=0;minute<5;minute++){
-    view.update(list,minute*60000);seen.push(...view.visible());
-    assert.match(view.page.textContent,new RegExp('Set '+(minute+1)+' of 5$'));
+  for(let minute=0;minute<12;minute++){
+    view.update(list,minute*60000);
+    const visible=view.visible();
+    assert.ok(visible.length<=4);
+    assert.equal(visible[0],list[minute*4].queueNo);
+    assert.match(view.page.textContent,new RegExp('Set '+(minute+1)+' of 12$'));
+    seen.push(...visible);
   }
   assert.deepEqual(seen,list.map(t=>t.queueNo));
-  view.update(list,300000);
-  assert.deepEqual(view.visible(),list.slice(0,10).map(t=>t.queueNo));
+  view.update(list,720000);
+  assert.deepEqual(view.visible(),list.slice(0,4).map(t=>t.queueNo));
 });
 
 test('frequent polling and new arrivals do not restart the 60-second timer or redraw unchanged numbers',()=>{
@@ -52,36 +56,36 @@ test('frequent polling and new arrivals do not restart the 60-second timer or re
   assert.equal(view.numbers.writes,writes);
   view.update(tickets(46),59999);
   assert.equal(view.rotation.textContent,'Next set in 1s');
-  assert.equal(view.visible()[0],'NH-0001');
   view.update(tickets(46),60000);
-  assert.equal(view.visible()[0],'NH-0011');
+  assert.equal(view.visible()[0],'NH-0005');
+  assert.equal(view.visible().length,4);
   assert.equal(view.rotation.textContent,'Next set in 60s');
 });
 
 test('the two boxes rotate independently when one gains a second page later',()=>{
   const first=board(),second=board();
-  first.update(tickets(21),0);second.update(tickets(3),0);
-  second.update(tickets(11),30000);
-  first.update(tickets(21),60000);second.update(tickets(11),60000);
-  assert.equal(first.visible()[0],'NH-0011');assert.equal(second.visible()[0],'NH-0001');
-  second.update(tickets(11),90000);assert.equal(second.visible()[0],'NH-0011');
+  first.update(tickets(9),0);second.update(tickets(3),0);
+  second.update(tickets(6),30000);
+  first.update(tickets(9),60000);second.update(tickets(6),60000);
+  assert.equal(first.visible()[0],'NH-0005');assert.equal(second.visible()[0],'NH-0001');
+  second.update(tickets(6),90000);assert.equal(second.visible()[0],'NH-0005');
 });
 
 test('called tickets disappear immediately and shrinking lists never leave a blank set',()=>{
   const view=board();view.update(tickets(25),0);view.update(tickets(25),120000);
-  assert.equal(view.visible()[0],'NH-0021');
+  assert.equal(view.visible()[0],'NH-0009');
   view.update([ticket(24),ticket(25)],120001);
   assert.deepEqual(view.visible(),['NH-0024','NH-0025']);
-  assert.equal(view.page.textContent,'Showing 1–2 of 2');
+  assert.equal(view.page.textContent,'Showing 1-2 of 2');
   assert.equal(view.rotation.textContent,'All numbers shown');
   view.update([],120002);assert.equal(view.count.textContent,'0');assert.match(view.numbers.innerHTML,/Nobody waiting/);
   view.update([ticket(30)],120003);assert.deepEqual(view.visible(),['NH-0030']);
 });
 
-test('resizing keeps the current set near the same position and all mobile numbers remain reachable',()=>{
+test('resizing does not change the four-ticket page size and all mobile numbers remain reachable',()=>{
   const view=board(),list=tickets(25);view.update(list,0);view.update(list,60000);
   view.numbers.clientWidth=320;view.update(list,61000);
-  assert.equal(view.visible().length,4);assert.ok(view.visible().includes('NH-0011'));
+  assert.equal(view.visible().length,4);assert.equal(view.visible()[0],'NH-0005');
   const seen=new Set();
   for(let n=0;n<7;n++){view.update(list,61000+n*60000);view.visible().forEach(value=>seen.add(value))}
   assert.equal(seen.size,25);
@@ -89,7 +93,7 @@ test('resizing keeps the current set near the same position and all mobile numbe
 
 test('a suspended tab resumes with a valid set and countdown',()=>{
   const view=board();view.update(tickets(25),0);view.update(tickets(25),180500);
-  assert.equal(view.visible()[0],'NH-0001');assert.equal(view.rotation.textContent,'Next set in 60s');
+  assert.equal(view.visible()[0],'NH-0013');assert.equal(view.rotation.textContent,'Next set in 60s');
 });
 
 test('queue text is escaped and long transaction codes use the smaller type style',()=>{

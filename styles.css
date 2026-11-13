@@ -743,34 +743,46 @@ header.site-header::before{
 
 #staff .completed-remarks{min-width:180px;max-width:420px;white-space:normal;overflow-wrap:anywhere;color:#426579;font-size:12px;line-height:1.4}
 
-/* Two visible waiting stages, with stable two-row sets for crowded queues. */
-.waiting-boards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px;flex:none}
-.queue-board{--queue-accent:#087eae;--queue-tint:#e8f5fb;min-width:0;padding:14px 18px 11px;border-radius:14px;border-top:4px solid var(--queue-accent);background:#fff;color:#163f58;box-shadow:0 5px 16px #032d461c}
-.queue-board-ready{--queue-accent:#137958;--queue-tint:#e8f5ef}
-.queue-board-heading{display:flex;align-items:center;gap:11px;min-width:0;margin-bottom:12px}
-.queue-board-step{display:grid;place-items:center;flex:none;width:35px;height:35px;border-radius:10px;background:var(--queue-tint);color:var(--queue-accent);font:800 16px/1 Manrope,sans-serif}
+/* Refined TV waiting boards: compact, consistent, and easy to scan from a distance. */
+.waiting-boards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px;flex:none}
+.queue-board{--queue-accent:#087eae;--queue-tint:#eaf5fb;position:relative;min-width:0;overflow:hidden;padding:11px 14px 9px;border:1px solid #dce8ef;border-top:3px solid var(--queue-accent);border-radius:13px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%);color:#163f58;box-shadow:0 4px 16px rgba(9,48,72,.09)}
+.queue-board-ready{--queue-accent:#137d68;--queue-tint:#eaf6f1}
+.queue-board::before{position:absolute;inset:0 auto 0 0;width:3px;background:var(--queue-accent);content:"";opacity:.14}
+.queue-board-heading{display:flex;align-items:center;gap:10px;min-width:0;margin-bottom:8px}
+.queue-board-step{display:grid;place-items:center;flex:none;width:28px;height:28px;border-radius:8px;background:var(--queue-tint);color:var(--queue-accent);font:800 12px/1 Manrope,sans-serif;letter-spacing:.04em}
 .queue-board-copy{min-width:0;flex:1}
-.queue-board-copy h3{margin:0;color:var(--queue-accent);font:800 clamp(14px,1.12vw,21px)/1.25 Manrope,sans-serif;letter-spacing:.045em}
-.queue-board-copy p{margin:4px 0 0;color:#527186;font-size:clamp(11px,.82vw,15px);font-weight:650;line-height:1.35}
-.queue-board-count{display:flex;flex-direction:column;align-items:center;flex:none;min-width:48px;padding-left:12px;border-left:1px solid #dce8ed;line-height:1.15}
-.queue-board-count strong{font:800 clamp(22px,1.8vw,30px)/1 Manrope,sans-serif;color:var(--queue-accent);font-variant-numeric:tabular-nums}
-.queue-board-count span{margin-top:4px;font-size:11px;font-weight:750;color:#567589}
-.queue-board-tickets{display:grid;grid-template-columns:repeat(var(--queue-columns,2),minmax(0,1fr));grid-template-rows:repeat(2,minmax(44px,auto));gap:8px 10px;align-content:start}
-.queue-board-ticket{display:flex;align-items:center;justify-content:center;min-width:0;padding:9px 6px;border:1px solid color-mix(in srgb,var(--queue-accent) 12%,white);border-radius:9px;background:var(--queue-tint);color:var(--queue-accent);font:800 clamp(19px,1.5vw,29px)/1.15 Manrope,sans-serif;font-variant-numeric:tabular-nums;text-align:center;overflow-wrap:anywhere;animation:queue-set-appear .25s ease-out}
-.queue-board-ticket-long{font-size:clamp(15px,1.1vw,22px)}
-.queue-board-empty{grid-column:1/-1;grid-row:1/3;display:flex;align-items:center;justify-content:center;margin:0;padding:10px;background:#f5f9fb;border:1px dashed #d6e4eb;border-radius:9px;color:#58768a;font-size:clamp(13px,.95vw,17px);font-weight:650;text-align:center}
-.queue-board-footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:5px 12px;margin-top:10px;color:#536e80;font-size:clamp(10px,.75vw,13px);font-weight:650;line-height:1.3;font-variant-numeric:tabular-nums}
-.queue-board-footer .is-rotating{color:var(--queue-accent);font-weight:800}
-@keyframes queue-set-appear{from{opacity:.35;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.queue-board-copy h3{margin:0;color:var(--queue-accent);font:800 clamp(12px,.95vw,16px)/1.2 Manrope,sans-serif;letter-spacing:.055em}
+.queue-board-copy p{margin:3px 0 0;color:#607b8c;font-size:clamp(10px,.7vw,12px);font-weight:650;line-height:1.25}
+.queue-board-count{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;min-width:62px;padding:5px 8px;border:1px solid color-mix(in srgb,var(--queue-accent) 14%,white);border-radius:9px;background:var(--queue-tint);line-height:1.05}
+.queue-board-count strong{font:800 clamp(18px,1.35vw,22px)/1 Manrope,sans-serif;color:var(--queue-accent);font-variant-numeric:tabular-nums}
+.queue-board-count span{margin-top:3px;color:#567589;font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.queue-board-tickets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:minmax(40px,auto);gap:7px;align-content:start}
+.queue-board-ticket{display:flex;align-items:center;justify-content:center;min-width:0;min-height:40px;padding:6px 7px;border:1px solid color-mix(in srgb,var(--queue-accent) 15%,white);border-radius:8px;background:linear-gradient(180deg,#fff 0%,var(--queue-tint) 100%);color:var(--queue-accent);font:800 clamp(17px,1.35vw,23px)/1.1 Manrope,sans-serif;font-variant-numeric:tabular-nums;text-align:center;overflow-wrap:anywhere;box-shadow:0 2px 6px rgba(8,53,76,.08),inset 0 1px 0 #fff;animation:queue-ticket-flash .9s cubic-bezier(.2,.75,.25,1) both}
+.queue-board-ticket-long{font-size:clamp(13px,1vw,18px)}
+.queue-board-empty{grid-column:1/-1;grid-row:auto;display:flex;align-items:center;justify-content:center;min-height:40px;margin:0;padding:8px 12px;border:1px dashed #cfdfe8;border-radius:9px;background:#f6fafc;color:#58768a;font-size:12px;font-weight:650;text-align:center}
+.queue-board-footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:5px 12px;margin-top:7px;padding-top:7px;border-top:1px solid #e8eef2;color:#60798a;font-size:clamp(9px,.65vw,11px);font-weight:700;letter-spacing:.025em;line-height:1.2;font-variant-numeric:tabular-nums;text-transform:uppercase}
+.queue-board-footer .is-rotating{color:var(--queue-accent);font-weight:850}
+.queue-board-footer span:last-child.is-rotating::before{display:inline-block;width:6px;height:6px;margin:0 6px 1px 0;border-radius:50%;background:currentColor;content:"";animation:queue-rotation-dot 1.2s ease-in-out infinite}
+@keyframes queue-ticket-flash{0%{opacity:.25;transform:translateY(4px) scale(.985);filter:brightness(1.18);box-shadow:0 0 0 3px color-mix(in srgb,var(--queue-accent) 18%,transparent)}40%{opacity:1;transform:translateY(0) scale(1.012);filter:brightness(1.06)}100%{opacity:1;transform:translateY(0) scale(1);filter:none;box-shadow:0 2px 6px rgba(8,53,76,.08),inset 0 1px 0 #fff}}
+@keyframes queue-rotation-dot{0%,100%{opacity:.45}50%{opacity:1}}
 @media(max-width:760px){
- .waiting-boards{grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
- .queue-board{padding:12px;border-radius:12px}
- .queue-board-heading{gap:9px}
- .queue-board-copy h3{font-size:15px}
- .queue-board-copy p{font-size:12px}
- .queue-board-step{width:30px;height:30px;font-size:14px}
- .queue-board-ticket{font-size:23px}
- .queue-board-ticket-long{font-size:17px}
- .queue-board-footer{font-size:11px}
+ .waiting-boards{grid-template-columns:minmax(0,1fr);gap:10px;margin-top:10px}
+ .queue-board{padding:10px 11px 8px;border-radius:11px}
+ .queue-board-heading{gap:8px;margin-bottom:7px}
+ .queue-board-copy h3{font-size:13px}
+ .queue-board-copy p{font-size:11px}
+ .queue-board-step{width:27px;height:27px;font-size:11px}
+ .queue-board-tickets{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(40px,auto))}
+ .queue-board-ticket{font-size:20px}
+ .queue-board-ticket-long{font-size:16px}
+ .queue-board-footer{font-size:10px}
 }
-@media(prefers-reduced-motion:reduce){.queue-board-ticket{animation:none}}
+@media(max-width:420px){
+ .queue-board-copy h3{font-size:12px}
+ .queue-board-copy p{font-size:10px}
+ .queue-board-count{min-width:54px;padding:4px 6px}
+ .queue-board-footer{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){
+ .queue-board-ticket,.queue-board-footer span:last-child.is-rotating::before{animation:none}
+}
