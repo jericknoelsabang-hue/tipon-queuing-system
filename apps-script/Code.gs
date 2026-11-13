@@ -16,14 +16,14 @@ function setupTiponQueueSystem(){
   const all=allTxs_(ss);
   if(!all.some(t=>t.code==='MC'))ss.getSheetByName(CFG.tx).appendRow(['MC','Member Concerns',true,all.length+1]);
   // A disabled transaction remains disabled after setup.
-  return {ok:true,federationMode:true,version:'federation-v12'};
+  return {ok:true,federationMode:true,version:'federation-v13'};
 }
 function doGet(e){
   const p=e?.parameter||{},cb=String(p.callback||'callback').replace(/[^A-Za-z0-9_.$]/g,'');
   const action=String(p.action||'state');
   try{
     let r;switch(action){
-      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v12',queueGuideSupported:true};break;
+      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,version:'federation-v13',queueGuideSupported:true};break;
       case'state':r={ok:true,state:state_(p)};break;
       case'publicConfig':r=publicConfig_();break;
       // Sensitive staff writes cannot be performed through public JSONP/GET.
@@ -451,7 +451,7 @@ function restoreTx_(p){
 function publicConfig_(){
   const ss=ss_();
   const transactions=txs_(ss).filter(t=>!isPrecheckingAssignment_(ss,t.code));
-  return{ok:true,version:'federation-v12',transactions};
+  return{ok:true,version:'federation-v13',transactions};
 }
 function state_(p){
   const view=['display','staff','setup'].includes(String(p?.view||''))?String(p.view):'staff';
@@ -522,7 +522,7 @@ function state_(p){
      queueGuide:settingMap.get('QUEUE_GUIDE')?.trim()||DEFAULT_QUEUE_GUIDE,
      queueGuideCue:settingMap.get('QUEUE_GUIDE_CUE')?.trim()||'',
      queueGuideSupported:true,
-    federationMode:true,version:'federation-v12'};
+    federationMode:true,version:'federation-v13'};
   try{
     const json=JSON.stringify(result);
     if(cache&&json.length<28000)cache.put(cacheKey,json,2);
