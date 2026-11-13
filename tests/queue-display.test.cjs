@@ -78,7 +78,7 @@ test('called tickets disappear immediately and shrinking lists never leave a bla
   assert.deepEqual(view.visible(),['NH-0024','NH-0025']);
   assert.equal(view.page.textContent,'Showing 1–2 of 2');
   assert.equal(view.rotation.textContent,'All queue numbers displayed');
-  view.update([],120002);assert.equal(view.count.textContent,'0');assert.match(view.numbers.innerHTML,/Nobody waiting/);
+  view.update([],120002);assert.equal(view.count.textContent,'0');assert.match(view.numbers.innerHTML,/No queue numbers waiting/);
   view.update([ticket(30)],120003);assert.deepEqual(view.visible(),['NH-0030']);
 });
 
