@@ -272,7 +272,14 @@ function staff(){
     return;
   }
   const i=activeStaffWindow,t=win(i),selected=S.assignments?.[String(i)]||'ALL',
-    txName=assignmentLabel(selected),recruiter=S.recruiters?.[String(i)]||'Unassigned',prechecking=isPrecheckingWindow(i);
+    txName=assignmentLabel(selected),recruiter=S.recruiters?.[String(i)]||'Unassigned',prechecking=isPrecheckingWindow(i),hasPrechecking=Object.keys(S.assignments||{}).some(window=>isPrecheckingWindow(Number(window)));
+  const canCallNext=prechecking
+    ? (S.waiting||[]).some(ticket=>['MC','NH','RH','TR'].includes(String(ticket.transaction||'').toUpperCase()))
+    : hasPrechecking
+      ? (S.precheckDone||[]).some(ticket=>assignmentIncludes(selected,ticket.transaction))
+      : (S.waiting||[]).some(ticket=>assignmentIncludes(selected,ticket.transaction));
+  const callNextDisabled=Boolean(t)||!connectionHealthy||!canCallNext||activeWindowActions.has(String(i));
+  const callNextTitle=!canCallNext?(prechecking?'No unchecked queue is waiting.':hasPrechecking?'No matching Done Pre-check queue is waiting.':'No matching queue is waiting.'):'';
   const activeTicketId=String(t?.ticketId||'');
   if(remarksDraft.ticketId!==activeTicketId){
     remarksDraft={ticketId:activeTicketId,value:String(t?.remarks||'')};
@@ -298,7 +305,7 @@ function staff(){
   $('staffWins').innerHTML='<div class="window-grid"><div class="window-card"><div class="split"><h3>Window '+i+'</h3><span class="pill">'+esc(txName)+'</span></div>'+
     '<div class="current">'+(t?'<b class="current-no">'+esc(t.queueNo)+'</b><strong>'+esc(t.name)+'</strong><small>'+esc(t.transactionName)+'</small>':'<small class="muted">No active applicant or member</small>')+'</div>'+
     '<p class="recruiter-label"><b>Recruiter:</b> '+esc(recruiter)+'</p>'+
-    '<div class="window-actions '+(prechecking?'prechecking':'standard')+'"><button class="btn primary" data-action="call" data-win="'+i+'" type="button"'+(t||!connectionHealthy?' disabled':'')+'>Call Next</button>'+
+    '<div class="window-actions '+(prechecking?'prechecking':'standard')+'"><button class="btn primary" data-action="call" data-win="'+i+'" type="button"'+(callNextDisabled?' disabled':'')+(callNextTitle?' title="'+esc(callNextTitle)+'"':'')+'>Call Next</button>'+
     '<button class="btn ghost" data-action="recall" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Recall</button>'+
     (prechecking?'<button class="btn success" data-action="donePrecheck" data-win="'+i+'" type="button"'+(donePrecheckDisabled?' disabled':'')+' title="'+esc(donePrecheckTitle)+'">Done Pre-check</button>':'<button class="btn success" data-action="complete" data-win="'+i+'" type="button"'+(!t||!connectionHealthy?' disabled':'')+'>Complete</button>')+'</div>'+
     (prechecking?'':'<label class="field window-remarks" for="windowRemarks"><span class="remarks-head"><b>Remarks</b><small id="remarksStatus">'+esc(remarksStatus)+'</small></span><textarea id="windowRemarks" maxlength="500" rows="3" placeholder="Add remarks for this applicant or member."'+(!t||!connectionHealthy?' disabled':'')+'>'+esc(remarksValue)+'</textarea></label>')+transferPanel+'</div></div>';
