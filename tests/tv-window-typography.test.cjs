@@ -26,7 +26,7 @@ test('empty windows keep READY FOR NEXT below the idle dash',()=>{
 });
 
 test('QR frame is enlarged but constrained by the fullscreen panel and viewport height',()=>{
-  assert.match(polish,/#display:fullscreen \.qr-panel \.qr-frame\{[\s\S]*?width:min\(100%,34vh,390px\);[\s\S]*?aspect-ratio:1\/1;/);
+  assert.match(polish,/#display:fullscreen \.qr-panel \.qr-frame\{[\s\S]*?width:min\(100%,40vh,430px\);[\s\S]*?aspect-ratio:1\/1;/);
 });
 
 test('NOW SERVING heading and service instruction use larger typography',()=>{
@@ -37,4 +37,28 @@ test('NOW SERVING heading and service instruction use larger typography',()=>{
 test('the requested queue-stage labels remain intact',()=>{
   assert.match(html,/>AWAITING PRE-CHECK</);
   assert.match(html,/>PRE-CHECK COMPLETED</);
+});
+
+
+test('waiting panels no longer display numbered step badges',()=>{
+  assert.doesNotMatch(html,/class="queue-board-step"/);
+  assert.match(html,/>AWAITING PRE-CHECK</);
+  assert.match(html,/>PRE-CHECK COMPLETED</);
+});
+
+test('waiting ticket numbers are centered in larger fixed-height boxes',()=>{
+  const waitingPolish=css.slice(css.lastIndexOf('/* Premium waiting boards:'));
+  assert.match(waitingPolish,/#display:fullscreen \.queue-board-ticket\{[\s\S]*?display:grid;[\s\S]*?place-items:center;[\s\S]*?min-height:52px;[\s\S]*?font-size:clamp\(22px,1\.85vw,32px\);/);
+  assert.match(waitingPolish,/#display:fullscreen \.queue-board-tickets\{[\s\S]*?grid-template-rows:minmax\(52px,auto\);/);
+});
+
+test('QR code is enlarged while remaining constrained to its TV panel',()=>{
+  const waitingPolish=css.slice(css.lastIndexOf('/* Premium waiting boards:'));
+  assert.match(waitingPolish,/#display:fullscreen \.qr-panel \.qr-frame\{[\s\S]*?width:min\(100%,40vh,430px\);[\s\S]*?max-width:100%;[\s\S]*?aspect-ratio:1\/1;/);
+});
+
+test('waiting board colors and ticket styles remain distinct between the two stages',()=>{
+  const waitingPolish=css.slice(css.lastIndexOf('/* Premium waiting boards:'));
+  assert.match(waitingPolish,/\.queue-board-precheck \.queue-board-ticket\{/);
+  assert.match(waitingPolish,/\.queue-board-ready \.queue-board-ticket\{/);
 });

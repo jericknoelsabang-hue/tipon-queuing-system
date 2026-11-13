@@ -6,7 +6,7 @@
 <link rel="icon" href="assets/tipon-mark.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=16.3">
+<link rel="stylesheet" href="styles.css?v=16.4">
 <script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="queue-display.js?v=1.2"></script><script defer src="app.js?v=16.1"></script>
 
 
@@ -41,7 +41,6 @@
     <div class="waiting-boards" aria-label="Waiting queue stages">
       <section class="queue-board queue-board-precheck" aria-labelledby="precheckQueueTitle">
         <div class="queue-board-heading">
-          <span class="queue-board-step" aria-hidden="true">01</span>
           <div class="queue-board-copy"><h3 id="precheckQueueTitle">AWAITING PRE-CHECK</h3><p id="precheckQueueHint">New arrivals waiting for initial screening. Please wait for your turn.</p></div>
           <div class="queue-board-count"><strong id="precheckQueueCount">0</strong><span>waiting</span></div>
         </div>
@@ -50,7 +49,6 @@
       </section>
       <section class="queue-board queue-board-ready" aria-labelledby="readyQueueTitle">
         <div class="queue-board-heading">
-          <span class="queue-board-step" aria-hidden="true">02</span>
           <div class="queue-board-copy"><h3 id="readyQueueTitle">PRE-CHECK COMPLETED</h3><p>Screening is complete. Please wait for the next available service window.</p></div>
           <div class="queue-board-count"><strong id="readyQueueCount">0</strong><span>waiting</span></div>
         </div>
