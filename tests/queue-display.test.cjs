@@ -8,7 +8,7 @@ function board(width=800){
   const numbers={clientWidth:width,_html:'',writes:0,
     set innerHTML(value){this._html=value;this.writes++},get innerHTML(){return this._html}};
   const count={textContent:''},page={textContent:''},rotation={textContent:'',classList:{toggle(){}}};
-  return {numbers,count,page,rotation,update:createBoard({numbers,count,page,rotation,emptyText:'Nobody waiting.'}).update,
+  return {numbers,count,page,rotation,update:createBoard({numbers,count,page,rotation,emptyText:'No queue numbers waiting.'}).update,
     visible:()=>[...numbers.innerHTML.matchAll(/role="listitem" class="[^"]+">([^<]+)</g)].map(match=>match[1])};
 }
 
@@ -76,8 +76,8 @@ test('called tickets disappear immediately and shrinking lists never leave a bla
   assert.equal(view.visible()[0],'NH-0009');
   view.update([ticket(24),ticket(25)],120001);
   assert.deepEqual(view.visible(),['NH-0024','NH-0025']);
-  assert.equal(view.page.textContent,'Showing 1-2 of 2');
-  assert.equal(view.rotation.textContent,'All numbers shown');
+  assert.equal(view.page.textContent,'Showing 1–2 of 2');
+  assert.equal(view.rotation.textContent,'All queue numbers displayed');
   view.update([],120002);assert.equal(view.count.textContent,'0');assert.match(view.numbers.innerHTML,/Nobody waiting/);
   view.update([ticket(30)],120003);assert.deepEqual(view.visible(),['NH-0030']);
 });

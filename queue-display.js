@@ -54,8 +54,8 @@
           lastSignature=signature;
         }
         setText(count,String(total));
-        setText(page,total?'Showing '+(start+1)+'-'+Math.min(start+PAGE_SIZE,total)+' of '+total+(pages>1?' | Set '+(pageIndex+1)+' of '+pages:''):'No queues waiting');
-        setText(rotation,pages>1?'Next set in '+Math.ceil((nextRotationAt-now)/1000)+'s':'All numbers shown');
+        setText(page,total?'Showing '+(start+1)+'–'+Math.min(start+PAGE_SIZE,total)+' of '+total+(pages>1?' | Set '+(pageIndex+1)+' of '+pages:''):'No queue numbers waiting');
+        setText(rotation,pages>1?'Next set in '+Math.ceil((nextRotationAt-now)/1000)+'s':'All queue numbers displayed');
         rotation.classList.toggle('is-rotating',pages>1);
       }
     };
