@@ -29,16 +29,16 @@ This is a QR-based queuing system for **recruitment applicants** and **cooperati
 
 ## IMPORTANT: Deploy the Google Apps Script backend separately
 
-**Pushing to GitHub changes the GitHub Pages frontend only. It does not deploy the Apps Script web app.** The latest backend source reports `federation-v11`.
+**Pushing to GitHub changes the GitHub Pages frontend only. It does not deploy the Apps Script web app.** The latest backend source reports `federation-v13`.
 
 1. Open the **existing** Google Apps Script project linked to your TIPON Queuing Database.
 2. Back up the current `Code.gs`, then replace it with the entire [latest Code.gs](apps-script/Code.gs).
 3. Save the project, select `setupTiponQueueSystem` and run it once. Grant the required authorization. This initializes sheet headers/defaults without deleting the existing queue.
 4. Select **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy** to update the existing `/exec` deployment.
-5. In the web app, go to **Setup → Test Connection** and confirm **Federation v11**.
+5. In the web app, go to **Setup → Test Connection** and confirm **Federation v13**.
 6. Test registrations and staff actions using test accounts before real applicants or members.
 
-**Compatibility:** The frontend retains compatibility with Federation v7–v10. Daily name + original transaction deduplication and four-digit numbers require Federation v10 or newer. **Multi-select window assignments, first-pass Pre Checking routing, and transfer-to-idle-window actions require Federation v11.** Federation v11 adds a queue pre-check marker and routed-service fields without changing existing ticket numbers.
+**Compatibility:** The frontend retains compatibility with Federation v7–v10. Daily name + original transaction deduplication and four-digit numbers require Federation v10 or newer. **Multi-select window assignments and transaction-matched Pre Checking routing require Federation v13.** The Pre Checking window accepts current queue transactions. A destination button is enabled only for an idle window assigned to that ticket's transaction. Done Pre-check is allowed only when no idle matching window exists; checked tickets wait in the shared Done Pre-check list. Federation v13 keeps the existing queue schema and ticket numbers.
 
 ## Minimum functional acceptance checks
 
