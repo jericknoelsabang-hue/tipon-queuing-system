@@ -16,15 +16,16 @@ test('window labels stay at the top while queue details are vertically centered 
   assert.match(polish,/#display:fullscreen \.now \.window small\{[\s\S]*?margin-bottom:auto!important;/);
 });
 
-test('queue numbers stay on one line and scale with the actual card width',()=>{
-  assert.match(polish,/#display:fullscreen \.now \.window \.queue-no\{[\s\S]*?white-space:nowrap;[\s\S]*?overflow:hidden;[\s\S]*?font-size:clamp\(25px,21cqw,54px\)!important;/);
-  assert.match(polish,/#display:fullscreen \.now \.window strong\{[\s\S]*?grid-row:3;/);
-  assert.match(polish,/#display:fullscreen \.now \.window small\{[\s\S]*?grid-row:4;/);
+test('queue number stays on one line, scales with card width and is vertically centered',()=>{
+  assert.match(polish,/#display:fullscreen \.now \.window \.queue-no\{[\s\S]*?margin-top:auto!important;[\s\S]*?white-space:nowrap;[\s\S]*?font-size:clamp\(32px,22cqw,58px\)!important;/);
+  assert.match(polish,/#display:fullscreen \.now \.window strong\{[\s\S]*?display:flex;[\s\S]*?justify-content:center;/);
+  assert.match(polish,/#display:fullscreen \.now \.window small\{[\s\S]*?margin-bottom:auto!important;/);
 });
 
-test('empty windows keep READY FOR NEXT below the idle dash',()=>{
+test('empty windows center the idle dash and READY FOR NEXT under the fixed heading',()=>{
   assert.match(app,/window-empty/);
-  assert.match(polish,/#display:fullscreen \.now \.window-empty small\{[\s\S]*?grid-row:3 \/ span 2;/);
+  assert.match(polish,/#display:fullscreen \.now \.window-empty \.queue-no\{[\s\S]*?font-size:clamp\(28px,14cqw,42px\)!important;/);
+  assert.match(polish,/#display:fullscreen \.now \.window-empty small\{[\s\S]*?margin-bottom:auto!important;/);
 });
 
 test('QR frame is enlarged but constrained by the fullscreen panel and viewport height',()=>{
