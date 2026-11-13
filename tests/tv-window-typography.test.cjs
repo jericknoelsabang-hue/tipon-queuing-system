@@ -9,9 +9,11 @@ const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
 const polish=css.slice(css.lastIndexOf('/* TV service-window typography:'));
 
-test('all service-window headings use one fixed first grid row',()=>{
-  assert.match(polish,/#display:fullscreen \.now \.window\{[\s\S]*?grid-template-rows:clamp\(34px,3\.1vw,44px\) auto auto auto;/);
-  assert.match(polish,/#display:fullscreen \.now \.window-label\{[\s\S]*?grid-row:1;[\s\S]*?min-height:clamp\(34px,3\.1vw,44px\);/);
+test('window labels stay at the top while queue details are vertically centered below',()=>{
+  assert.match(polish,/#display:fullscreen \.now \.window\{[\s\S]*?display:flex!important;[\s\S]*?flex-direction:column;/);
+  assert.match(polish,/#display:fullscreen \.now \.window-label\{[\s\S]*?flex:0 0 clamp\(34px,3\.1vw,44px\);/);
+  assert.match(polish,/#display:fullscreen \.now \.window \.queue-no\{[\s\S]*?margin-top:auto!important;/);
+  assert.match(polish,/#display:fullscreen \.now \.window small\{[\s\S]*?margin-bottom:auto!important;/);
 });
 
 test('queue numbers stay on one line and scale with the actual card width',()=>{
