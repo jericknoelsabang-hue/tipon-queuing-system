@@ -714,6 +714,8 @@ function ensure_(ss,name,h){
   sheet.setFrozenRows(1);
   return sheet;
 }function ss_(){return _tiponSpreadsheet||(_tiponSpreadsheet=SpreadsheetApp.openById(CFG.spreadsheetId))}
+let _tiponSpreadsheet=null;
+function ss_(){return _tiponSpreadsheet||(_tiponSpreadsheet=SpreadsheetApp.openById(CFG.spreadsheetId))}
 function nameKey_(f,l){return norm_(f)+'|'+norm_(l)}function norm_(v){let s=String(v||'').trim().toUpperCase();if(s.normalize)s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');return s.replace(/[^A-Z0-9]/g,'')}
 function txt_(v,n){return String(v||'').replace(/[\u0000-\u001F\u007F]/g,' ').replace(/\s+/g,' ').trim().slice(0,n)}function code_(v,n){return String(v||'').trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,n)}
 function int_(v,a,b){v=Number(v);if(!Number.isInteger(v)||v<a||v>b)throw Error('Invalid window.');return v}function bool_(v){return typeof v==='boolean'?v:['TRUE','YES','1','ACTIVE'].includes(String(v).toUpperCase())}
