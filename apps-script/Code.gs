@@ -219,7 +219,9 @@ function call_(p){
         if(!['MC','NH','RH','TR'].includes(transaction)||prechecked)continue;
       }else{
         if(!assignmentAllows_(assignment,transaction))continue;
-        if(hasPrechecking&&['MC','NH','RH','TR'].includes(transaction)&&!prechecked)continue;
+        // When Pre Checking is configured, regular service windows can only call tickets
+        // that have passed through it. This keeps every un-checked waiting ticket at PC.
+        if(hasPrechecking&&!prechecked)continue;
       }
       i=x;break;
     }
