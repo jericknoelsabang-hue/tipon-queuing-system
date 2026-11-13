@@ -183,7 +183,7 @@ function tv(){
   if(signature!==windowSignature){
     windowSignature=signature;
     $('wins').innerHTML=indexes.map(i=>{const t=win(i);
-      return '<div class="window"><span class="window-label">WINDOW '+i+'</span>'+
+      return '<div class="window '+(t?'window-serving':'window-empty')+'"><span class="window-label">WINDOW '+i+'</span>'+
        (t?'<div class="queue-no">'+esc(t.queueNo)+'</div><strong>'+esc(t.name)+'</strong><small>'+esc(t.transactionName)+'</small>':
        '<div class="queue-no idle">—</div><small>READY FOR NEXT</small>')+'</div>'
     }).join('');
