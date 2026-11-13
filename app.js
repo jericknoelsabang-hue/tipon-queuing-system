@@ -9,6 +9,13 @@ let connectionHealthy=false;
  let seq=0,loading=false,queuedRefresh=false,hasLoaded=false,writePending=0,writeSerial=0,pollTimer=null,refreshFailures=0,activeWindowActions=new Set(),tableSignature={wait:'',precheckDone:'',completed:''},qrUrl='',qrObj=null,initialized=false,last={},page='display',dirty=false,staffSignature='',windowSignature='';
 let lastGuideCue=null,guideDirty=false;let armed=localStorage.getItem('tqSound')==='1',audio=null,waitPage=0,precheckDonePage=0,completedPage=0,editWindow=0,editTxCode='',editWindowTxs=[],activeStaffWindow=Number(new URLSearchParams(location.search).get('window'))||0;
 let remarksTimer=null,remarksSaveQueue=Promise.resolve(),remarksDraft={ticketId:'',value:''},remarksSaved={ticketId:'',value:''},remarksQueued={ticketId:'',value:''};
+const queueBoards={};
+for(const [stage,prefix,emptyText] of [
+  ['precheck','precheckQueue','No queues waiting for pre-checking.'],
+  ['ready','readyQueue','No pre-checked queues waiting.']
+])queueBoards[stage]=window.TiponQueueDisplay.createBoard({
+  numbers:$(prefix+'Numbers'),count:$(prefix+'Count'),page:$(prefix+'Page'),rotation:$(prefix+'Rotation'),emptyText
+});
 
 let localTvChannel=null,lastLocalTvSeen=0;
 try{
@@ -99,6 +106,7 @@ function view(v){
   ['display','staff','setup'].forEach(x=>$(x).classList.toggle('hide',x!==v));
   document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   $('fullscreen').classList.toggle('hide',v!=='display');
+  if(v==='display')renderWaitingBoards();
   if(v==='setup')setupTables();
   if(previous!==v&&hasLoaded)void refresh(true);
 }
@@ -162,9 +170,19 @@ function qr(){
  status('QR generation failed: '+String(lastError?.message||'Unknown error'),'err');
 }
 function win(i){return S.windows?.[String(i)]||null}
+function renderWaitingBoards(){
+  if(page!=='display')return;
+  const groups=window.TiponQueueDisplay.splitWaitingQueues(S),now=Date.now();
+  queueBoards.precheck.update(groups.precheck,now);
+  queueBoards.ready.update(groups.ready,now);
+  const windows=Array.from({length:Number(S.windowCount||0)},(_,i)=>i+1).filter(isPrecheckingWindow);
+  const label=windows.length>1?'Windows '+windows.join(' / '):'Window '+(windows[0]||1);
+  const hint='Please wait to be called at '+label+'.';
+  if($('precheckQueueHint').textContent!==hint)$('precheckQueueHint').textContent=hint;
+}
 function tv(){
   const count=Number(S.windowCount||0),indexes=Array.from({length:count},(_,i)=>i+1);
-  const signature=JSON.stringify({windows:S.windows,waiting:S.waiting,count});
+  const signature=JSON.stringify({windows:S.windows,count});
   if(signature!==windowSignature){
     windowSignature=signature;
     $('wins').innerHTML=indexes.map(i=>{const t=win(i);
@@ -172,9 +190,8 @@ function tv(){
        (t?'<div class="queue-no">'+esc(t.queueNo)+'</div><strong>'+esc(t.name)+'</strong><small>'+esc(t.transactionName)+'</small>':
        '<div class="queue-no idle">—</div><small>READY FOR NEXT</small>')+'</div>'
     }).join('');
-    const q=S.waiting||[];
-    $('chips').innerHTML=q.length?q.slice(0,20).map(t=>'<span class="chip">'+esc(t.queueNo)+'</span>').join(''):'<span class="muted">No applicants or members waiting</span>';
   }
+  renderWaitingBoards();
   const announcement=String(S.announcement||DEFAULT);
   const ticker=$('ann');
   if(ticker.textContent!==announcement){
@@ -904,6 +921,7 @@ function reflect(){full.setAttribute('aria-pressed',document.fullscreenElement==
 full.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('display').requestFullscreen()}catch(e){error(e,true)}};
 document.addEventListener('fullscreenchange',()=>{
   reflect();
+  renderWaitingBoards();
   // Switching into TV mode refreshes the screen and enters the faster polling cadence.
   schedulePoll(250);
 });
@@ -915,6 +933,8 @@ function clock(){
   $('headerDay').textContent=date;$('fullscreenDate').textContent=date;
 }
 clock();setInterval(clock,1000);
+setInterval(()=>{if(page==='display'&&!document.hidden)renderWaitingBoards()},1000);
+window.addEventListener('resize',renderWaitingBoards);
 let storedView='display';
 try{storedView=sessionStorage.getItem('tqLastView')||'display'}catch(e){}
 const requested=new URLSearchParams(location.search).get('view');

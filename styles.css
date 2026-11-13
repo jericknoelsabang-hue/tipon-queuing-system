@@ -742,3 +742,35 @@ header.site-header::before{
 }
 
 #staff .completed-remarks{min-width:180px;max-width:420px;white-space:normal;overflow-wrap:anywhere;color:#426579;font-size:12px;line-height:1.4}
+
+/* Two visible waiting stages, with stable two-row sets for crowded queues. */
+.waiting-boards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px;flex:none}
+.queue-board{--queue-accent:#087eae;--queue-tint:#e8f5fb;min-width:0;padding:14px 18px 11px;border-radius:14px;border-top:4px solid var(--queue-accent);background:#fff;color:#163f58;box-shadow:0 5px 16px #032d461c}
+.queue-board-ready{--queue-accent:#137958;--queue-tint:#e8f5ef}
+.queue-board-heading{display:flex;align-items:center;gap:11px;min-width:0;margin-bottom:12px}
+.queue-board-step{display:grid;place-items:center;flex:none;width:35px;height:35px;border-radius:10px;background:var(--queue-tint);color:var(--queue-accent);font:800 16px/1 Manrope,sans-serif}
+.queue-board-copy{min-width:0;flex:1}
+.queue-board-copy h3{margin:0;color:var(--queue-accent);font:800 clamp(14px,1.12vw,21px)/1.25 Manrope,sans-serif;letter-spacing:.045em}
+.queue-board-copy p{margin:4px 0 0;color:#527186;font-size:clamp(11px,.82vw,15px);font-weight:650;line-height:1.35}
+.queue-board-count{display:flex;flex-direction:column;align-items:center;flex:none;min-width:48px;padding-left:12px;border-left:1px solid #dce8ed;line-height:1.15}
+.queue-board-count strong{font:800 clamp(22px,1.8vw,30px)/1 Manrope,sans-serif;color:var(--queue-accent);font-variant-numeric:tabular-nums}
+.queue-board-count span{margin-top:4px;font-size:11px;font-weight:750;color:#567589}
+.queue-board-tickets{display:grid;grid-template-columns:repeat(var(--queue-columns,2),minmax(0,1fr));grid-template-rows:repeat(2,minmax(44px,auto));gap:8px 10px;align-content:start}
+.queue-board-ticket{display:flex;align-items:center;justify-content:center;min-width:0;padding:9px 6px;border:1px solid color-mix(in srgb,var(--queue-accent) 12%,white);border-radius:9px;background:var(--queue-tint);color:var(--queue-accent);font:800 clamp(19px,1.5vw,29px)/1.15 Manrope,sans-serif;font-variant-numeric:tabular-nums;text-align:center;overflow-wrap:anywhere;animation:queue-set-appear .25s ease-out}
+.queue-board-ticket-long{font-size:clamp(15px,1.1vw,22px)}
+.queue-board-empty{grid-column:1/-1;grid-row:1/3;display:flex;align-items:center;justify-content:center;margin:0;padding:10px;background:#f5f9fb;border:1px dashed #d6e4eb;border-radius:9px;color:#58768a;font-size:clamp(13px,.95vw,17px);font-weight:650;text-align:center}
+.queue-board-footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:5px 12px;margin-top:10px;color:#536e80;font-size:clamp(10px,.75vw,13px);font-weight:650;line-height:1.3;font-variant-numeric:tabular-nums}
+.queue-board-footer .is-rotating{color:var(--queue-accent);font-weight:800}
+@keyframes queue-set-appear{from{opacity:.35;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:760px){
+ .waiting-boards{grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
+ .queue-board{padding:12px;border-radius:12px}
+ .queue-board-heading{gap:9px}
+ .queue-board-copy h3{font-size:15px}
+ .queue-board-copy p{font-size:12px}
+ .queue-board-step{width:30px;height:30px;font-size:14px}
+ .queue-board-ticket{font-size:23px}
+ .queue-board-ticket-long{font-size:17px}
+ .queue-board-footer{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){.queue-board-ticket{animation:none}}

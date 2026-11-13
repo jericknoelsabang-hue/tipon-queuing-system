@@ -6,8 +6,8 @@
 <link rel="icon" href="assets/tipon-mark.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=14.2">
-<script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="app.js?v=15.6"></script>
+<link rel="stylesheet" href="styles.css?v=15.0">
+<script defer src="config.js"></script><script defer src="vendor/qrcodejs/qrcode.min.js"></script><script defer src="queue-display.js?v=1.0"></script><script defer src="app.js?v=15.7"></script>
 
 
 </head><body>
@@ -37,7 +37,27 @@
         <p>Scan to register for Recruitment or Member Concern and receive your queue number.</p>
       </aside>
       <div class="now"><div class="now-title"><div><h2>NOW SERVING</h2><p>Please proceed to your assigned service window.</p></div><span class="live">LIVE QUEUE</span></div><div id="wins" class="windows"></div></div>
-    </div><div class="tv-strip"><strong>UP NEXT</strong><div id="chips" class="row"></div></div>
+    </div>
+    <div class="waiting-boards" aria-label="Waiting queue stages">
+      <section class="queue-board queue-board-precheck" aria-labelledby="precheckQueueTitle">
+        <div class="queue-board-heading">
+          <span class="queue-board-step" aria-hidden="true">01</span>
+          <div class="queue-board-copy"><h3 id="precheckQueueTitle">FOR PRE-CHECKING</h3><p id="precheckQueueHint">Please wait to be called at Window 1.</p></div>
+          <div class="queue-board-count"><strong id="precheckQueueCount">0</strong><span>waiting</span></div>
+        </div>
+        <div id="precheckQueueNumbers" class="queue-board-tickets" role="list" aria-label="Queue numbers waiting for pre-checking"></div>
+        <div class="queue-board-footer"><span id="precheckQueuePage">No queues waiting</span><span id="precheckQueueRotation">All numbers shown</span></div>
+      </section>
+      <section class="queue-board queue-board-ready" aria-labelledby="readyQueueTitle">
+        <div class="queue-board-heading">
+          <span class="queue-board-step" aria-hidden="true">02</span>
+          <div class="queue-board-copy"><h3 id="readyQueueTitle">PRE-CHECK COMPLETE</h3><p>Please wait for the next available window.</p></div>
+          <div class="queue-board-count"><strong id="readyQueueCount">0</strong><span>waiting</span></div>
+        </div>
+        <div id="readyQueueNumbers" class="queue-board-tickets" role="list" aria-label="Pre-checked queue numbers waiting for a service window"></div>
+        <div class="queue-board-footer"><span id="readyQueuePage">No queues waiting</span><span id="readyQueueRotation">All numbers shown</span></div>
+      </section>
+    </div>
     <div class="announcement" aria-label="TV announcement">
       <strong class="announcement-label">ANNOUNCEMENT</strong>
       <div class="announcement-message"><span id="ann" class="announcement-ticker">Please keep your queue number until called.</span></div>
