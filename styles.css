@@ -722,7 +722,7 @@ header.site-header::before{
 
 /* Queue console controls and remarks. */
 .window-actions.standard{grid-template-columns:repeat(3,minmax(0,1fr))}
-.window-actions.prechecking{grid-template-columns:repeat(3,minmax(0,1fr))}
+.window-actions.prechecking{grid-template-columns:repeat(4,minmax(0,1fr))}
 .window-remarks{display:block;margin-top:12px}
 .window-remarks .remarks-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .window-remarks .remarks-head small{font-size:11px;font-weight:700;color:var(--muted)}
@@ -739,6 +739,8 @@ header.site-header::before{
 }
 @media(max-width:650px){
  .window-actions.standard .btn{padding:7px 4px;font-size:10px}
+ .window-actions.prechecking{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .window-actions.prechecking .btn{padding:7px 4px;font-size:10px}
 }
 
 #staff .completed-remarks{min-width:180px;max-width:420px;white-space:normal;overflow-wrap:anywhere;color:#426579;font-size:12px;line-height:1.4}
