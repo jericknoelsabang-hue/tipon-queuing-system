@@ -1545,3 +1545,20 @@ header.site-header::before{
 #display .waiting-boards .queue-board-footer{
   display:none!important;
 }
+
+/* Final, high-specificity override for the Pre Checking Done Pre-check action only. */
+#staff .window-actions.prechecking > button[data-action="donePrecheck"],
+#staff .window-actions.prechecking > button[data-action="donePrecheck"]:hover,
+#staff .window-actions.prechecking > button[data-action="donePrecheck"]:focus,
+#staff .window-actions.prechecking > button[data-action="donePrecheck"]:active,
+#staff .window-actions.prechecking > button[data-action="donePrecheck"]:disabled{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  color:#16885e!important;
+  background:#ffffff!important;
+  background-color:#ffffff!important;
+  background-image:none!important;
+  border:1px solid #16885e!important;
+  box-shadow:none!important;
+  opacity:1!important;
+}
