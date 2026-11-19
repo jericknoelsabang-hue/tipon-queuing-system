@@ -18,7 +18,7 @@ function setupTiponQueueSystem(){
   if(!all.some(t=>t.code==='MC'))ss.getSheetByName(CFG.tx).appendRow(['MC','Member Concerns',true,all.length+1]);
   backfillHistory_(ss);
   styleQueueSheets_(ss);
-  return {ok:true,federationMode:true,queueHistory:true,version:'federation-v13'};
+  return {ok:true,federationMode:true,queueHistory:true,version:'federation-v14'};
 }function headerIndex_(headers,name){return headers.findIndex(v=>String(v||'').trim().toLowerCase()===String(name).trim().toLowerCase())}
 function migrateQueueSchema_(ss){
   const q=ss.getSheetByName(CFG.queue)||ss.insertSheet(CFG.queue),w=ss.getSheetByName(CFG.windows)||ss.insertSheet(CFG.windows);
@@ -149,11 +149,11 @@ function doGet(e){
   const p=e?.parameter||{},cb=String(p.callback||'callback').replace(/[^A-Za-z0-9_.$]/g,''),action=String(p.action||'state');
   try{
     let r;switch(action){
-      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,queueHistory:true,version:'federation-v13',queueGuideSupported:true};break;
+      case'health':r={ok:true,name:ss_().getName(),windows:windowCount_(),federationMode:true,queueHistory:true,version:'federation-v14',queueGuideSupported:true};break;
       case'state':r={ok:true,state:state_(p)};break;
       case'publicConfig':r=publicConfig_();break;
       case'register':r=register_(p);break;case'setWindowTx':r=setWindowTx_(p);break;case'call':r=call_(p);break;case'transfer':r=transfer_(p);break;
-      case'recall':r=recall_(p);break;case'complete':r=complete_(p);break;case'donePrecheck':r=donePrecheck_(p);break;case'saveRemarks':r=saveRemarks_(p);break;
+      case'recall':r=recall_(p);break;case'complete':r=complete_(p);break;case'completePrecheck':r=completePrecheck_(p);break;case'donePrecheck':r=donePrecheck_(p);break;case'saveRemarks':r=saveRemarks_(p);break;
       case'addWindow':r=addWindow_();break;case'deleteWindow':r=deleteWindow_(p);break;case'saveWindow':r=saveWindow_(p);break;
       case'editTx':r=editTx_(p);break;case'deleteTx':r=deleteTx_(p);break;case'restoreTx':r=restoreTx_(p);break;case'addTx':r=addTx_(p);break;
       case'setAnnouncement':r=setAnnouncement_(p);break;case'setQueueGuide':r=setQueueGuide_(p);break;case'playQueueGuide':r=playQueueGuide_();break;case'announcementChunk':r=announcementChunk_(p);break;
@@ -379,6 +379,43 @@ function call_(p){
     w.getRange(sourceRow,2,1,WH.length-1).clearContent();
     return{ok:true,window:win,donePrecheck:true,ticket:ticket_(row)};
   }finally{lock.releaseLock()}
+}function completePrecheck_(p){
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    const ss=ss_(),w=ss.getSheetByName(CFG.windows),win=int_(p.window,1,windowCount_()),
+      sourceRow=win+1,sourceData=w.getRange(sourceRow,1,1,WH.length).getValues()[0],
+      expected=txt_(p.ticketId,100),active=String(sourceData[1]||'');
+    if(!isPrecheckingWindow_(ss,win))throw Error('Complete is only available in a Pre Checking window.');
+    if(!active||(expected&&active!==expected)){
+      if(expected){
+        const queue=ss.getSheetByName(CFG.queue),found=findId_(queue,expected);
+        if(found>1){
+          const existing=queue.getRange(found,1,1,QH.length).getValues()[0];
+          if(String(existing[8])==='COMPLETED')return{ok:true,alreadyCompleted:true,window:win,ticket:ticket_(existing)};
+        }
+      }
+      throw Error(active?'The Pre Checking ticket changed. Refresh the Staff Console before completing.':'Pre Checking window is empty or already completed.');
+    }
+    const q=ss.getSheetByName(CFG.queue),queueRow=queueRowForWindow_(q,sourceData);
+    if(queueRow<2)throw Error('The Pre Checking ticket could not be found in the queue.');
+    const row=q.getRange(queueRow,1,1,QH.length).getValues()[0],transaction=code_(row[4],6);
+    if(String(row[8])==='COMPLETED'){
+      w.getRange(sourceRow,2,1,WH.length-1).clearContent();
+      return{ok:true,alreadyCompleted:true,window:win,ticket:ticket_(row)};
+    }
+    if(String(row[8])!=='SERVING'||Number(row[9])!==win)throw Error('The Pre Checking ticket changed. Refresh and try again.');
+    if(!['MC','NH','RH','TR'].includes(transaction))throw Error('Only New Hire, Rehire, Transfer, or Member Concern tickets can be completed from Pre Checking.');
+    const completedAt=new Date(),preCheckCalledAt=row[10]||sourceData[7]||completedAt,
+      precheckedBy=txt_(row[17]||settingValue_(ss,'WINDOW_RECRUITER_'+win),80);
+    q.getRange(queueRow,9).setValue('COMPLETED');
+    q.getRange(queueRow,11,1,6).setValues([[preCheckCalledAt,'','','','',completedAt]]);
+    q.getRange(queueRow,17,1,3).setValues([['YES',precheckedBy,'']]);
+    row[8]='COMPLETED';row[10]=preCheckCalledAt;row[11]='';row[12]='';row[13]='';row[14]='';row[15]=completedAt;
+    row[16]='YES';row[17]=precheckedBy;row[18]='';
+    logEvent_(ss,row,'WINDOW COMPLETED',completedAt,win,'','',String(row[19]||''));
+    w.getRange(sourceRow,2,1,WH.length-1).clearContent();
+    return{ok:true,window:win,ticket:{...ticket_(row),completedAt:iso_(completedAt),recruiter:''}};
+  }finally{lock.releaseLock()}
 }function complete_(p){
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
@@ -549,7 +586,7 @@ function restoreTx_(p){
 }
 function publicConfig_(){
   const ss=ss_(),transactions=txs_(ss).filter(t=>!isPrecheckingAssignment_(ss,t.code));
-  return{ok:true,version:'federation-v13',transactions};
+  return{ok:true,version:'federation-v14',transactions};
 }function state_(p){
   const view=['display','staff','setup'].includes(String(p?.view||''))?String(p.view):'staff';
   const cacheKey='TIPON_STATE_'+view;
@@ -595,7 +632,7 @@ function publicConfig_(){
     announcement:settingMap.get('ANNOUNCEMENT')?.trim()||DEFAULT_ANNOUNCEMENT,
     queueGuide:settingMap.get('QUEUE_GUIDE')?.trim()||DEFAULT_QUEUE_GUIDE,
     queueGuideCue:settingMap.get('QUEUE_GUIDE_CUE')?.trim()||'',queueGuideSupported:true,
-    federationMode:true,queueHistory:true,version:'federation-v13'};
+    federationMode:true,queueHistory:true,version:'federation-v14'};
   try{const json=JSON.stringify(result);if(cache&&json.length<28000)cache.put(cacheKey,json,2)}catch(e){}
   return result;
 }function announcement_(ss){
