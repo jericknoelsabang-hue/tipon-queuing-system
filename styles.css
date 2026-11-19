@@ -723,6 +723,16 @@ header.site-header::before{
 /* Queue console controls and remarks. */
 .window-actions.standard{grid-template-columns:repeat(3,minmax(0,1fr))}
 .window-actions.prechecking{grid-template-columns:repeat(4,minmax(0,1fr))}
+
+/* Pre Checking: Done Pre-check uses a white button with green text and outline. */
+.window-actions.prechecking .btn[data-action="donePrecheck"],
+.window-actions.prechecking .btn[data-action="donePrecheck"]:hover:not(:disabled),
+.window-actions.prechecking .btn[data-action="donePrecheck"]:focus-visible{
+  color:#16885e!important;
+  background:#fff!important;
+  border:1px solid #16885e!important;
+  box-shadow:none!important
+}
 .window-remarks{display:block;margin-top:12px}
 .window-remarks .remarks-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .window-remarks .remarks-head small{font-size:11px;font-weight:700;color:var(--muted)}
